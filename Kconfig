@@ -1,0 +1,22 @@
+config USR_LIB_USBCTRL
+  select USR_DRV_USB
+  bool  "userspace USB portable control stack"
+  default y
+  ---help---
+  Support for communication with USB device driver(s), handling
+  USB control interface and registering multiple USB interfaces
+
+if USR_LIB_USBCTRL
+
+menu "libusbctrl specific options"
+
+config USBCTRL_DEBUG
+  bool "Activate debuggging for USB Control interaction"
+  default n
+  ---help---
+  Activate various debugging for usb control interaction.
+  This option is efficient only if KERNEL_SERIAL is activated.
+
+endmenu
+
+endif
