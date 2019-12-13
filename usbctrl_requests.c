@@ -315,6 +315,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
     usbctrl_req_descriptor_type_t desctype;
     uint16_t maxlength;
     bool send_zlp = false; /* set to true if descriptor size is smaller than maxlength */
+    send_zlp = send_zlp;
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
