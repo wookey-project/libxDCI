@@ -32,20 +32,16 @@
  * Figure 9.1
  */
 typedef enum {
-    USB_DEVICE_STATE_ATTACHED,
-    USB_DEVICE_STATE_POWERED,
-    USB_DEVICE_STATE_SUSPENDED_POWER, /* two suspend case: during early init (POWERED)
-                                        and runtime. when reach through POWERED mode,
-                                        no reset is possible. To make the automaton
-                                        easy, one suspend state per previous state is
-                                        made, to simplify the transition */
-    USB_DEVICE_STATE_SUSPENDED_DEFAULT,
-    USB_DEVICE_STATE_SUSPENDED_ADDRESS,
-    USB_DEVICE_STATE_SUSPENDED_CONFIGURED,
-    USB_DEVICE_STATE_DEFAULT,
-    USB_DEVICE_STATE_ADDRESS,
-    USB_DEVICE_STATE_CONFIGURED,
-    USB_DEVICE_STATE_INVALID
+    USB_DEVICE_STATE_ATTACHED,             /* Attached but not powered. Should never be reached from device side */
+    USB_DEVICE_STATE_POWERED,              /* Attached and powered, first reset not received yet */
+    USB_DEVICE_STATE_SUSPENDED_POWER,      /* Suspended, from the Power state */
+    USB_DEVICE_STATE_SUSPENDED_DEFAULT,    /* Suspended, from the default state */
+    USB_DEVICE_STATE_SUSPENDED_ADDRESS,    /* Suspended, from the address state */
+    USB_DEVICE_STATE_SUSPENDED_CONFIGURED, /* Suspended, from the configured state */
+    USB_DEVICE_STATE_DEFAULT,              /* First reset received, unique address not yet assigned */
+    USB_DEVICE_STATE_ADDRESS,              /* First reset received, address asigned, not yet configured */
+    USB_DEVICE_STATE_CONFIGURED,           /* First reset received, address asigned, configured, functions provided by the device can now be used */
+    USB_DEVICE_STATE_INVALID               /* Not defined in the USB standard. exists as an INVALID case. Should not be reached */
 } usb_device_state_t;
 
 /*
