@@ -25,7 +25,7 @@
 #define USBCTRL_STATE_H_
 
 #include "api/libusbctrl.h"
-#include "usbctrl_std_requests.h"
+#include "usbctrl_requests.h"
 
 /*
  * USB device standard automaton. This automaton is described in USB 2.0 standard,

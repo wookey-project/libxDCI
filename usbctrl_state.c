@@ -1,7 +1,7 @@
 #include "libc/types.h"
 #include "libc/stdio.h"
 #include "usbctrl_state.h"
-#include "usbctrl_std_requests.h"
+#include "usbctrl_requests.h"
 
 /*
  * all allowed transitions and target states for each current state
