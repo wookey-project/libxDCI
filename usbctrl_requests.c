@@ -63,6 +63,25 @@ static inline usbctrl_req_recipient_t usbctrl_std_req_get_recipient(usbctrl_setu
 }
 
 
+typedef enum {
+    USB_REQ_DESCRIPTOR_DEVICE           = 1,
+    USB_REQ_DESCRIPTOR_CONFIGURATION    = 2,
+    USB_REQ_DESCRIPTOR_STRING           = 3,
+    USB_REQ_DESCRIPTOR_INTERFACE        = 4,
+    USB_REQ_DESCRIPTOR_ENDPOINT         = 5,
+    USB_REQ_DESCRIPTOR_DEVICE_QUALIFIER = 6,
+    USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG  = 7,
+    USB_REQ_DESCRIPTOR_INTERFACE_POWER  = 8,
+} usbctrl_req_descriptor_type_t;
+
+static inline usbctrl_req_descriptor_type_t usbctrl_std_req_get_descriptor_type(usbctrl_setup_pkt_t *pkt)
+{
+    /* explicit cast of the high byte of wValue */
+    usbctrl_req_descriptor_type_t val = (usbctrl_req_descriptor_type_t)(pkt->wValue >> 8);
+    return val;
+}
+
+
 /****************************************************
  * About state check
  *
@@ -278,23 +297,126 @@ err:
     return errcode;
 }
 
+/*
+ * Most descriptors can be generated from all informations registered in context
+ * (including personalities and EPs).
+ * The only 'uncontrolled' descriptor is the functional descriptor of a given
+ * interface class, for wich, here we dereference the functional descriptor
+ * registered during the personality registration, if this descriptor is not null.
+ *
+ * Other descriptors are built dynamically.
+ *
+ * Here is
+ */
 static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *pkt,
                                                           usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    usbctrl_req_descriptor_type_t desctype;
+    uint16_t maxlength;
+    bool send_zlp = false; /* set to true if descriptor size is smaller than maxlength */
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
-    pkt = pkt;
+    desctype = usbctrl_std_req_get_descriptor_type(pkt);
+    /* max length to send */
+    maxlength = pkt->wLength;
+    switch (desctype) {
+        case USB_REQ_DESCRIPTOR_DEVICE:
+            /* wIndex (language ID) should be zero */
+            if (pkt->wIndex != 0) {
+                goto err;
+            }
+            /*TODO */
+            break;
+        case USB_REQ_DESCRIPTOR_CONFIGURATION:
+            /* wIndex (language ID) should be zero */
+            if (pkt->wIndex != 0) {
+                goto err;
+            }
+            /*TODO */
+            /* USB 2.0 standard, chap 9.4.3
+             *
+             * A request for configuration descriptor returns :
+             * - the configuration descriptor
+             * - all interfaces descriptors (including EP descriptors for each interface)
+             * in a single request
+             *
+             * ° The first interface descriptor follow the configuration descriptor
+             * ° The endpoint descriptors for the first interface follow the first interface descriptor
+             * ° If there are additional interfaces, their interfaces descriptor and endpoint descriptors
+             * follow the first interface endpoints descriptors
+             * * Class specific and/or vendor specific descriptors follow the standard descriptors they extend
+             * or modify
+             * ° If the device does not support requested descriptor, it must respond with a Request Error
+             *
+             */
+            break;
+        case USB_REQ_DESCRIPTOR_STRING:
+            /*TODO */
+            break;
+        case USB_REQ_DESCRIPTOR_INTERFACE:
+            /* wIndex (language ID) should be zero */
+            if (pkt->wIndex != 0) {
+                goto err;
+            }
+            /*TODO */
+            break;
+        case USB_REQ_DESCRIPTOR_ENDPOINT:
+            /* wIndex (language ID) should be zero */
+            if (pkt->wIndex != 0) {
+                goto err;
+            }
+            /*TODO */
+            break;
+        case USB_REQ_DESCRIPTOR_DEVICE_QUALIFIER:
+            /* wIndex (language ID) should be zero */
+            if (pkt->wIndex != 0) {
+                goto err;
+            }
+            /*TODO */
+            break;
+        case USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG:
+            /* wIndex (language ID) should be zero */
+            if (pkt->wIndex != 0) {
+                goto err;
+            }
+            /*TODO */
+            break;
+        case USB_REQ_DESCRIPTOR_INTERFACE_POWER:
+            /* wIndex (language ID) should be zero */
+            if (pkt->wIndex != 0) {
+                goto err;
+            }
+            /*TODO */
+            break;
+        default:
+            goto err;
+            break;
+    }
     ctx = ctx;
+    return errcode;
 err:
+    usb_driver_stall_out(EP0);
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *pkt,
+
+/*
+ * The host can set descriptors. Altough, this standard request is optional.
+ *
+ * In DEFAULT mode, the behavior of this request is not defined.
+ * In ADDRESSED and CONFIGURED mode, the device can:
+ *   - handle the descriptor set, if supported by the device
+ *   - returns a request error, if not supported
+ *
+ * In our case, we don't support this optional standard request for security
+ * constraint
+ */
+static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *pkt __attribute__((unused)),
                                                           usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -304,8 +426,11 @@ static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *p
         goto err;
     }
     /* handling standard Request */
-    pkt = pkt;
-    ctx = ctx;
+    /* By now, we do not which to allow the host to set one of our descriptors.
+     * As a consequence, we reply a request error to the host, meaning that this
+     * behavior is not supported by the device.
+     */
+    usb_driver_stall_out(EP0);
 err:
     return errcode;
 }
