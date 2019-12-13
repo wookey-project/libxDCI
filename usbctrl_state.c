@@ -1,5 +1,7 @@
-#include "api/types.h"
+#include "libc/types.h"
+#include "libc/stdio.h"
 #include "usbctrl_state.h"
+#include "usbctrl_std_requests.h"
 
 /*
  * all allowed transitions and target states for each current state
@@ -33,7 +35,7 @@ typedef struct usb_operation_code_transition {
 static const struct {
     usb_device_state_t state;
     usb_request_code_transition_t req_trans[MAX_TRANSITION_STATE];
-} scsi_automaton[] = {
+} usb_automaton[] = {
     {USB_DEVICE_STATE_ATTACHED, {
                  {0xff, 0xff},
                  {0xff, 0xff},
@@ -60,7 +62,7 @@ static const struct {
                   {0xff, 0xff},
                  }
      },
-    {USB_DEVICE_SATE_SUSPENDED, {
+    {USB_DEVICE_STATE_SUSPENDED, {
                   {0xff, 0xff},
                   {0xff, 0xff},
                   {0xff, 0xff},
@@ -77,7 +79,7 @@ static const struct {
                   {USB_REQ_GET_STATUS,USB_DEVICE_STATE_ATTACHED},
                   {USB_REQ_GET_DESCRIPTOR,USB_DEVICE_STATE_ATTACHED},
                   {USB_REQ_GET_INTERFACE,USB_DEVICE_STATE_ATTACHED},
-                  {USB_REQ_SET_STATUS,USB_DEVICE_STATE_ATTACHED},
+                  {USB_REQ_GET_STATUS,USB_DEVICE_STATE_ATTACHED},
                   {USB_REQ_SET_ADDRESS,USB_DEVICE_STATE_ATTACHED},
                   {USB_REQ_SET_CONFIGURATION,USB_DEVICE_STATE_ATTACHED},
                   {USB_REQ_SET_DESCRIPTOR,USB_DEVICE_STATE_ATTACHED},
@@ -90,7 +92,7 @@ static const struct {
                   {USB_REQ_GET_STATUS,USB_DEVICE_STATE_ADDRESS},
                   {USB_REQ_GET_DESCRIPTOR,USB_DEVICE_STATE_ADDRESS},
                   {USB_REQ_GET_INTERFACE,USB_DEVICE_STATE_ADDRESS},
-                  {USB_REQ_SET_STATUS,USB_DEVICE_STATE_ADDRESS},
+                  {USB_REQ_GET_STATUS,USB_DEVICE_STATE_ADDRESS},
                   {USB_REQ_SET_ADDRESS,USB_DEVICE_STATE_ADDRESS},
                   {USB_REQ_SET_CONFIGURATION,USB_DEVICE_STATE_ADDRESS},
                   {USB_REQ_SET_DESCRIPTOR,USB_DEVICE_STATE_ADDRESS},
@@ -103,7 +105,7 @@ static const struct {
                   {USB_REQ_GET_STATUS,USB_DEVICE_STATE_CONFIGURED},
                   {USB_REQ_GET_DESCRIPTOR,USB_DEVICE_STATE_CONFIGURED},
                   {USB_REQ_GET_INTERFACE,USB_DEVICE_STATE_CONFIGURED},
-                  {USB_REQ_SET_STATUS,USB_DEVICE_STATE_CONFIGURED},
+                  {USB_REQ_GET_STATUS,USB_DEVICE_STATE_CONFIGURED},
                   {USB_REQ_SET_ADDRESS,USB_DEVICE_STATE_CONFIGURED},
                   {USB_REQ_SET_CONFIGURATION,USB_DEVICE_STATE_CONFIGURED},
                   {USB_REQ_SET_DESCRIPTOR,USB_DEVICE_STATE_CONFIGURED},
@@ -201,11 +203,12 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
  *
  * \return true if the transition request is allowed for this state, or false
  */
-bool usb_is_valid_transition(usb_device_state_t current_state,
-                             usbctrl_request_code_t request)
+bool usbctrl_is_valid_transition(usb_device_state_t current_state,
+                                 usbctrl_request_code_t request,
+                                 usbctrl_context_t *ctx)
 {
     for (uint8_t i = 0; i < MAX_TRANSITION_STATE; ++i) {
-        if (scsi_automaton[current_state].req_trans[i].request == request) {
+        if (usb_automaton[current_state].req_trans[i].request == request) {
             return true;
         }
     }
@@ -215,6 +218,6 @@ bool usb_is_valid_transition(usb_device_state_t current_state,
      */
     printf("%s: invalid transition from state %d, request %d\n", __func__,
            current_state, request);
-    scsi_set_state(SCSI_ERROR);
+    usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
     return false;
 }

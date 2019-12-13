@@ -24,7 +24,7 @@
 #ifndef USBCTRL_STD_REQUESTS_H_
 #define USBCTRL_STD_REQUESTS_H_
 
-#include "api/types.h"
+#include "libc/types.h"
 #include "api/libusbctrl.h"
 /*
  * Here is handled the standard requests management of the control interface.
@@ -115,9 +115,20 @@ typedef enum {
 
 /*
  * Handle USB requests (standard setup packets)
- * TODO: this will probably need more args, or better decomposition, as it impact
- * the state automaton.
+ * This API is to be used by te driver as a callback to oepint().
+ * This means that the driver needs to fullfill these two arguments:
+ * pkt: the setup packet
+ * id:  the overall system USB device identifier
+ *
+ * TODO: A way to handle the overall device identifier may be to add a unique
+ * identifier into the JSON file, which generate each device header file.
+ *
+ * This identifier is then guaranteed to be unique and can be used to discriminate
+ * each device when handling multiple USB devices in the same application.
+ * If we do that, the usb_device_identifier_t, would be replaced by a 'device_identifier_t'
+ *
  */
-mbed_error_t usbctrl_handle_requests(usbctrl_context_t *ctx);
+mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
+                                     usb_device_identifier_t id);
 
 #endif/*USBCTRL_STD_REQUESTS_H_*/

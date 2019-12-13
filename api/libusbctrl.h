@@ -24,7 +24,8 @@
 #ifndef LIBUSBCTRL_H_
 #define LIBUSBCTRL_H_
 
-#include "api/types.h"
+#include "libc/types.h"
+#include "libc/syscall.h"
 
 /**********
  * USB driver(s) have to handle a standard eumerate defining an USB identifier
@@ -45,15 +46,6 @@ typedef enum {
 } usb_device_identifier_t;
 
 /* End of TODO */
-
-typedef struct {
-    usb_device_identifier_t id;
-    uint8_t                 state;
-    device_t               usb_dev;
-    uint8_t                personality_number;
-    usbctrl_personality_t *personalities[];
-} usbctrl_context_t;
-
 
 /************************************************
  * About standard USB classes
@@ -154,7 +146,7 @@ typedef enum {
  */
 typedef struct {
     usb_ep_type_t    type;                  /* EP type */
-    usp_ep_mode_t    mode;                  /* EP mode */
+    usb_ep_mode_t    mode;                  /* EP mode */
     usb_ep_attr_t    attr;                  /* EP attributes */
     usb_ep_usage_t   usage;                 /* EP usage */
     uint16_t         pkt_maxsize;           /* pkt maxsize in this EP */
@@ -184,7 +176,7 @@ typedef struct {
  * (i.e. multiple personality declared).
  *
  */
-typedef __packed struct {
+typedef struct __packed {
     uint8_t bmRequestType;
     uint8_t bRequest;
     uint16_t wValue;
@@ -203,16 +195,45 @@ typedef __packed struct {
 typedef mbed_error_t     (*usb_rqst_handler_t)(usbctrl_setup_pkt_t *inpkt,
                                               usbctrl_setup_pkt_t **outpkt);
 
+typedef uint8_t * functional_descriptor_p;
 
+/*
+ * This is the personality definition.
+ *
+ * The personality declare its class, subclass and protocol.
+ * It also declare a request handler for potential dedicated (non-standard) requests
+ * that need to be handled at personality level.
+ *
+ * Note that a personality doesn't define its class and endpoints  descriptor as
+ * these descriptors are handled at libctrl level.
+ * Although, functional descriptors are all specific, and have to be declared by the
+ * upper layer. If they exists, they must be set in the personality structure (through
+ * a uint8_t* pointer, associated to a size in byte). The libusbctrl will handle the
+ * functional descriptor transmission to the host on the corresponding request.
+ */
 typedef struct {
    usb_class_t        usb_class;      /*< the standard USB Class */
-   usb_descriptor_t  *usb_descriptor; /*< the assocated descriptor structure */
+   uint8_t            usb_subclass;   /*< personality subclass */
+   uint8_t            usb_protocol;   /*< personality protocol */
    usb_rqst_handler_t rqst_handler;   /*< personality Requests handler */
+   functional_descriptor_p func_desc; /*< pointer to functional descriptor, if it exists */
+   uint8_t            func_desc_len;  /*< functional descriptor length (in byte)  */
    uint8_t            usb_ep_number;  /*< the number of EP associated */
-   usb_rqst_handler
    usb_ep_infos_t     eps[MAX_EP_PER_PERSONALITY];  /*< for each EP, the associated
                                                       informations */
 } usbctrl_personality_t;
+
+/************************************************
+ * about libctrl context
+ ***********************************************/
+
+typedef struct {
+    usb_device_identifier_t id;
+    uint8_t                 state;
+    device_t               usb_dev;
+    uint8_t                personality_number;
+    usbctrl_personality_t *personalities[];
+} usbctrl_context_t;
 
 
 /************************************************
@@ -264,7 +285,7 @@ mbed_error_t usbctrl_release(usbctrl_context_t*ctx);
  * libusbctrl itself, as a consequence.
  */
 mbed_error_t usbctrl_declare_personality(__in      usbctrl_context_t      *ctx,
-                                          __in_out usbctrl_personality_t *up);
+                                          __out    usbctrl_personality_t *up);
 
 /*
  * Effective device start. FIXME: define the effective behavior:

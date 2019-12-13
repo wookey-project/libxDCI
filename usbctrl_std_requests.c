@@ -1,5 +1,5 @@
 #include "api/libusbctrl.h"
-#include "api/"
+#include "usbctrl_state.h"
 
 
 /*
@@ -10,156 +10,164 @@
  * The following functions handle one dedicated standard request.
  */
 
-static mbed_error_t usbctrl_std_req_handle_clear_feature(usbctrl_setup_pkt_t *pkt
+static mbed_error_t usbctrl_std_req_handle_clear_feature(usbctrl_setup_pkt_t *pkt,
                                                          usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_CLEAR_FEATURE, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_CLEAR_FEATURE, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt
+static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                                                       usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_GET_STATUS, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_GET_STATUS, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *pkt
-                                                          usbctrl_context_t *ctx)
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_GET_DESCRIPTOR, ctx->state)) {
-        /* error handling, invalid state */
-        errcode = MBED_ERROR_INVSTATE;
-        goto err;
-    }
-    /* handling standard Request */
-err:
-    return errcode;
-}
 
-static mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t *pkt
+static mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t *pkt,
                                                          usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_GET_INTERFACE, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_GET_INTERFACE, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_set_status(usbctrl_setup_pkt_t *pkt
-                                                      usbctrl_context_t *ctx)
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_SET_STATUS, ctx->state)) {
-        /* error handling, invalid state */
-        errcode = MBED_ERROR_INVSTATE;
-        goto err;
-    }
-    /* handling standard Request */
-err:
-    return errcode;
-}
-
-static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt
+static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_SET_ADDRESS, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_SET_ADDRESS, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t *pkt
+static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t *pkt,
                                                              usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_SET_CONFIGURATION, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_SET_CONFIGURATION, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_set_description(usbctrl_setup_pkt_t *pkt
-                                                           usbctrl_context_t *ctx)
+static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *pkt,
+                                                          usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_SET_DESCRIPTION, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_GET_DESCRIPTOR, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt
+static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *pkt,
+                                                          usbctrl_context_t *ctx)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    if (!usbctrl_is_valid_transition(USB_REQ_SET_DESCRIPTOR, ctx->state, ctx)) {
+        /* error handling, invalid state */
+        errcode = MBED_ERROR_INVSTATE;
+        goto err;
+    }
+    /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
+err:
+    return errcode;
+}
+
+
+static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_SET_FEATURE, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_SET_FEATURE, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pkt
+static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pkt,
                                                          usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_SET_INTERFACE, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_SET_INTERFACE, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
 
-static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt
+static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    if (!usb_is_valid_transition(USB_REQ_SYNCH_FRAME, ctx->state)) {
+    if (!usbctrl_is_valid_transition(USB_REQ_SYNCH_FRAME, ctx->state, ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
     /* handling standard Request */
+    pkt = pkt;
+    ctx = ctx;
 err:
     return errcode;
 }
@@ -181,6 +189,8 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         goto err;
     }
     /* Detect which context is assocated to current request and set local ctx */
+    id = id;
+    ctx = ctx;
 
 
     /* For current request of current context, is the current context is a standard

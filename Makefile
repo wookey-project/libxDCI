@@ -26,8 +26,6 @@ CFLAGS := $(LIBS_CFLAGS)
 # libtoken needs libecc
 CFLAGS += $(EXTERNAL_CFLAGS) $(LIBSIGN_CFLAGS)
 CFLAGS += -MMD -MP
-# libtoken needs private key access. This access should be declared voluntary in makefiles
-CFLAGS += -I$(PRIVATE_DIR)
 
 #############################################################
 # About library sources

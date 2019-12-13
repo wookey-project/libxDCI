@@ -117,6 +117,9 @@ typedef struct __packed usb_ctr_full_endpoint_descriptor {
 	usb_ctrl_endpoint_descriptor_t ep_out;
 } usb_ctr_full_endpoint_descriptor_t;
 
+/*
+ * FIXME: this DFU functional descriptor should be handled at DFU level (not here)
+ */
 typedef struct __packed usb_functional_descriptor {
     uint8_t bLength;
     uint8_t bDescriptorType;
@@ -130,7 +133,7 @@ typedef struct __packed usb_functional_descriptor {
     uint16_t wDetachTimeOut;
     uint16_t wTransferSize;
     uint16_t bcdDFUVersion;
-} usb_functional_descriptor_t;
+} usb_dfu_functional_descriptor_t;
 
 typedef struct __packed usb_ctrl_full_configuration_descriptor {
 	usb_ctrl_configuration_descriptor_t config_desc;
