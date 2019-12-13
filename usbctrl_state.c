@@ -243,11 +243,11 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
  * \return true if the transition request is allowed for this state, or false
  */
 bool usbctrl_is_valid_transition(usb_device_state_t current_state,
-                                 usbctrl_request_code_t request,
+                                 usb_device_trans_t transition,
                                  usbctrl_context_t *ctx)
 {
     for (uint8_t i = 0; i < MAX_TRANSITION_STATE; ++i) {
-        if (usb_automaton[current_state].req_trans[i].request == request) {
+        if (usb_automaton[current_state].req_trans[i].request == transition) {
             return true;
         }
     }
@@ -256,7 +256,7 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
      * valid transition. We should stall the request.
      */
     printf("%s: invalid transition from state %d, request %d\n", __func__,
-           current_state, request);
+           current_state, transition);
     usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
     return false;
 }

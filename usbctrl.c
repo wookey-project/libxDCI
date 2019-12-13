@@ -1,6 +1,8 @@
 #include "api/libusbctrl.h"
 #include "autoconf.h"
 #include "libc/types.h"
+#include "usbctrl_state.h"
+
 /*
  * by now, the libusbctrl handle upto 2 USB Ctrl context,
  * which means that an application can handle up to 2 USB blocks
@@ -28,6 +30,8 @@ mbed_error_t usbctrl_initialize(usbctrl_context_t*ctx)
     }
     ctx_list[num_ctx] = ctx;
     num_ctx++;
+    /* initialize with POWERED. We wait for the first reset event */
+    ctx->state = USB_DEVICE_STATE_POWERED;
 end:
     return errcode;
 }
