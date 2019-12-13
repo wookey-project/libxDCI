@@ -17,6 +17,16 @@ config USBCTRL_DEBUG
   Activate various debugging for usb control interaction.
   This option is efficient only if KERNEL_SERIAL is activated.
 
+
+config USBCTRL_MAX_CTX
+  int "Max number of concurrent contexts supported"
+  default 2
+  ---help---
+  This define the maximum number of USB context (meaning USB physical interfaces)
+  that the libusbctrl can handle in the same time.
+  Depending on the hardware (and software) design, it can be 1, 2 or in some rare
+  time more.
+
 endmenu
 
 endif

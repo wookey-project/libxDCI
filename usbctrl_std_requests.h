@@ -26,6 +26,7 @@
 
 #include "libc/types.h"
 #include "api/libusbctrl.h"
+
 /*
  * Here is handled the standard requests management of the control interface.
  * This API handle all the possible requests that can be sent by the host through
@@ -49,7 +50,6 @@
  * As a consequence, handling requests must be done in association with the
  * usbctrl_state API in order to check if the request is valid in the current state.
  */
-#include "api/libusbctrl.h"
 
 /*
  * Standard request codes, table 9.4, USB standard revision 2.0
@@ -129,6 +129,6 @@ typedef enum {
  *
  */
 mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
-                                     usb_device_identifier_t id);
+                                     uint32_t             id);
 
 #endif/*USBCTRL_STD_REQUESTS_H_*/

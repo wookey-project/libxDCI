@@ -27,26 +27,6 @@
 #include "libc/types.h"
 #include "libc/syscall.h"
 
-/**********
- * USB driver(s) have to handle a standard eumerate defining an USB identifier
- * for the SoC USB device(s). When multiple USB devices are handled in the same
- * palteform, each one must handle a unique, dedicated identifier, which allows
- * the libusbctrl to discriminate each device and associate ctrl/data flow from
- * the lower layer. This is under the responsability of the driver to handle this
- * as whe driver will use callbacks from the libusbctrl to respond to USB device
- * interrupt.
- * The libusbctrl handle context and associate this very identifier to associated
- * device_t struct to differenciate each event source and associated context.
- *
- * The identifier as to be passed to the various handler by the bellowing driver.
- */
-typedef enum {
-    USB_DRIVER_STM32F4XX_FS = 0x0,
-    USB_DRIVER_STM32F4XX_HS = 0x1,
-} usb_device_identifier_t;
-
-/* End of TODO */
-
 /************************************************
  * About standard USB classes
  *
@@ -227,12 +207,18 @@ typedef struct {
  * about libctrl context
  ***********************************************/
 
+#define MAX_PERSONALITY_PER_DEVICE 4
+
 typedef struct {
-    usb_device_identifier_t id;
-    uint8_t                 state;
-    device_t               usb_dev;
-    uint8_t                personality_number;
-    usbctrl_personality_t *personalities[];
+    /* first, about device driver interactions */
+    uint32_t                dev_id;             /*< device id, from the USB device driver */
+    device_t                usb_dev;            /*< device_t structure for USB device driver */
+    /* Then, about personalities (info, number) */
+    uint8_t                personality_num;     /*< Number of personalities registered */
+    usbctrl_personality_t *personalities[MAX_PERSONALITY_PER_DEVICE];     /*< For each registered personality,
+                                                                        its associated infos */
+    /* then current context state, associated to the USB standard state automaton  */
+    uint8_t                 state;              /*< USB state machine current state */
 } usbctrl_context_t;
 
 
@@ -241,13 +227,14 @@ typedef struct {
  ***********************************************/
 
 /*
- * Declare the USB device through the ctrl interface
+ * Declare the USB device through the ctrl interface, get back, for the current context,
+ * the associated device identifier in ctx. This part handling the device part only.
  */
 mbed_error_t usbctrl_declare(usbctrl_context_t*ctx);
 
 /*
- * create the first USB context, and create the endpoint 0 for
- * control. Other EP need to be registered by other libs (bulk, HID, and so on)
+ * create the first USB context, and create endpoint 0 for default
+ * control pipe. Other EPs need to be registered by other libs (bulk, HID, and so on)
  * The USB state machine is also initialized
  *
  * Initialization *does not* touch the device. It only handle the local USB context.
@@ -278,27 +265,31 @@ mbed_error_t usbctrl_release(usbctrl_context_t*ctx);
 /*
  * declare a new USB personality. Endpoints are created, EP refs are set in
  * the personality context. personality is associated to the context.
- * (ask the driver to release)
  *
  * At personality declaration, all needed information to generate the associated
- * full descriptor is given. Each personality descriptor can be created by the
- * libusbctrl itself, as a consequence.
+ * full descriptors is given. Each personality descriptor can be created by the
+ * libusbctrl itself, as a consequence (see above).
+ *
+ * At personality declaration time, personality endpoints infos are updated
+ * (EP identifiers, etc.) depending on the current global device interface state.
+ *
  */
 mbed_error_t usbctrl_declare_personality(__in      usbctrl_context_t      *ctx,
-                                          __out    usbctrl_personality_t *up);
+                                          __out    usbctrl_personality_t  *up);
 
 /*
- * Effective device start. FIXME: define the effective behavior:
- * - bind and enable the device, send the setup packet and descriptors
+ * Effective device start.
+ * bind and enable the device, initialize the communication and wait for the
+ * initial requests from the host.
  *
- * Although, it is possible to declare new personality after a start, as hotplugged
- * personality in the USB standard. Do we wish to support that feature ?
+ * By now, it is not possible to declare new personalities *after* the device
+ * is started.
  */
 mbed_error_t usbctrl_start_device(usbctrl_context_t      *ctx);
 
 /*
  * FIXME: Stop the device ? unmap and then ? Sending something to the host ? USB std
- * check is needed here
+ * check is needed here. This feature may be interesting in some cases.
  */
 mbed_error_t usbctrl_stop_device(usbctrl_context_t       *ctx);
 
