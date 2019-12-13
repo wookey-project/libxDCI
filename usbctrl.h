@@ -30,4 +30,6 @@
 mbed_error_t usbctrl_get_context(uint32_t device_id,
                                  usbctrl_context_t **ctx);
 
+bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep);
+
 #endif/*!USBCTRL_H_*/

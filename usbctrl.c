@@ -3,6 +3,9 @@
 #include "libc/types.h"
 #include "usbctrl_state.h"
 
+/* include usb driver API */
+#include "usb.h"
+
 /*
  * by now, the libusbctrl handle upto 2 USB Ctrl context,
  * which means that an application can handle up to 2 USB blocks
@@ -61,4 +64,19 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
     errcode = MBED_ERROR_NOTFOUND;
 end:
     return errcode;
+}
+
+bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
+{
+    if (ep == EP0) {
+        return true;
+    }
+    for (uint8_t i = 0; i < ctx->personality_num; ++i) {
+        for (uint8_t j = 0; j < ctx->personalities[i]->usb_ep_number; ++j) {
+            if (ctx->personalities[i]->eps[j].ep_num == ep) {
+                return true;
+            }
+        }
+    }
+    return false;
 }

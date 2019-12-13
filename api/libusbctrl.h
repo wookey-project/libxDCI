@@ -213,6 +213,7 @@ typedef struct {
     /* first, about device driver interactions */
     uint32_t                dev_id;             /*< device id, from the USB device driver */
     device_t                usb_dev;            /*< device_t structure for USB device driver */
+    uint16_t               address;             /*< device address, to be set by std req */
     /* Then, about personalities (info, number) */
     uint8_t                personality_num;     /*< Number of personalities registered */
     usbctrl_personality_t *personalities[MAX_PERSONALITY_PER_DEVICE];     /*< For each registered personality,

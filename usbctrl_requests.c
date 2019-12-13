@@ -2,6 +2,9 @@
 #include "usbctrl_state.h"
 #include "usbctrl.h"
 
+/* include driver header */
+#include "usb.h"
+
 
 /**********************************************************************
  * About utility functions
@@ -41,19 +44,19 @@ typedef enum {
 
 
 
-static inline usbctrl_req_type_t usbcrl_std_req_get_type(usbctrl_setup_pkt_t *pkt)
+static inline usbctrl_req_type_t usbctrl_std_req_get_type(usbctrl_setup_pkt_t *pkt)
 {
     /* bits 6..5 */
     return ((pkt->bmRequestType >> 5) & 0x3);
 }
 
-static inline usbctrl_req_dir_t usbcrl_std_req_get_dir(usbctrl_setup_pkt_t *pkt)
+static inline usbctrl_req_dir_t usbctrl_std_req_get_dir(usbctrl_setup_pkt_t *pkt)
 {
     /* bit 7 */
     return ((pkt->bmRequestType >> 7) & 0x1);
 }
 
-static inline usbctrl_req_recipient_t usbcrl_std_req_get_recipient(usbctrl_setup_pkt_t *pkt)
+static inline usbctrl_req_recipient_t usbctrl_std_req_get_recipient(usbctrl_setup_pkt_t *pkt)
 {
     /* bits 4..0 */
     return ((pkt->bmRequestType) & 0x1F);
@@ -134,8 +137,62 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
         goto err;
     }
     /* handling standard Request */
-    pkt = pkt;
-    ctx = ctx;
+    switch (usbctrl_get_state(ctx)) {
+        case USB_DEVICE_STATE_DEFAULT:
+            /* This case is not forbidden by USB2.0 standard, but the behavior is
+             * undefined. We can, for example, stall out. (FIXME) */
+            usb_driver_stall_out(EP0);
+            break;
+        case USB_DEVICE_STATE_ADDRESS:
+            if (usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_ENDPOINT &&
+                usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE) {
+                /* only interface or endpoint 0 allowed in ADDRESS state */
+                /* request error: sending STALL on status or data */
+                usb_driver_stall_out(EP0);
+                goto err;
+            }
+            if ((pkt->wIndex & 0xf) != 0) {
+                /* only interface or endpoint 0 allowed in ADDRESS state */
+                /* request error: sending STALL on status or data */
+                usb_driver_stall_out(EP0);
+                goto err;
+            }
+            /* handling get_status() for other cases */
+            switch (usbctrl_std_req_get_recipient(pkt)) {
+                case USB_REQ_RECIPIENT_ENDPOINT: {
+                    /*does requested EP exists ? */
+                    uint8_t epnum = pkt->wIndex & 0xf;
+                    if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
+                        usb_driver_stall_out(EP0);
+                        goto err;
+                    }
+                    /* FIXME: check EP direction too before returning status */
+                    //bool dir_in = (pkt->wIndex >> 7) & 0x1;
+                    /* return the recipient status (2 bytes) */
+                    uint8_t resp[2] = { 0 };
+                    if (pkt->wLength >= 2) {
+                        usb_driver_setup_send((uint8_t *)&resp, 2, EP0);
+                    } else {
+                        usb_driver_setup_send((uint8_t *)&resp, pkt->wLength, EP0);
+                    }
+                    usb_driver_setup_read_status();
+                    break;
+                }
+                default:
+                    usb_driver_stall_out(EP0);
+                    goto err;
+            }
+
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            /* check that the recipient exists */
+            /* return the recipient status */
+            break;
+        default:
+            /* this should never be reached with the is_std_requests_allowed() function */
+            usb_driver_stall_out(EP0);
+            break;
+    }
 err:
     return errcode;
 }
@@ -166,9 +223,41 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
-    /* handling standard Request */
-    pkt = pkt;
-    ctx = ctx;
+
+    /* handling standard Request, see USB 2.0 chap 9.4.6 */
+    /* This request is a Request assignment. This is a state automaton transition with
+     * three different behaviors depending on the current state */
+    switch (usbctrl_get_state(ctx)) {
+        case USB_DEVICE_STATE_DEFAULT:
+            if (pkt->wValue != 0) {
+                ctx->address = pkt->wValue;
+                usbctrl_set_state(ctx, USB_DEVICE_STATE_ADDRESS);
+            }
+            /* wValue set to 0 is *not* an error condition */
+        	usb_driver_setup_send_status(EP0);
+            break;
+        case USB_DEVICE_STATE_ADDRESS:
+            if (pkt->wValue != 0) {
+                /* simple update of address */
+                ctx->address = pkt->wValue;
+                usb_driver_set_address(ctx->address);
+            } else {
+                /* going back to default state */
+                usbctrl_set_state(ctx, USB_DEVICE_STATE_DEFAULT);
+            }
+        	usb_driver_setup_send_status(EP0);
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            /* This case is not forbidden by USB2.0 standard, but the behavior is
+             * undefined. We can, for example, stall out. (FIXME) */
+            usb_driver_stall_out(EP0);
+
+            break;
+        default:
+            /* this should never be reached with the is_std_requests_allowed() function */
+            usb_driver_stall_out(EP0);
+            break;
+    }
 err:
     return errcode;
 }
@@ -355,15 +444,15 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         goto err;
     }
 
-    if (usbcrl_std_req_get_type(pkt) == USB_REQ_TYPE_STD) {
+    if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_STD) {
         /* For current request of current context, is the current context is a standard
          * request ? If yes, handle localy */
         errcode = usbctrl_handle_std_requests(pkt, ctx);
-    } else if (usbcrl_std_req_get_type(pkt) == USB_REQ_TYPE_VENDOR) {
+    } else if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_VENDOR) {
         /* ... or, is the current request is a vendor request, then handle locally
          * for vendor */
         errcode = usbctrl_handle_vendor_requests(pkt, ctx);
-    } else if (usbcrl_std_req_get_type(pkt) == USB_REQ_TYPE_CLASS) {
+    } else if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_CLASS) {
         /* ... or, is the current request is a class request, then handle in upper layer*/
     } else {
         /* ... or unknown, return an error */
