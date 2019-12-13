@@ -34,12 +34,35 @@
 typedef enum {
     USB_DEVICE_STATE_ATTACHED,
     USB_DEVICE_STATE_POWERED,
-    USB_DEVICE_STATE_SUSPENDED,
+    USB_DEVICE_STATE_SUSPENDED_POWER, /* two suspend case: during early init (POWERED)
+                                        and runtime. when reach through POWERED mode,
+                                        no reset is possible. To make the automaton
+                                        easy, one suspend state per previous state is
+                                        made, to simplify the transition */
+    USB_DEVICE_STATE_SUSPENDED_DEFAULT,
+    USB_DEVICE_STATE_SUSPENDED_ADDRESS,
+    USB_DEVICE_STATE_SUSPENDED_CONFIGURED,
     USB_DEVICE_STATE_DEFAULT,
     USB_DEVICE_STATE_ADDRESS,
     USB_DEVICE_STATE_CONFIGURED,
     USB_DEVICE_STATE_INVALID
 } usb_device_state_t;
+
+/*
+ * device standard transitions (USB 2.0 standard, figure 9.1)
+ */
+typedef enum {
+    USB_DEVICE_TRANS_POWER_INTERRUPT,
+    USB_DEVICE_TRANS_RESET,
+    USB_DEVICE_TRANS_BUS_INACTIVE,
+    USB_DEVICE_TRANS_BUS_ACTIVE,
+    USB_DEVICE_TRANS_HUB_CONFIGURED,
+    USB_DEVICE_TRANS_HUB_DECONFIGURED,
+    USB_DEVICE_TRANS_HUB_RESET,
+    USB_DEVICE_TRANS_ADDRESS_ASSIGNED,
+    USB_DEVICE_TRANS_DEV_CONFIGURED,
+    USB_DEVICE_TRANS_DEV_DECONFIGURED,
+} usb_device_trans_t;
 
 /*
  * Return the current state of the USB device
