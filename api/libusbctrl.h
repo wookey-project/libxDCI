@@ -172,8 +172,11 @@ typedef struct __packed {
  * This callback treat the request and returns the response to the libusbctrl
  * control pipe handling, associated with an error state.
  */
-typedef mbed_error_t     (*usb_rqst_handler_t)(usbctrl_setup_pkt_t *inpkt,
-                                              usbctrl_setup_pkt_t **outpkt);
+
+struct usbctrl_context;
+
+typedef mbed_error_t     (*usb_rqst_handler_t)(struct usbctrl_context  *ctx,
+                                              usbctrl_setup_pkt_t *inpkt);
 
 typedef uint8_t * functional_descriptor_p;
 
@@ -207,16 +210,16 @@ typedef struct {
  * about libctrl context
  ***********************************************/
 
-#define MAX_PERSONALITY_PER_DEVICE 4
+#define MAX_INTERFACES_PER_DEVICE 4
 
-typedef struct {
+typedef struct usbctrl_context {
     /* first, about device driver interactions */
     uint32_t                dev_id;             /*< device id, from the USB device driver */
     device_t                usb_dev;            /*< device_t structure for USB device driver */
     uint16_t               address;             /*< device address, to be set by std req */
     /* Then, about personalities (info, number) */
     uint8_t                interface_num;     /*< Number of personalities registered */
-    usbctrl_interface_t *personalities[MAX_PERSONALITY_PER_DEVICE];     /*< For each registered interface,
+    usbctrl_interface_t    interfaces[MAX_INTERFACES_PER_DEVICE];     /*< For each registered interface,
                                                                         its associated infos */
     /* then current context state, associated to the USB standard state automaton  */
     uint8_t                 state;              /*< USB state machine current state */
@@ -275,8 +278,8 @@ mbed_error_t usbctrl_release(usbctrl_context_t*ctx);
  * (EP identifiers, etc.) depending on the current global device interface state.
  *
  */
-mbed_error_t usbctrl_declare_interface(__in      usbctrl_context_t      *ctx,
-                                          __out    usbctrl_interface_t  *up);
+mbed_error_t usbctrl_declare_interface(__in      usbctrl_context_t   *ctx,
+                                       __out    usbctrl_interface_t  *up);
 
 /*
  * Effective device start.

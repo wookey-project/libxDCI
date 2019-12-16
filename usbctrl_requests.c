@@ -517,7 +517,7 @@ err:
 }
 
 /*
- * Class requests targets personalities (i.e. registered interfaces).
+ * Class requests targets interfaces (i.e. registered interfaces).
  * These requests are transfered to each upper pesonalities class request handlers
  * to find which one is able to respond to the current setup pkt.
  * this function is a dispatcher between the various registered personalities
@@ -526,12 +526,34 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
                                                          usbctrl_context_t   *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    uint8_t iface_idx = 0;
+    usbctrl_interface_t* iface = NULL;
+
     if (!is_class_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
-    pkt = pkt;
+    /* when sending a class request, this should be to a specific interface.
+     * Interfaces are identified by their cell number in the interfaces[] table,
+     * and declared to the host through the descriptors, through which
+     * interfaces are sent in the interfaces[] table order.
+     *
+     * This permit to delect which interface is targeted by the current
+     * request */
+    iface_idx = (pkt->wIndex) & 0xff;
+    if (!usbctrl_is_interface_exists(ctx, iface_idx)) {
+        errcode = MBED_ERROR_NOTFOUND;
+        usb_driver_stall_out(EP0);
+        goto err;
+    }
+    if ((iface = usbctrl_get_interface(ctx, iface_idx)) == NULL) {
+        errcode = MBED_ERROR_UNKNOWN;
+        usb_driver_stall_out(EP0);
+        goto err;
+    }
+    /* interface found, call its dedicated request handler */
+    errcode = iface->rqst_handler(ctx, pkt);
 err:
     return errcode;
 }
