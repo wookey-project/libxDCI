@@ -34,7 +34,7 @@
  * that need to register against the libusbCTRL.
  * These classes are standard USB ones
  *
- * Declaring the class together with the pesonality
+ * Declaring the class together with the interface
  * allows USB control to handle some class-specific
  * EP usage, for e.g. EP0 reconfiguration for
  * DATA mode (e.g. DFU or RAW HID).
@@ -136,24 +136,24 @@ typedef struct {
 /************************************************
  * about personnalities
  *
- * A personality is a USB device profile (e.g.
+ * A interface is a USB device profile (e.g.
  * a SCSI mass storage device, a Raw HID device, etc.)
  * based on a standard USB type (RAW, BULK, etc...)
  * and composed of 1 or more EP(s). In some case,
- * this EP can be the EP0 (DFU personality)
+ * this EP can be the EP0 (DFU interface)
  ***********************************************/
 
 /*
- * A personality can have up to this number of endpoints.
+ * A interface can have up to this number of endpoints.
  */
 #define MAX_EP_PER_PERSONALITY 8
 
 /*
- * A personality may have to handle dedicated
+ * A interface may have to handle dedicated
  * requests from the host. These requests are received on the standard
  * configuration pipe of the device, and handled by the corresponding
  * device class handler after dispatching (in case of hybrid devices
- * (i.e. multiple personality declared).
+ * (i.e. multiple interface declared).
  *
  */
 typedef struct __packed {
@@ -165,7 +165,7 @@ typedef struct __packed {
 } usbctrl_setup_pkt_t;
 
 /*
- * A personality usually handle dedicated requests (setup packets) in the
+ * A interface usually handle dedicated requests (setup packets) in the
  * standard control pipe. These requests will be dispatched and distributed by
  * the libusbctrl to the various personalities, through the usb_rqst_handler()
  * callback.
@@ -178,30 +178,30 @@ typedef mbed_error_t     (*usb_rqst_handler_t)(usbctrl_setup_pkt_t *inpkt,
 typedef uint8_t * functional_descriptor_p;
 
 /*
- * This is the personality definition.
+ * This is the interface definition.
  *
- * The personality declare its class, subclass and protocol.
+ * The interface declare its class, subclass and protocol.
  * It also declare a request handler for potential dedicated (non-standard) requests
- * that need to be handled at personality level.
+ * that need to be handled at interface level.
  *
- * Note that a personality doesn't define its class and endpoints  descriptor as
+ * Note that a interface doesn't define its class and endpoints  descriptor as
  * these descriptors are handled at libctrl level.
  * Although, functional descriptors are all specific, and have to be declared by the
- * upper layer. If they exists, they must be set in the personality structure (through
+ * upper layer. If they exists, they must be set in the interface structure (through
  * a uint8_t* pointer, associated to a size in byte). The libusbctrl will handle the
  * functional descriptor transmission to the host on the corresponding request.
  */
 typedef struct {
    usb_class_t        usb_class;      /*< the standard USB Class */
-   uint8_t            usb_subclass;   /*< personality subclass */
-   uint8_t            usb_protocol;   /*< personality protocol */
-   usb_rqst_handler_t rqst_handler;   /*< personality Requests handler */
+   uint8_t            usb_subclass;   /*< interface subclass */
+   uint8_t            usb_protocol;   /*< interface protocol */
+   usb_rqst_handler_t rqst_handler;   /*< interface Requests handler */
    functional_descriptor_p func_desc; /*< pointer to functional descriptor, if it exists */
    uint8_t            func_desc_len;  /*< functional descriptor length (in byte)  */
    uint8_t            usb_ep_number;  /*< the number of EP associated */
    usb_ep_infos_t     eps[MAX_EP_PER_PERSONALITY];  /*< for each EP, the associated
                                                       informations */
-} usbctrl_personality_t;
+} usbctrl_interface_t;
 
 /************************************************
  * about libctrl context
@@ -215,8 +215,8 @@ typedef struct {
     device_t                usb_dev;            /*< device_t structure for USB device driver */
     uint16_t               address;             /*< device address, to be set by std req */
     /* Then, about personalities (info, number) */
-    uint8_t                personality_num;     /*< Number of personalities registered */
-    usbctrl_personality_t *personalities[MAX_PERSONALITY_PER_DEVICE];     /*< For each registered personality,
+    uint8_t                interface_num;     /*< Number of personalities registered */
+    usbctrl_interface_t *personalities[MAX_PERSONALITY_PER_DEVICE];     /*< For each registered interface,
                                                                         its associated infos */
     /* then current context state, associated to the USB standard state automaton  */
     uint8_t                 state;              /*< USB state machine current state */
@@ -264,19 +264,19 @@ mbed_error_t usbctrl_unbind(usbctrl_context_t*ctx);
 mbed_error_t usbctrl_release(usbctrl_context_t*ctx);
 
 /*
- * declare a new USB personality. Endpoints are created, EP refs are set in
- * the personality context. personality is associated to the context.
+ * declare a new USB interface. Endpoints are created, EP refs are set in
+ * the interface context. interface is associated to the context.
  *
- * At personality declaration, all needed information to generate the associated
- * full descriptors is given. Each personality descriptor can be created by the
+ * At interface declaration, all needed information to generate the associated
+ * full descriptors is given. Each interface descriptor can be created by the
  * libusbctrl itself, as a consequence (see above).
  *
- * At personality declaration time, personality endpoints infos are updated
+ * At interface declaration time, interface endpoints infos are updated
  * (EP identifiers, etc.) depending on the current global device interface state.
  *
  */
-mbed_error_t usbctrl_declare_personality(__in      usbctrl_context_t      *ctx,
-                                          __out    usbctrl_personality_t  *up);
+mbed_error_t usbctrl_declare_interface(__in      usbctrl_context_t      *ctx,
+                                          __out    usbctrl_interface_t  *up);
 
 /*
  * Effective device start.

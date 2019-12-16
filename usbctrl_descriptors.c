@@ -5,7 +5,7 @@
 #define MAX_DESC_STRING_SIZE 32 /* max unicode string size supported (to define properly) */
 /*
  * Global device descriptor. This descriptor is unique for the entire device,
- * even in case of hybrid (multi-personality) device.
+ * even in case of hybrid (multi-interface) device.
  */
 typedef struct __packed usb_device_descriptor {
 	uint8_t  bLength;
@@ -97,14 +97,14 @@ typedef struct __packed usb_functional_descriptor {
  */
 
 /*
- * A given personality descriptor hold its interface descriptor,
+ * A given interface descriptor hold its interface descriptor,
  * one descriptor for each of its EPs
  * potential functional descriptors to complete
  */
-typedef struct usb_personality_descriptor {
+typedef struct usb_full_interface_descriptor {
 	usb_interface_descriptor_t         interface;
 	usb_ctr_full_endpoint_descriptor_t ep[];
-} usb_personality_descriptor_t;
+} usb_full_interface_descriptor_t;
 
 /* old
 typedef struct __packed usb_ctrl_full_configuration_descriptor {

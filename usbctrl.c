@@ -71,7 +71,7 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
     if (ep == EP0) {
         return true;
     }
-    for (uint8_t i = 0; i < ctx->personality_num; ++i) {
+    for (uint8_t i = 0; i < ctx->interface_num; ++i) {
         for (uint8_t j = 0; j < ctx->personalities[i]->usb_ep_number; ++j) {
             if (ctx->personalities[i]->eps[j].ep_num == ep) {
                 return true;

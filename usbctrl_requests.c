@@ -302,7 +302,7 @@ err:
  * (including personalities and EPs).
  * The only 'uncontrolled' descriptor is the functional descriptor of a given
  * interface class, for wich, here we dereference the functional descriptor
- * registered during the personality registration, if this descriptor is not null.
+ * registered during the interface registration, if this descriptor is not null.
  *
  * Other descriptors are built dynamically.
  *

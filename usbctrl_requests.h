@@ -73,7 +73,7 @@
  * [ driver              ]
  *
  * The libctrl requests various upper layer once a success is received or all upper
- * layers (i.e. personality class handlers) are executed.
+ * layers (i.e. interface class handlers) are executed.
  *
  */
 typedef enum {
