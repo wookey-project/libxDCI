@@ -198,6 +198,7 @@ typedef struct {
    usb_class_t        usb_class;      /*< the standard USB Class */
    uint8_t            usb_subclass;   /*< interface subclass */
    uint8_t            usb_protocol;   /*< interface protocol */
+   bool               dedicated;      /*< is the interface hosted in a dedicated configuration (not shared with others) ? */
    usb_rqst_handler_t rqst_handler;   /*< interface Requests handler */
    functional_descriptor_p func_desc; /*< pointer to functional descriptor, if it exists */
    uint8_t            func_desc_len;  /*< functional descriptor length (in byte)  */
@@ -222,7 +223,9 @@ typedef struct usbctrl_context {
     usbctrl_interface_t    interfaces[MAX_INTERFACES_PER_DEVICE];     /*< For each registered interface,
                                                                         its associated infos */
     /* then current context state, associated to the USB standard state automaton  */
-    uint8_t                 state;              /*< USB state machine current state */
+    uint8_t                 num_cfg;        /*< number of different onfigurations */
+    uint8_t                 curr_cfg;       /*< current configuration (starting with 1) */
+    uint8_t                 state;          /*< USB state machine current state */
 } usbctrl_context_t;
 
 
