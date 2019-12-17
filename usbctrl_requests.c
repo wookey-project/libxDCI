@@ -540,8 +540,10 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
      * interfaces are sent in the interfaces[] table order.
      *
      * This permit to delect which interface is targeted by the current
-     * request */
-    iface_idx = (pkt->wIndex) & 0xff;
+     * request
+     * Nota Bene: USB interfaces index start with 1, cells with 0 */
+    iface_idx = (((pkt->wIndex) & 0xff) - 1);
+
     if (!usbctrl_is_interface_exists(ctx, iface_idx)) {
         errcode = MBED_ERROR_NOTFOUND;
         usb_driver_stall_out(EP0);
