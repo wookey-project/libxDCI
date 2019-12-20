@@ -22,9 +22,53 @@
  *
  */
 #include "api/libusbctrl.h"
-#include "usbctrl_reset.h"
+#include "usbctrl_event.h"
 #include "usbctrl_state.h"
 #include "usbctrl.h"
+
+/*
+ * Here are implemented the various triggers of the USB drivers on specific
+ * interrupt-based events that neeed control plane action.
+ */
+
+
+
+mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    dev_id = dev_id;
+    return errcode;
+}
+
+mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    dev_id = dev_id;
+    return errcode;
+}
+
+mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    dev_id = dev_id;
+    return errcode;
+}
+
+mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    dev_id = dev_id;
+    return errcode;
+}
+
+mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    dev_id = dev_id;
+    return errcode;
+}
+
+
 
 /**
  * A reset event is received

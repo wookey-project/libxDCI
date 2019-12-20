@@ -21,8 +21,8 @@
  * Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  *
  */
-#ifndef USBCTRL_RESET_H_
-#define USBCTRL_RESET_H_
+#ifndef USBCTRL_EVENT_H_
+#define USBCTRL_EVENT_H_
 
 /*
  * This file handle the overall reset events, and the associate state change, in
@@ -32,6 +32,11 @@
 #include "libc/types.h"
 #include "api/libusbctrl.h"
 
-mbed_error_t usbctrl_handle_reset(uint32_t             dev_id);
+/*
+ * INFO: functions declared in the usbctrl_event.c file are made to be resolved at link
+ * time by the driver. They are not static, but they are not defined in a header, as
+ * they are not called from any part of the libUSBCtrl, but only triggered from the
+ * driver itself.
+ */
 
-#endif/*!USBCTRL_RESET_H_*/
+#endif/*!USBCTRL_EVENT_H_*/

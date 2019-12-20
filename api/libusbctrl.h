@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2018 The wookey project team <wookey@ssi.gouv.fr>
+ * Copyright 2019 The wookey project team <wookey@ssi.gouv.fr>
  *   - Ryad     Benadjila
  *   - Arnauld  Michelizza
  *   - Mathieu  Renard
