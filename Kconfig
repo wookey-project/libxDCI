@@ -27,6 +27,13 @@ config USBCTRL_MAX_CTX
   Depending on the hardware (and software) design, it can be 1, 2 or in some rare
   time more.
 
+config USBCTRL_EP0_FIFO_SIZE
+   int "USB control pipe default reception FIFO size (in bytes)"
+   default 128
+   ---help---
+   Specify the receive RAM FIFO size for USB control pipe of the libctrl.
+   This FIFO size must be at least equal to 3*(ctrl pkt) + 1
+
 config USB_DEV_PRODNAME
   string "USB device product name"
   default "wookey"
@@ -69,6 +76,7 @@ config USB_DEV_PRODUCTID
 config USB_DEV_PRODNAME_INDEX
   int
   default 1
+  ---help---
   Device product name index in descriptor.
 
 # index of manufacturer in sent descriptor table
@@ -80,7 +88,6 @@ config USB_DEV_MANUFACTURER_INDEX
 config USB_DEV_SERIAL_INDEX
   int "USB device serial index"
   default 3
-
 
 endmenu
 

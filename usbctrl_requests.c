@@ -3,7 +3,7 @@
 #include "usbctrl.h"
 
 /* include driver header */
-#include "usb.h"
+#include "libusbotghs.h"
 
 
 /**********************************************************************
@@ -160,20 +160,20 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
         case USB_DEVICE_STATE_DEFAULT:
             /* This case is not forbidden by USB2.0 standard, but the behavior is
              * undefined. We can, for example, stall out. (FIXME) */
-            usb_driver_stall_out(EP0);
+            usbotghs_endpoint_stall(EP0);
             break;
         case USB_DEVICE_STATE_ADDRESS:
             if (usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_ENDPOINT &&
                 usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE) {
                 /* only interface or endpoint 0 allowed in ADDRESS state */
                 /* request error: sending STALL on status or data */
-                usb_driver_stall_out(EP0);
+                usbotghs_endpoint_stall(EP0);
                 goto err;
             }
             if ((pkt->wIndex & 0xf) != 0) {
                 /* only interface or endpoint 0 allowed in ADDRESS state */
                 /* request error: sending STALL on status or data */
-                usb_driver_stall_out(EP0);
+                usbotghs_endpoint_stall(EP0);
                 goto err;
             }
             /* handling get_status() for other cases */
@@ -182,23 +182,18 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                     /*does requested EP exists ? */
                     uint8_t epnum = pkt->wIndex & 0xf;
                     if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
-                        usb_driver_stall_out(EP0);
+                        usbotghs_endpoint_stall(EP0);
                         goto err;
                     }
                     /* FIXME: check EP direction too before returning status */
                     //bool dir_in = (pkt->wIndex >> 7) & 0x1;
-                    /* return the recipient status (2 bytes) */
+                    /* return the recipient status (2 bytes, or wLength if smaller) */
                     uint8_t resp[2] = { 0 };
-                    if (pkt->wLength >= 2) {
-                        usb_driver_setup_send((uint8_t *)&resp, 2, EP0);
-                    } else {
-                        usb_driver_setup_send((uint8_t *)&resp, pkt->wLength, EP0);
-                    }
-                    usb_driver_setup_read_status();
+                    usbotghs_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
                     break;
                 }
                 default:
-                    usb_driver_stall_out(EP0);
+                    usbotghs_endpoint_stall(EP0);
                     goto err;
             }
 
@@ -209,7 +204,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
-            usb_driver_stall_out(EP0);
+            usbotghs_endpoint_stall(EP0);
             break;
     }
 err:
@@ -253,28 +248,27 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_ADDRESS);
             }
             /* wValue set to 0 is *not* an error condition */
-        	usb_driver_setup_send_status(EP0);
+            usbotghs_send_zlp(0);
             break;
         case USB_DEVICE_STATE_ADDRESS:
             if (pkt->wValue != 0) {
                 /* simple update of address */
                 ctx->address = pkt->wValue;
-                usb_driver_set_address(ctx->address);
+                usbotghs_set_address(ctx->address);
             } else {
                 /* going back to default state */
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_DEFAULT);
             }
-        	usb_driver_setup_send_status(EP0);
+            usbotghs_send_zlp(0);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             /* This case is not forbidden by USB2.0 standard, but the behavior is
              * undefined. We can, for example, stall out. (FIXME) */
-            usb_driver_stall_out(EP0);
-
+            usbotghs_endpoint_stall(EP0);
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
-            usb_driver_stall_out(EP0);
+            usbotghs_endpoint_stall(EP0);
             break;
     }
 err:
@@ -398,10 +392,10 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             goto err;
             break;
     }
-    ctx = ctx;
+
     return errcode;
 err:
-    usb_driver_stall_out(EP0);
+    usbotghs_endpoint_stall(EP0);
     return errcode;
 }
 
@@ -431,7 +425,7 @@ static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *p
      * As a consequence, we reply a request error to the host, meaning that this
      * behavior is not supported by the device.
      */
-    usb_driver_stall_out(EP0);
+    usbotghs_endpoint_stall(EP0);
 err:
     return errcode;
 }
@@ -448,7 +442,6 @@ static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
     }
     /* handling standard Request */
     pkt = pkt;
-    ctx = ctx;
 err:
     return errcode;
 }
@@ -464,7 +457,6 @@ static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pk
     }
     /* handling standard Request */
     pkt = pkt;
-    ctx = ctx;
 err:
     return errcode;
 }
@@ -480,7 +472,6 @@ static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt,
     }
     /* handling standard Request */
     pkt = pkt;
-    ctx = ctx;
 err:
     return errcode;
 }
@@ -546,12 +537,12 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
 
     if (!usbctrl_is_interface_exists(ctx, iface_idx)) {
         errcode = MBED_ERROR_NOTFOUND;
-        usb_driver_stall_out(EP0);
+        usbotghs_endpoint_stall(EP0);
         goto err;
     }
     if ((iface = usbctrl_get_interface(ctx, iface_idx)) == NULL) {
         errcode = MBED_ERROR_UNKNOWN;
-        usb_driver_stall_out(EP0);
+        usbotghs_endpoint_stall(EP0);
         goto err;
     }
     /* interface found, call its dedicated request handler */
@@ -574,7 +565,9 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
 }
 
 /*
- * Global requests dispatcher
+ * Global requests dispatcher. This function call the corresponding request handler, get back
+ * its error code in return, release the EP0 receive FIFO lock and return the error code.
+ *
  */
 mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                                      uint32_t             dev_id)
@@ -609,5 +602,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         errcode = usbctrl_handle_unknown_requests(pkt, ctx);
     }
 err:
+    /* release EP0 recv FIFO */
+    ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
     return errcode;
 }
