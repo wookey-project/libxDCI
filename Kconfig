@@ -10,7 +10,7 @@ if USR_LIB_USBCTRL
 
 menu "libusbctrl specific options"
 
-config USBCTRL_DEBUG
+config USR_LIB_USBCTRL_DEBUG
   bool "Activate debuggging for USB Control interaction"
   default n
   ---help---

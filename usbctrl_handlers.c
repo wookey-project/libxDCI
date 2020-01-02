@@ -56,17 +56,20 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
+    /* as USB Reset action reinitialize the EP0 FIFOs (flush, purge and deconfigure) they must
+     * be reconfigure for EP0 here. */
+    errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+    if (errcode != MBED_ERROR_NONE) {
+        goto err;
+    }
+    /* control pipe recv FIFO is ready to be used */
+    ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+
     /* handling RESET event depending on current state */
     switch (state) {
         case USB_DEVICE_STATE_POWERED:
             /* initial reset of the device, set EP0 FIFO. Other EPs FIFO
              * are handled at SetConfiguration & SetInterface time */
-            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            if (errcode != MBED_ERROR_NONE) {
-                goto err;
-            }
-            /* control pipe recv FIFO is ready to be used */
-            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             break;
         case USB_DEVICE_STATE_SUSPENDED_DEFAULT:
             /* awake from suspended state, back to default */

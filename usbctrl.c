@@ -26,9 +26,10 @@
 #include "libc/types.h"
 #include "libc/string.h"
 #include "usbctrl_state.h"
-
+#include "generated/devlist.h"
 /* include usb driver API */
-#include "usb.h"
+#include "libusbotghs.h"
+#include "usbctrl.h"
 
 /*
  * by now, the libusbctrl handle upto 2 USB Ctrl context,
@@ -41,12 +42,39 @@
 static uint8_t num_ctx = 0;
 usbctrl_context_t    *ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 
+
+mbed_error_t usbctrl_declare(usbctrl_context_t*ctx)
+{
+    log_printf("[USBCTRL] declaring USB backend\n");
+    mbed_error_t errcode = MBED_ERROR_NONE;
+
+    /* sanitiation */
+    if (ctx == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    switch (ctx->dev_id) {
+        case USB_OTG_HS_ID:
+            errcode = usbotghs_declare();
+            break;
+        case USB_OTG_FS_ID:
+            errcode = MBED_ERROR_NOBACKEND;
+            break;
+        default:
+            errcode = MBED_ERROR_NOBACKEND;
+            break;
+    }
+err:
+    return errcode;
+}
+
 /*
  * basics for now
  */
 mbed_error_t usbctrl_initialize(usbctrl_context_t*ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] initializing automaton\n");
     if (ctx == NULL) {
         errcode = MBED_ERROR_INVPARAM;
         goto end;
@@ -64,6 +92,12 @@ mbed_error_t usbctrl_initialize(usbctrl_context_t*ctx)
     /* receive FIFO is not set in the driver. Wait for USB reset */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_NOSTORAGE;
     /* initialize with POWERED. We wait for the first reset event */
+
+    log_printf("[USBCTRL] configuring backend driver\n");
+    if ((errcode = usbotghs_configure(USBOTGHS_MODE_DEVICE)) != MBED_ERROR_NONE) {
+        log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
+        goto end;
+    }
     ctx->state = USB_DEVICE_STATE_POWERED;
 end:
     return errcode;

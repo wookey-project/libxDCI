@@ -25,8 +25,23 @@
 #define USBCTRL_H_
 
 #include "libc/types.h"
+#include "libc/stdio.h"
 #include "api/libusbctrl.h"
 
+/*********************************************************
+ * General tooling
+ */
+
+#if CONFIG_USR_LIB_USBCTRL_DEBUG
+# define log_printf(...) printf(__VA_ARGS__)
+#else
+# define log_printf(...)
+#endif
+
+
+/*********************************************************
+ * Core API
+ */
 mbed_error_t usbctrl_get_context(uint32_t device_id,
                                  usbctrl_context_t **ctx);
 
