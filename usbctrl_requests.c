@@ -134,6 +134,7 @@ static mbed_error_t usbctrl_std_req_handle_clear_feature(usbctrl_setup_pkt_t *pk
                                                          usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: clear feature\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -150,6 +151,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                                                       usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: get status\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -216,6 +218,7 @@ static mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t *pk
                                                          usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: get iface\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -232,6 +235,7 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: set address\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -279,6 +283,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
                                                              usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: set configuration\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -306,6 +311,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                                                           usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: get descriptor\n");
     usbctrl_req_descriptor_type_t desctype;
     uint16_t maxlength;
     bool send_zlp = false; /* set to true if descriptor size is smaller than maxlength */
@@ -415,6 +421,7 @@ static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *p
                                                           usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: set descriptor\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -435,6 +442,7 @@ static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: set feature\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -450,6 +458,7 @@ static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pk
                                                          usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: set interface\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -465,6 +474,7 @@ static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Std req: sync_frame\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
@@ -484,9 +494,50 @@ err:
 static inline mbed_error_t usbctrl_handle_std_requests(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t   *ctx)
 {
-    pkt = pkt;
-    ctx = ctx;
-    return MBED_ERROR_NONE;
+    mbed_error_t errcode = MBED_ERROR_NONE;
+
+    /* dispatching STD requests */
+    switch (pkt->bRequest) {
+        case USB_REQ_GET_STATUS:
+            errcode = usbctrl_std_req_handle_get_status(pkt, ctx);
+            break;
+        case USB_REQ_CLEAR_FEATURE:
+            errcode = usbctrl_std_req_handle_clear_feature(pkt, ctx);
+            break;
+        case USB_REQ_SET_FEATURE:
+            errcode = usbctrl_std_req_handle_set_feature(pkt, ctx);
+            break;
+        case USB_REQ_SET_ADDRESS:
+            errcode = usbctrl_std_req_handle_set_address(pkt, ctx);
+            break;
+        case USB_REQ_GET_DESCRIPTOR:
+            errcode = usbctrl_std_req_handle_get_descriptor(pkt, ctx);
+            break;
+        case USB_REQ_SET_DESCRIPTOR:
+            errcode = usbctrl_std_req_handle_set_descriptor(pkt, ctx);
+            break;
+        case USB_REQ_GET_CONFIGURATION:
+            errcode = usbctrl_std_req_handle_set_configuration(pkt, ctx);
+            break;
+        case USB_REQ_SET_CONFIGURATION:
+            log_printf("[USBCTRL] Not yet supported req SET_CONFIGURATION\n");
+            usbotghs_endpoint_stall(EP0);
+            break;
+        case USB_REQ_GET_INTERFACE:
+            errcode = usbctrl_std_req_handle_get_interface(pkt, ctx);
+            break;
+        case USB_REQ_SET_INTERFACE:
+            errcode = usbctrl_std_req_handle_set_interface(pkt, ctx);
+            break;
+        case USB_REQ_SYNCH_FRAME:
+            errcode = usbctrl_std_req_handle_synch_frame(pkt, ctx);
+            break;
+        default:
+            log_printf("[USBCTRL] Unknown std request %d\n", pkt->bRequest);
+            usbotghs_endpoint_stall(EP0);
+            break;
+    }
+    return errcode;
 }
 
 /*
@@ -559,9 +610,10 @@ err:
 static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *pkt,
                                                            usbctrl_context_t   *ctx)
 {
-    pkt = pkt;
     ctx = ctx;
-    return MBED_ERROR_NONE;
+    log_printf("[USBCTRL] Unknown Request type %d/%x\n", pkt->bmRequestType, pkt->bRequest);
+    usbotghs_endpoint_stall(EP0);
+    return MBED_ERROR_UNKNOWN;
 }
 
 /*
@@ -575,6 +627,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     mbed_error_t errcode = MBED_ERROR_NONE;
     usbctrl_context_t *ctx = NULL;
 
+    printf("");
     /* Sanitation */
     if (pkt == NULL) {
         errcode = MBED_ERROR_INVPARAM;

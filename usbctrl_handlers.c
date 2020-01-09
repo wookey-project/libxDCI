@@ -122,9 +122,22 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    usbctrl_context_t *ctx = NULL;
+    log_printf("[LIBCTRL] handle inevent\n");
+    /* get back associated context */
+    if ((errcode = usbctrl_get_context(dev_id, &ctx)) != MBED_ERROR_NONE) {
+        goto err;
+    }
+
+    switch (usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_IN)) {
+        default:
+            break;
+    }
+
     dev_id = dev_id;
     ep = ep;
     size = size;
+err:
     return errcode;
 }
 
@@ -132,9 +145,26 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
 mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    usbctrl_context_t *ctx = NULL;
+
+    log_printf("[LIBCTRL] handle Oepevent\n");
+    /* get back associated context */
+    if ((errcode = usbctrl_get_context(dev_id, &ctx)) != MBED_ERROR_NONE) {
+        goto err;
+    }
+
+    switch (usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT)) {
+        case USBOTG_HS_EP_STATE_SETUP:
+            return usbctrl_handle_requests((usbctrl_setup_pkt_t*)ctx->ctrl_fifo, dev_id);
+
+            break;
+        default:
+            break;
+    }
     dev_id = dev_id;
     ep = ep;
     size = size;
+err:
     return errcode;
 }
 

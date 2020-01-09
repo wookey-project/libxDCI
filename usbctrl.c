@@ -99,6 +99,13 @@ mbed_error_t usbctrl_initialize(usbctrl_context_t*ctx)
         goto end;
     }
     ctx->state = USB_DEVICE_STATE_POWERED;
+    /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
+    if ((errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
+        goto end;
+    }
+    /* control pipe recv FIFO is ready to be used */
+    ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+
 end:
     return errcode;
 }
