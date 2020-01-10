@@ -39,11 +39,11 @@
  */
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 
-static uint8_t num_ctx = 0;
-usbctrl_context_t    *ctx_list[MAX_USB_CTRL_CTX] = { 0 };
+static volatile uint8_t num_ctx = 0;
+volatile usbctrl_context_t    *ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 
 
-mbed_error_t usbctrl_declare(usbctrl_context_t*ctx)
+mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx)
 {
     log_printf("[USBCTRL] declaring USB backend\n");
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -71,7 +71,7 @@ err:
 /*
  * basics for now
  */
-mbed_error_t usbctrl_initialize(usbctrl_context_t*ctx)
+mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] initializing automaton\n");
@@ -88,19 +88,20 @@ mbed_error_t usbctrl_initialize(usbctrl_context_t*ctx)
     /* initialize context */
     ctx->interface_num = 0;
     ctx->address = 0;
-    memset(ctx->interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
+    memset((void*)ctx->interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
     /* receive FIFO is not set in the driver. Wait for USB reset */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_NOSTORAGE;
     /* initialize with POWERED. We wait for the first reset event */
 
+    usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
     log_printf("[USBCTRL] configuring backend driver\n");
     if ((errcode = usbotghs_configure(USBOTGHS_MODE_DEVICE)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
+        usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
         goto end;
     }
-    ctx->state = USB_DEVICE_STATE_POWERED;
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
-    if ((errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
+    if ((errcode = usbotghs_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
         goto end;
     }
     /* control pipe recv FIFO is ready to be used */
@@ -119,15 +120,11 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
         errcode = MBED_ERROR_INVPARAM;
         goto end;
     }
-    if (*ctx == NULL) {
-        errcode = MBED_ERROR_INVPARAM;
-        goto end;
-    }
     /* search */
     for (uint8_t i = 0; i < num_ctx; ++i) {
         if (ctx_list[i] != 0) {
             if (ctx_list[i]->dev_id == device_id) {
-                *ctx = ctx_list[i];
+                *ctx = (usbctrl_context_t*)ctx_list[i];
                 goto end;
             }
         }
@@ -181,7 +178,7 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
 /*
  * Here we declare a new USB interface for the given context.
  */
-mbed_error_t usbctrl_declare_interface(__in      usbctrl_context_t   *ctx,
+mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *ctx,
                                        __out    usbctrl_interface_t  *iface)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;

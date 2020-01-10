@@ -32,7 +32,7 @@
  * Figure 9.1
  */
 typedef enum {
-    USB_DEVICE_STATE_ATTACHED,             /* Attached but not powered. Should never be reached from device side */
+    USB_DEVICE_STATE_ATTACHED = 0,         /* Attached but not powered. Should never be reached from device side */
     USB_DEVICE_STATE_POWERED,              /* Attached and powered, first reset not received yet */
     USB_DEVICE_STATE_SUSPENDED_POWER,      /* Suspended, from the Power state */
     USB_DEVICE_STATE_SUSPENDED_DEFAULT,    /* Suspended, from the default state */
@@ -48,7 +48,7 @@ typedef enum {
  * device standard transitions (USB 2.0 standard, figure 9.1)
  */
 typedef enum {
-    USB_DEVICE_TRANS_POWER_INTERRUPT,
+    USB_DEVICE_TRANS_POWER_INTERRUPT = 0,
     USB_DEVICE_TRANS_RESET,
     USB_DEVICE_TRANS_BUS_INACTIVE,
     USB_DEVICE_TRANS_BUS_ACTIVE,
@@ -68,7 +68,7 @@ usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx);
 /*
  * set the current state of the USB device
  */
-mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
+mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
                                __in usb_device_state_t newstate);
 
 

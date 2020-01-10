@@ -248,7 +248,7 @@ typedef struct usbctrl_context {
  * Declare the USB device through the ctrl interface, get back, for the current context,
  * the associated device identifier in ctx. This part handling the device part only.
  */
-mbed_error_t usbctrl_declare(usbctrl_context_t*ctx);
+mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx);
 
 /*
  * create the first USB context, and create endpoint 0 for default
@@ -260,25 +260,25 @@ mbed_error_t usbctrl_declare(usbctrl_context_t*ctx);
  * This permits to declare multiple classes/personalities before starting the device and
  * receiving the first requests from the host.
  */
-mbed_error_t usbctrl_initialize(usbctrl_context_t*ctx);
+mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx);
 
 /*
  * Bind the device to the task, if not mapped
  * (ask the driver to map)
  */
-mbed_error_t usbctrl_bind(usbctrl_context_t*ctx);
+mbed_error_t usbctrl_bind(volatile usbctrl_context_t*ctx);
 
 /*
  * Unmap the device, if mapped
  * (ask the driver to unmap)
  */
-mbed_error_t usbctrl_unbind(usbctrl_context_t*ctx);
+mbed_error_t usbctrl_unbind(volatile usbctrl_context_t*ctx);
 
 /*
  * definitivery release the device
  * (ask the driver to release)
  */
-mbed_error_t usbctrl_release(usbctrl_context_t*ctx);
+mbed_error_t usbctrl_release(volatile usbctrl_context_t*ctx);
 
 /*
  * declare a new USB interface. Endpoints are created, EP refs are set in
@@ -292,7 +292,7 @@ mbed_error_t usbctrl_release(usbctrl_context_t*ctx);
  * (EP identifiers, etc.) depending on the current global device interface state.
  *
  */
-mbed_error_t usbctrl_declare_interface(__in      usbctrl_context_t   *ctx,
+mbed_error_t usbctrl_declare_interface(__in      volatile usbctrl_context_t   *ctx,
                                        __out    usbctrl_interface_t  *up);
 
 /*
@@ -303,12 +303,12 @@ mbed_error_t usbctrl_declare_interface(__in      usbctrl_context_t   *ctx,
  * By now, it is not possible to declare new personalities *after* the device
  * is started.
  */
-mbed_error_t usbctrl_start_device(usbctrl_context_t      *ctx);
+mbed_error_t usbctrl_start_device(volatile usbctrl_context_t      *ctx);
 
 /*
  * FIXME: Stop the device ? unmap and then ? Sending something to the host ? USB std
  * check is needed here. This feature may be interesting in some cases.
  */
-mbed_error_t usbctrl_stop_device(usbctrl_context_t       *ctx);
+mbed_error_t usbctrl_stop_device(volatile usbctrl_context_t       *ctx);
 
 #endif/*!LIBUSB_CTRL_H_*/

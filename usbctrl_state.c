@@ -1,5 +1,6 @@
 #include "libc/types.h"
 #include "libc/stdio.h"
+#include "usbctrl.h"
 #include "usbctrl_state.h"
 #include "usbctrl_requests.h"
 
@@ -186,7 +187,7 @@ usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx)
  * mode (through trigger execution). Please use aprintf only
  * here.
  */
-mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
+mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
                                __in usb_device_state_t newstate)
 {
     /* FIXME: transient, maybe we need to lock here. */
@@ -194,11 +195,10 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
        return MBED_ERROR_INVPARAM;
    }
     if (newstate >= USB_DEVICE_STATE_INVALID) {
+        log_printf("[USBCTRL] invalid state transition !\n");
         return MBED_ERROR_INVPARAM;
     }
-#if USBCTRL_DEBUG
-    aprintf("%s: state: %x => %x\n", __func__, ctx->state, newstate);
-#endif
+    log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
     ctx->state = newstate;
 
     return MBED_ERROR_NONE;

@@ -1,6 +1,7 @@
 #include "api/libusbctrl.h"
 #include "usbctrl_state.h"
 #include "usbctrl.h"
+#include "usbctrl_descriptors.h"
 
 /* include driver header */
 #include "libusbotghs.h"
@@ -325,20 +326,47 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
     desctype = usbctrl_std_req_get_descriptor_type(pkt);
     /* max length to send */
     maxlength = pkt->wLength;
+    if (maxlength == 0) {
+        /* nothing to send */
+        usbotghs_send_zlp(0);
+        goto err;
+    }
+    uint8_t buf[128];
+    uint32_t size = 0;
     switch (desctype) {
         case USB_REQ_DESCRIPTOR_DEVICE:
-            /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
             }
-            /*TODO */
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                goto err;
+            }
+            log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)", maxlength, size);
+            if (maxlength > size) {
+                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            } else {
+                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                /* should we not inform the host that there is not enough
+                 * space ?
+                 * XXX: check USB2.0 standard */
+            }
             break;
         case USB_REQ_DESCRIPTOR_CONFIGURATION:
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
             }
-            /*TODO */
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                goto err;
+            }
+            if (maxlength > size) {
+                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            } else {
+                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                /* should we not inform the host that there is not enough
+                 * space ?
+                 * XXX: check USB2.0 standard */
+            }
             /* USB 2.0 standard, chap 9.4.3
              *
              * A request for configuration descriptor returns :
@@ -357,21 +385,51 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
              */
             break;
         case USB_REQ_DESCRIPTOR_STRING:
-            /*TODO */
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_STRING, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                goto err;
+            }
+            if (maxlength > size) {
+                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            } else {
+                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                /* should we not inform the host that there is not enough
+                 * space ?
+                 * XXX: check USB2.0 standard */
+            }
             break;
         case USB_REQ_DESCRIPTOR_INTERFACE:
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
             }
-            /*TODO */
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_INTERFACE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                goto err;
+            }
+            if (maxlength > size) {
+                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            } else {
+                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                /* should we not inform the host that there is not enough
+                 * space ?
+                 * XXX: check USB2.0 standard */
+            }
             break;
         case USB_REQ_DESCRIPTOR_ENDPOINT:
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
             }
-            /*TODO */
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_ENDPOINT, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                goto err;
+            }
+            if (maxlength > size) {
+                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            } else {
+                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                /* should we not inform the host that there is not enough
+                 * space ?
+                 * XXX: check USB2.0 standard */
+            }
             break;
         case USB_REQ_DESCRIPTOR_DEVICE_QUALIFIER:
             /* wIndex (language ID) should be zero */
