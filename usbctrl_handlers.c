@@ -80,23 +80,61 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             break;
         case USB_DEVICE_STATE_SUSPENDED_DEFAULT:
             /* awake from suspended state, back to default */
+            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            if (errcode != MBED_ERROR_NONE) {
+                goto err;
+            }
+            /* control pipe recv FIFO is ready to be used */
+            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+
             break;
         case USB_DEVICE_STATE_SUSPENDED_ADDRESS:
             /* awake from suspended state, back to address */
+            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            if (errcode != MBED_ERROR_NONE) {
+                goto err;
+            }
+            /* control pipe recv FIFO is ready to be used */
+            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+
             break;
         case USB_DEVICE_STATE_SUSPENDED_CONFIGURED:
             /* awake from suspended state, back to configured */
+            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            if (errcode != MBED_ERROR_NONE) {
+                goto err;
+            }
+            /* control pipe recv FIFO is ready to be used */
+            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             break;
         case USB_DEVICE_STATE_DEFAULT:
             /* going back to default... meaning doing nothing */
+            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            if (errcode != MBED_ERROR_NONE) {
+                goto err;
+            }
+            /* control pipe recv FIFO is ready to be used */
+            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             break;
         case USB_DEVICE_STATE_ADDRESS:
             /* going back to default */
+            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            if (errcode != MBED_ERROR_NONE) {
+                goto err;
+            }
+            /* control pipe recv FIFO is ready to be used */
+            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             ctx->address = 0;
             usbotghs_set_address(0);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             /* going back to default */
+            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            if (errcode != MBED_ERROR_NONE) {
+                goto err;
+            }
+            /* control pipe recv FIFO is ready to be used */
+            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             ctx->address = 0;
             usbotghs_set_address(0);
             break;

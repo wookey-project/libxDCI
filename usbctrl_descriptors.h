@@ -62,6 +62,24 @@ typedef struct __packed {
 typedef struct __packed {
 	uint8_t bLength;
 	uint8_t bDescriptorType;
+	uint16_t wTotalLength;
+	uint8_t bNumInterfaces;
+	uint8_t bConfigurationValue;
+	uint8_t iConfiguration;
+	struct {
+		uint8_t reserved:5;
+		uint8_t remote_wakeup:1;
+		uint8_t self_powered:1;
+		uint8_t reserved7:1;
+	} bmAttributes;
+	uint8_t bMaxPower;
+} usbctrl_configuration_descriptor_t;
+
+
+
+typedef struct __packed {
+	uint8_t bLength;
+	uint8_t bDescriptorType;
 	uint8_t bInterfaceNumber;
 	uint8_t bAlternateSetting;
 	uint8_t bNumEndpoints;
@@ -92,6 +110,15 @@ typedef struct __packed {
 	usbctrl_endpoint_descriptor_t ep_in;
 	usbctrl_endpoint_descriptor_t ep_out;
 } usbctrl_full_endpoint_descriptor_t;
+
+typedef struct __packed {
+
+    usbctrl_interface_descriptor_t interface_desc;
+	usbctrl_endpoint_descriptor_t ep_in;
+	usbctrl_endpoint_descriptor_t ep_out;
+} usbctrl_full_configuration_descriptor_t;
+
+
 
 /**
  * FIXME: this DFU functional descriptor should be handled at DFU level (not here)

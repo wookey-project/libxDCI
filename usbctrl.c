@@ -94,12 +94,6 @@ mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx)
     /* initialize with POWERED. We wait for the first reset event */
 
     usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
-    log_printf("[USBCTRL] configuring backend driver\n");
-    if ((errcode = usbotghs_configure(USBOTGHS_MODE_DEVICE)) != MBED_ERROR_NONE) {
-        log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
-        usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
-        goto end;
-    }
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
     if ((errcode = usbotghs_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
         goto end;
@@ -191,11 +185,40 @@ mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *c
         errcode = MBED_ERROR_NOMEM;
    }
    /* let's register */
+   log_printf("declaring new interface class %x, %d EPs\n", iface->usb_class, iface->usb_ep_number);
    /* 1) make a copy of interface. The interface identifier is its cell number  */
    memcpy((void*)&(ctx->interfaces[ctx->interface_num]), (void*)iface, sizeof(usbctrl_interface_t));
-   /* 2) register endpoints */
-
+   /* 3) set as default if no other ifaces */
+   if (ctx->interface_num == 0) {
+       ctx->curr_cfg = 0;
+   }
    /* 3) now that everything is Okay, consider iface registered */
    ctx->interface_num++;
+   /* 4) iface EPs should be configured when receiving setConfiguration or SetInterface */
    return errcode;
+}
+
+
+/*
+ * Libctrl is a device-side control plane, the device is configured in device mode
+ */
+mbed_error_t usbctrl_start_device(volatile usbctrl_context_t      *ctx)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    log_printf("[USBCTRL] configuring backend driver\n");
+    if ((errcode = usbotghs_configure(USBOTGHS_MODE_DEVICE)) != MBED_ERROR_NONE) {
+        log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
+        usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
+        goto end;
+    }
+end:
+    return errcode;
+}
+
+mbed_error_t usbctrl_stop_device(volatile usbctrl_context_t      *ctx)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    ctx = ctx;
+    /* FIXME: TODO */
+    return errcode;
 }

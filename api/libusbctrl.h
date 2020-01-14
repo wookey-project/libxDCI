@@ -51,7 +51,7 @@ typedef enum {
     USB_CLASS_PTP_MTP     = 0x06, /*< Webcam, scanner */
     USB_CLASS_PRINTER     = 0x07, /*< USB printers */
     USB_CLASS_MSC_UMS     = 0x08, /*< Mass storage */
-    USB_CLASS_HUB         = 0x09, /*< Mass storage */
+    USB_CLASS_HUB         = 0x09, /*< Hub devices */
     USB_CLASS_CDC_DATA    = 0x0a, /*< Mass storage */
     USB_CLASS_CCID        = 0x0b, /*< Smartcards */
     USB_CLASS_RESERVED2   = 0x0c, /*< reserved */
@@ -225,7 +225,7 @@ typedef enum {
 
 typedef struct usbctrl_context {
     /* first, about device driver interactions */
-    uint32_t                dev_id;             /*< device id, from the USB device driver */
+    uint32_t               dev_id;              /*< device id, from the USB device driver */
     uint16_t               address;             /*< device address, to be set by std req */
     /* Then, about personalities (info, number) */
     uint8_t                interface_num;     /*< Number of personalities registered */

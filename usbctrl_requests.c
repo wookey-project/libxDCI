@@ -331,6 +331,8 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
         usbotghs_send_zlp(0);
         goto err;
     }
+    /* FIXME: we should calculate the maximum descriptor we can genrate and compare
+     * to current buffer */
     uint8_t buf[128];
     uint32_t size = 0;
     switch (desctype) {
@@ -341,8 +343,8 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
                 goto err;
             }
-            log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)", maxlength, size);
-            if (maxlength > size) {
+            log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)\n", maxlength, size);
+            if (maxlength >= size) {
                 errcode = usbotghs_send_data(&(buf[0]), size, 0);
             } else {
                 errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
@@ -350,6 +352,11 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                  * space ?
                  * XXX: check USB2.0 standard */
             }
+#if 0
+            if (errcode != MBED_ERROR_NONE) {
+                log_printf("[USBCTRL] failed to send descriptor ! (err=%d)\n", errcode);
+            }
+#endif
             break;
         case USB_REQ_DESCRIPTOR_CONFIGURATION:
             /* wIndex (language ID) should be zero */
