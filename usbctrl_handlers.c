@@ -174,13 +174,17 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         goto err;
     }
 
-    switch (usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_IN)) {
-        default:
-            break;
-    }
+    /*
+     * By now, this handler is called only for successfully transmitted pkts
+     * TODO: maybe we should handle NAK effective & errors at control level, using
+     * ep state
+     */
+    /* acknowledge data transfert. For control & bulk (not isochronous, IT ?) */
+    // acknowledgement in request handling by now...
+    // usbotghs_send_zlp(ep);
 
-    dev_id = dev_id;
     ep = ep;
+    dev_id = dev_id;
     size = size;
 err:
     return errcode;

@@ -194,6 +194,7 @@ mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *c
    }
    /* 3) now that everything is Okay, consider iface registered */
    ctx->interface_num++;
+   ctx->num_cfg++;
    /* 4) iface EPs should be configured when receiving setConfiguration or SetInterface */
    return errcode;
 }

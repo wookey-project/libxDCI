@@ -163,20 +163,20 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
         case USB_DEVICE_STATE_DEFAULT:
             /* This case is not forbidden by USB2.0 standard, but the behavior is
              * undefined. We can, for example, stall out. (FIXME) */
-            usbotghs_endpoint_stall(EP0);
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
         case USB_DEVICE_STATE_ADDRESS:
             if (usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_ENDPOINT &&
                 usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE) {
                 /* only interface or endpoint 0 allowed in ADDRESS state */
                 /* request error: sending STALL on status or data */
-                usbotghs_endpoint_stall(EP0);
+                usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
                 goto err;
             }
             if ((pkt->wIndex & 0xf) != 0) {
                 /* only interface or endpoint 0 allowed in ADDRESS state */
                 /* request error: sending STALL on status or data */
-                usbotghs_endpoint_stall(EP0);
+                usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
                 goto err;
             }
             /* handling get_status() for other cases */
@@ -185,7 +185,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                     /*does requested EP exists ? */
                     uint8_t epnum = pkt->wIndex & 0xf;
                     if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
-                        usbotghs_endpoint_stall(EP0);
+                        usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
                         goto err;
                     }
                     /* FIXME: check EP direction too before returning status */
@@ -193,10 +193,11 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                     /* return the recipient status (2 bytes, or wLength if smaller) */
                     uint8_t resp[2] = { 0 };
                     usbotghs_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
                     break;
                 }
                 default:
-                    usbotghs_endpoint_stall(EP0);
+                    usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
                     goto err;
             }
 
@@ -207,7 +208,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
-            usbotghs_endpoint_stall(EP0);
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
     }
 err:
@@ -269,16 +270,60 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
         case USB_DEVICE_STATE_CONFIGURED:
             /* This case is not forbidden by USB2.0 standard, but the behavior is
              * undefined. We can, for example, stall out. (FIXME) */
-            usbotghs_endpoint_stall(EP0);
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
-            usbotghs_endpoint_stall(EP0);
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
     }
 err:
     return errcode;
 }
+
+static mbed_error_t usbctrl_std_req_handle_get_configuration(usbctrl_setup_pkt_t *pkt,
+                                                             usbctrl_context_t *ctx)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    uint8_t resp[1];
+    log_printf("[USBCTRL] Std req: get configuration\n");
+    if (!is_std_requests_allowed(ctx)) {
+        /* error handling, invalid state */
+        errcode = MBED_ERROR_INVSTATE;
+        goto err;
+    }
+    switch (usbctrl_get_state(ctx)) {
+        case USB_DEVICE_STATE_DEFAULT:
+            resp[0] = 0;
+            usbotghs_send_data((uint8_t *)&resp, 1, EP0);
+            /* usb driver read status... */
+            usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
+            break;
+        case USB_DEVICE_STATE_ADDRESS:
+            resp[0] = 0;
+            usbotghs_send_data((uint8_t *)&resp, 1, EP0);
+            /* usb driver read status... */
+            usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            resp[0] = 1; /* should be bConfigurationValue of the current config */
+            usbotghs_send_data((uint8_t *)&resp, 1, EP0);
+            /* usb driver read status... */
+            usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
+            break;
+        default:
+            /* this should never be reached with the is_std_requests_allowed() function */
+
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
+            break;
+    }
+    pkt = pkt;
+
+err:
+    return errcode;
+}
+
+
 
 static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t *pkt,
                                                              usbctrl_context_t *ctx)
@@ -290,9 +335,11 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
+    /* TODO: some checks to add */
+    usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
+    usbotghs_send_zlp(0);
     /* handling standard Request */
     pkt = pkt;
-    ctx = ctx;
 err:
     return errcode;
 }
@@ -328,7 +375,6 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
     maxlength = pkt->wLength;
     if (maxlength == 0) {
         /* nothing to send */
-        usbotghs_send_zlp(0);
         goto err;
     }
     /* FIXME: we should calculate the maximum descriptor we can genrate and compare
@@ -337,91 +383,108 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
     uint32_t size = 0;
     switch (desctype) {
         case USB_REQ_DESCRIPTOR_DEVICE:
+            log_printf("[USBCTRL] Std req: get device descriptor\n");
             if (pkt->wIndex != 0) {
                 goto err;
             }
-            if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
-                goto err;
-            }
-            log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)\n", maxlength, size);
-            if (maxlength >= size) {
-                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            if (maxlength == 0) {
+                errcode = usbotghs_send_zlp(0);
             } else {
-                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
-                /* should we not inform the host that there is not enough
-                 * space ?
-                 * XXX: check USB2.0 standard */
+                if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                log_printf("[USBCTRL] Failure while generating descriptor !!!\n");
+                    goto err;
+                }
+                log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)\n", maxlength, size);
+                if (maxlength >= size) {
+                    errcode = usbotghs_send_data(&(buf[0]), size, 0);
+                } else {
+                    errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                    if (errcode != MBED_ERROR_NONE) {
+                        log_printf("[USBCTRL] Error while sending data\n");
+                    }
+                    /* should we not inform the host that there is not enough
+                     * space ? TODO: we should: sending NYET or NAK
+                     * XXX: check USB2.0 standard */
+                }
             }
-#if 0
-            if (errcode != MBED_ERROR_NONE) {
-                log_printf("[USBCTRL] failed to send descriptor ! (err=%d)\n", errcode);
-            }
-#endif
+            /* read status .... */
+            usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
             break;
         case USB_REQ_DESCRIPTOR_CONFIGURATION:
+            log_printf("[USBCTRL] Std req: get configuration descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
             }
-            if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
-                goto err;
-            }
-            if (maxlength > size) {
-                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            if (maxlength == 0) {
+                errcode = usbotghs_send_zlp(0);
             } else {
-                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
-                /* should we not inform the host that there is not enough
-                 * space ?
-                 * XXX: check USB2.0 standard */
+                if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                    goto err;
+                }
+                usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
+                if (maxlength > size) {
+                    errcode = usbotghs_send_data(&(buf[0]), size, 0);
+                } else {
+                    errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                    /* should we not inform the host that there is not enough
+                     * space ?
+                     * XXX: check USB2.0 standard */
+                }
             }
-            /* USB 2.0 standard, chap 9.4.3
-             *
-             * A request for configuration descriptor returns :
-             * - the configuration descriptor
-             * - all interfaces descriptors (including EP descriptors for each interface)
-             * in a single request
-             *
-             * ° The first interface descriptor follow the configuration descriptor
-             * ° The endpoint descriptors for the first interface follow the first interface descriptor
-             * ° If there are additional interfaces, their interfaces descriptor and endpoint descriptors
-             * follow the first interface endpoints descriptors
-             * * Class specific and/or vendor specific descriptors follow the standard descriptors they extend
-             * or modify
-             * ° If the device does not support requested descriptor, it must respond with a Request Error
-             *
-             */
+            /* read status .... */
+            usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
+
+            /* it is assumed by the USB standard that the returned configuration is now active.
+             * From now on, the device is in CONFIGUED state, and the returned configuration is
+             * the one currently active */
             break;
         case USB_REQ_DESCRIPTOR_STRING:
+            log_printf("[USBCTRL] Std req: get string descriptor\n");
             if ((errcode = usbctrl_get_descriptor(USB_DESC_STRING, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
                 goto err;
             }
-            if (maxlength > size) {
-                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            if (maxlength == 0) {
+                errcode = usbotghs_send_zlp(0);
             } else {
-                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
-                /* should we not inform the host that there is not enough
-                 * space ?
-                 * XXX: check USB2.0 standard */
+                if (maxlength > size) {
+                    errcode = usbotghs_send_data(&(buf[0]), size, 0);
+                } else {
+                    errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                    /* should we not inform the host that there is not enough
+                     * space ?
+                     * XXX: check USB2.0 standard */
+                }
             }
+            /* read status .... */
+            usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
             break;
         case USB_REQ_DESCRIPTOR_INTERFACE:
             /* wIndex (language ID) should be zero */
+            log_printf("[USBCTRL] Std req: get interface descriptor\n");
             if (pkt->wIndex != 0) {
                 goto err;
             }
-            if ((errcode = usbctrl_get_descriptor(USB_DESC_INTERFACE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
-                goto err;
-            }
-            if (maxlength > size) {
-                errcode = usbotghs_send_data(&(buf[0]), size, 0);
+            if (maxlength == 0) {
+                errcode = usbotghs_send_zlp(0);
             } else {
-                errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
-                /* should we not inform the host that there is not enough
-                 * space ?
-                 * XXX: check USB2.0 standard */
+                if ((errcode = usbctrl_get_descriptor(USB_DESC_INTERFACE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                    goto err;
+                }
+                if (maxlength > size) {
+                    errcode = usbotghs_send_data(&(buf[0]), size, 0);
+                } else {
+                    errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
+                    /* should we not inform the host that there is not enough
+                     * space ?
+                     * XXX: check USB2.0 standard */
+                }
             }
+            /* read status .... */
+            usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
             break;
         case USB_REQ_DESCRIPTOR_ENDPOINT:
+            log_printf("[USBCTRL] Std req: get EP descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
@@ -437,27 +500,35 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                  * space ?
                  * XXX: check USB2.0 standard */
             }
+            /* read status .... */
+            usbotghs_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
             break;
         case USB_REQ_DESCRIPTOR_DEVICE_QUALIFIER:
+            log_printf("[USBCTRL] Std req: get dev qualifier descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
             }
             /*TODO */
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
         case USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG:
+            log_printf("[USBCTRL] Std req: get othspeed descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
             }
             /*TODO */
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
         case USB_REQ_DESCRIPTOR_INTERFACE_POWER:
+            log_printf("[USBCTRL] Std req: get iface power descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 goto err;
             }
             /*TODO */
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
         default:
             goto err;
@@ -466,7 +537,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
 
     return errcode;
 err:
-    usbotghs_endpoint_stall(EP0);
+    usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
     return errcode;
 }
 
@@ -497,7 +568,8 @@ static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *p
      * As a consequence, we reply a request error to the host, meaning that this
      * behavior is not supported by the device.
      */
-    usbotghs_endpoint_stall(EP0);
+
+    usbotghs_send_zlp(0);
 err:
     return errcode;
 }
@@ -515,6 +587,7 @@ static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
     }
     /* handling standard Request */
     pkt = pkt;
+    usbotghs_send_zlp(0);
 err:
     return errcode;
 }
@@ -531,6 +604,7 @@ static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pk
     }
     /* handling standard Request */
     pkt = pkt;
+    usbotghs_send_zlp(0);
 err:
     return errcode;
 }
@@ -547,6 +621,7 @@ static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt,
     }
     /* handling standard Request */
     pkt = pkt;
+    usbotghs_send_zlp(0);
 err:
     return errcode;
 }
@@ -582,11 +657,10 @@ static inline mbed_error_t usbctrl_handle_std_requests(usbctrl_setup_pkt_t *pkt,
             errcode = usbctrl_std_req_handle_set_descriptor(pkt, ctx);
             break;
         case USB_REQ_GET_CONFIGURATION:
-            errcode = usbctrl_std_req_handle_set_configuration(pkt, ctx);
+            errcode = usbctrl_std_req_handle_get_configuration(pkt, ctx);
             break;
         case USB_REQ_SET_CONFIGURATION:
-            log_printf("[USBCTRL] Not yet supported req SET_CONFIGURATION\n");
-            usbotghs_endpoint_stall(EP0);
+            errcode = usbctrl_std_req_handle_set_configuration(pkt, ctx);
             break;
         case USB_REQ_GET_INTERFACE:
             errcode = usbctrl_std_req_handle_get_interface(pkt, ctx);
@@ -599,7 +673,7 @@ static inline mbed_error_t usbctrl_handle_std_requests(usbctrl_setup_pkt_t *pkt,
             break;
         default:
             log_printf("[USBCTRL] Unknown std request %d\n", pkt->bRequest);
-            usbotghs_endpoint_stall(EP0);
+            usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
     }
     return errcode;
@@ -653,12 +727,12 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
 
     if (!usbctrl_is_interface_exists(ctx, iface_idx)) {
         errcode = MBED_ERROR_NOTFOUND;
-        usbotghs_endpoint_stall(EP0);
+        usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
         goto err;
     }
     if ((iface = usbctrl_get_interface(ctx, iface_idx)) == NULL) {
         errcode = MBED_ERROR_UNKNOWN;
-        usbotghs_endpoint_stall(EP0);
+        usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
         goto err;
     }
     /* interface found, call its dedicated request handler */
@@ -677,7 +751,7 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
 {
     ctx = ctx;
     log_printf("[USBCTRL] Unknown Request type %d/%x\n", pkt->bmRequestType, pkt->bRequest);
-    usbotghs_endpoint_stall(EP0);
+    usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
     return MBED_ERROR_UNKNOWN;
 }
 

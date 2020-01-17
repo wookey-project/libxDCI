@@ -74,22 +74,22 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
             desc->bDeviceProtocol = 0;
             desc->bMaxPacketSize = 64; /* on EP0 */
             desc->idVendor = CONFIG_USB_DEV_VENDORID;
-            desc->idVendor = CONFIG_USB_DEV_PRODUCTID;
-            desc->idVendor = CONFIG_USB_DEV_PRODUCTID;
+            desc->idProduct = CONFIG_USB_DEV_PRODUCTID;
             desc->bcdDevice = 0x000;
             desc->iManufacturer = CONFIG_USB_DEV_MANUFACTURER_INDEX;
             desc->iProduct = CONFIG_USB_DEV_PRODNAME_INDEX;
             desc->iSerialNumber = CONFIG_USB_DEV_SERIAL_INDEX;
-            desc->bNumConfigurations = 1;// FIXME ctx->num_cfg; /* to be replaced by number of registered config */
+            desc->bNumConfigurations = ctx->num_cfg;
             /* well, if current cfg is not null, the device desc should be
              * completed with a more complete content (typically a full desc */
+#if 0 /* replaced by configuration descriptor request on configuration id x */
             if (ctx->curr_cfg != 0) {
                 desc->bDeviceClass = ctx->interfaces[ctx->curr_cfg].usb_class;
                 desc->bDeviceSubClass = ctx->interfaces[ctx->curr_cfg].usb_subclass;
                 desc->bDeviceProtocol = ctx->interfaces[ctx->curr_cfg].usb_protocol;
             }
+#endif
             *desc_size = sizeof(usbctrl_device_descriptor_t);
-
             break;
         case USB_DESC_INTERFACE:
             log_printf("[USBCTRL] request iface desc\n");
