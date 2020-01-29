@@ -750,6 +750,7 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
                                                            usbctrl_context_t   *ctx)
 {
     ctx = ctx;
+    pkt = pkt;
     log_printf("[USBCTRL] Unknown Request type %d/%x\n", pkt->bmRequestType, pkt->bRequest);
     usbotghs_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
     return MBED_ERROR_UNKNOWN;
@@ -766,7 +767,6 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     mbed_error_t errcode = MBED_ERROR_NONE;
     usbctrl_context_t *ctx = NULL;
 
-    printf("");
     /* Sanitation */
     if (pkt == NULL) {
         errcode = MBED_ERROR_INVPARAM;
