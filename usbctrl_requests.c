@@ -341,6 +341,9 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
     /* deactivate previous EPs */
     /* FIXME: for previous potential configuration & interface, deconfigure EPs */
+    /* this should be done by detecting any configured EP of any registered iface that is set
+     * 'configured' just now */
+
     /* activate endpoints... */
     for (uint8_t i = 0; i < ctx->interfaces[ctx->curr_cfg].usb_ep_number; ++i) {
         usbotghs_ep_dir_t dir;
@@ -358,7 +361,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
         if (dir == USBOTG_HS_EP_DIR_OUT) {
             usbotghs_activate_endpoint(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
         }
-        ctx->interfaces[ctx->curr_cfg].eps[i].configured == true;
+        ctx->interfaces[ctx->curr_cfg].eps[i].configured = true;
     }
     usbotghs_send_zlp(0);
     /* handling standard Request */

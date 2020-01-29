@@ -192,6 +192,10 @@ mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *c
    if (ctx->interface_num == 0) {
        ctx->curr_cfg = 0;
    }
+   /* at declaration time, all interface EPs are disabled */
+   for (uint8_t i = 0; i < ctx->interfaces[ctx->interface_num].usb_ep_number; ++i) {
+       ctx->interfaces[ctx->interface_num].eps[i].configured = false;
+   }
    /* 3) now that everything is Okay, consider iface registered */
    ctx->interface_num++;
    ctx->num_cfg++;

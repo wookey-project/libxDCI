@@ -132,6 +132,7 @@ typedef struct {
     usb_ep_usage_t   usage;                 /* EP usage */
     uint16_t         pkt_maxsize;           /* pkt maxsize in this EP */
     uint8_t          ep_num;                /* EP identifier */
+    bool             configured;            /* EP enable in current config */
 } usb_ep_infos_t;
 
 /************************************************
