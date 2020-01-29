@@ -339,6 +339,27 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     /* request is allowed, meaning that we are in ADDRESS state. We
      * can move along to CONFIGURED state and start nominal behavior from now on. */
     usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
+    /* deactivate previous EPs */
+    /* FIXME: for previous potential configuration & interface, deconfigure EPs */
+    /* activate endpoints... */
+    for (uint8_t i = 0; i < ctx->interfaces[ctx->curr_cfg].usb_ep_number; ++i) {
+        usbotghs_ep_dir_t dir;
+        if (ctx->interfaces[ctx->curr_cfg].eps[i].mode == USB_EP_MODE_READ) {
+            dir = USBOTG_HS_EP_DIR_OUT;
+        } else {
+            dir = USBOTG_HS_EP_DIR_IN;
+        }
+        log_printf("[LIBCTRL] enabling EP %d\n", ctx->interfaces[ctx->curr_cfg].eps[i].ep_num);
+        usbotghs_configure_endpoint(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num,
+                ctx->interfaces[ctx->curr_cfg].eps[i].type,
+                dir,
+                ctx->interfaces[ctx->curr_cfg].eps[i].pkt_maxsize,
+                USB_HS_DXEPCTL_SD1PID_SODDFRM);
+        if (dir == USBOTG_HS_EP_DIR_OUT) {
+            usbotghs_activate_endpoint(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
+        }
+        ctx->interfaces[ctx->curr_cfg].eps[i].configured == true;
+    }
     usbotghs_send_zlp(0);
     /* handling standard Request */
     pkt = pkt;
