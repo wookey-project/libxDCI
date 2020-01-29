@@ -29,6 +29,8 @@
 
 #define MAX_DESC_STRING_SIZE		32
 
+#define LANGUAGE_ENGLISH        0x0409
+
 /*
  * This is the central USB control descriptors configuration and description.
  *
@@ -152,6 +154,7 @@ typedef struct __packed {
 mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                                     uint8_t                   *buf,
                                     uint32_t                  *desc_size,
-                                    usbctrl_context_t         *ctx);
+                                    usbctrl_context_t         *ctx,
+                                    usbctrl_setup_pkt_t       *pkt);
 
 #endif/*!USB_CTRL_DESCRIPTORS_H_*/

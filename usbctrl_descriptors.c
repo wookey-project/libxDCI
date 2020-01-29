@@ -52,18 +52,19 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
 mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                                     uint8_t                   *buf,
                                     uint32_t                  *desc_size,
-                                    usbctrl_context_t         *ctx)
+                                    usbctrl_context_t         *ctx,
+                                    usbctrl_setup_pkt_t       *pkt)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
 
     /* sanitation */
-    if (buf == NULL || ctx == NULL || desc_size == NULL) {
+    if (buf == NULL || ctx == NULL || desc_size == NULL || pkt == NULL) {
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
 
     switch (type) {
-        case USB_DESC_DEVICE:
+        case USB_DESC_DEVICE: {
             log_printf("[USBCTRL] request device desc\n");
             usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;
             desc->bLength = sizeof(usbctrl_device_descriptor_t);
@@ -91,6 +92,7 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
 #endif
             *desc_size = sizeof(usbctrl_device_descriptor_t);
             break;
+        }
         case USB_DESC_INTERFACE:
             log_printf("[USBCTRL] request iface desc\n");
             *desc_size = 0;
@@ -99,11 +101,57 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
             log_printf("[USBCTRL] request EP desc\n");
             *desc_size = 0;
             break;
-        case USB_DESC_STRING:
+        case USB_DESC_STRING: {
             log_printf("[USBCTRL] request string desc\n");
             *desc_size = 0;
+            uint32_t descriptor_size = sizeof(usbctrl_string_descriptor_t);
+            if (descriptor_size > 128) {
+                log_printf("[USBCTRL] not enough space for string descriptor !!!\n");
+            }
+            log_printf("[USBCTRL] create string desc of size %d\n", descriptor_size);
+            {
+                uint8_t *string_desc = buf;
+                usbctrl_string_descriptor_t *cfg = (usbctrl_string_descriptor_t *)&(string_desc[0]);
+                uint8_t string_type = pkt->wValue & 0xff;
+                cfg->bDescriptorType = USB_DESC_STRING;
+                /* INFO:  UTF16 double each size */
+                switch (string_type) {
+                    case 0:
+                        cfg->bLength = 4;
+                        cfg->wString[0] = LANGUAGE_ENGLISH;
+                        *desc_size = 4;
+                        break;
+                    case CONFIG_USB_DEV_MANUFACTURER_INDEX:
+                        cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER);
+                        for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_MANUFACTURER); ++i) {
+                            cfg->wString[i] = CONFIG_USB_DEV_MANUFACTURER[i];
+                        }
+                        *desc_size = 2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER);
+                        break;
+                    case CONFIG_USB_DEV_PRODNAME_INDEX:
+                        cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME);
+                        for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_PRODNAME); ++i) {
+                            cfg->wString[i] = CONFIG_USB_DEV_PRODNAME[i];
+                        }
+                        *desc_size = 2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME);
+                        break;
+                    case CONFIG_USB_DEV_SERIAL_INDEX:
+                        cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL);
+                        for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_SERIAL); ++i) {
+                            cfg->wString[i] = CONFIG_USB_DEV_SERIAL[i];
+                        }
+                        *desc_size = 2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL);
+                        break;
+                    default:
+                        log_printf("[USBCTRL] Unsupported string index requested.\n");
+                        errcode = MBED_ERROR_UNSUPORTED_CMD;
+                        goto err;
+                        break;
+                }
+            }
             break;
-        case USB_DESC_CONFIGURATION:
+        }
+        case USB_DESC_CONFIGURATION: {
             log_printf("[USBCTRL] request configuration desc\n");
             /* configuration descriptor is dynamic, depends on current config and its number of endpoints... */
             /* FIXME, we should be able to return a config descriptor with more
@@ -124,6 +172,7 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
             {
                 usbctrl_configuration_descriptor_t *cfg = (usbctrl_configuration_descriptor_t *)&(config_desc[0]);
                 cfg->bLength = sizeof(usbctrl_configuration_descriptor_t);
+                cfg->wTotalLength = descriptor_size;
                 cfg->bDescriptorType = USB_DESC_CONFIGURATION;
                 cfg->bNumInterfaces = 1;
                 cfg->bConfigurationValue = 1;
@@ -155,6 +204,7 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                     usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)
                         ((uint8_t*)(&(config_desc[0]) +
                                 sizeof(usbctrl_configuration_descriptor_t) +
+                                sizeof(usbctrl_interface_descriptor_t) +
                                 i * (sizeof(usbctrl_endpoint_descriptor_t))));
 
                     cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
@@ -162,7 +212,7 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                     ctx->interfaces[ctx->curr_cfg].eps[i].ep_num = i + 1;
                     cfg->bEndpointAddress = ctx->interfaces[ctx->curr_cfg].eps[i].ep_num;
                     if (ctx->interfaces[ctx->curr_cfg].eps[i].mode == USB_EP_MODE_READ) {
-                        cfg->bEndpointAddress |= 0x8; /* set bit 7 to 1 for READ EPs */
+                        cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for READ EPs */
                     }
                     cfg->bmAttributes =
                         ctx->interfaces[ctx->curr_cfg].eps[i].type       |
@@ -176,6 +226,7 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
             /* returns the descriptor */
             }
             break;
+        }
         case USB_DESC_DEV_QUALIFIER:
             log_printf("[USBCTRL] request dev qualifier desc\n");
             *desc_size = 0;

@@ -252,6 +252,7 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
             if (pkt->wValue != 0) {
                 ctx->address = pkt->wValue;
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_ADDRESS);
+                usbotghs_set_address(ctx->address);
             }
             /* wValue set to 0 is *not* an error condition */
             usbotghs_send_zlp(0);
@@ -335,7 +336,8 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
-    /* TODO: some checks to add */
+    /* request is allowed, meaning that we are in ADDRESS state. We
+     * can move along to CONFIGURED state and start nominal behavior from now on. */
     usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
     usbotghs_send_zlp(0);
     /* handling standard Request */
@@ -390,7 +392,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             if (maxlength == 0) {
                 errcode = usbotghs_send_zlp(0);
             } else {
-                if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                 log_printf("[USBCTRL] Failure while generating descriptor !!!\n");
                     goto err;
                 }
@@ -419,7 +421,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             if (maxlength == 0) {
                 errcode = usbotghs_send_zlp(0);
             } else {
-                if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                     goto err;
                 }
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
@@ -428,7 +430,8 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 } else {
                     errcode = usbotghs_send_data(&(buf[0]), maxlength, 0);
                     /* should we not inform the host that there is not enough
-                     * space ?
+                     * space ? Well no, the host, send again a new descriptor
+                     * request with the correct size in it.
                      * XXX: check USB2.0 standard */
                 }
             }
@@ -441,7 +444,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             break;
         case USB_REQ_DESCRIPTOR_STRING:
             log_printf("[USBCTRL] Std req: get string descriptor\n");
-            if ((errcode = usbctrl_get_descriptor(USB_DESC_STRING, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_STRING, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                 goto err;
             }
             if (maxlength == 0) {
@@ -468,7 +471,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             if (maxlength == 0) {
                 errcode = usbotghs_send_zlp(0);
             } else {
-                if ((errcode = usbctrl_get_descriptor(USB_DESC_INTERFACE, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+                if ((errcode = usbctrl_get_descriptor(USB_DESC_INTERFACE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                     goto err;
                 }
                 if (maxlength > size) {
@@ -489,7 +492,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             if (pkt->wIndex != 0) {
                 goto err;
             }
-            if ((errcode = usbctrl_get_descriptor(USB_DESC_ENDPOINT, &(buf[0]), &size, ctx)) != MBED_ERROR_NONE) {
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_ENDPOINT, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                 goto err;
             }
             if (maxlength > size) {
