@@ -128,6 +128,9 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             usbotghs_set_address(0);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
+            /* INFO: deconfigure any potential active EP of current config is automatically
+             * done by USB OTG HS core at reset */
+
             /* going back to default */
             errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
