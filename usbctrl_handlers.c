@@ -186,9 +186,17 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
     // acknowledgement in request handling by now...
     // usbotghs_send_zlp(ep);
 
-    ep = ep;
+    log_printf("[LIBCTRL] handle inpevent\n");
+    for (uint8_t i = 0; i < ctx->interfaces[ctx->curr_cfg].usb_ep_number; ++i) {
+        if (ctx->interfaces[ctx->curr_cfg].eps[i].ep_num == ep) {
+            if (ctx->interfaces[ctx->curr_cfg].eps[i].handler) {
+                log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
+                ctx->interfaces[ctx->curr_cfg].eps[i].handler(size);
+            }
+            break;
+        }
+    }
     dev_id = dev_id;
-    size = size;
 err:
     return errcode;
 }
@@ -207,30 +215,42 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
     }
 
     log_printf("[LIBCTRL] oepint: current ep state is %d\n", usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
-    switch (usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT)) {
-        case USBOTG_HS_EP_STATE_SETUP:
-            log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
-            if (size == 8) {
-                /* first, we must convert received data into current endianess */
-                uint8_t *setup_packet = ctx->ctrl_fifo;
-                usbctrl_setup_pkt_t formated_pkt = {
-                    setup_packet[0],
-                    setup_packet[1],
-                    setup_packet[3] << 8 | setup_packet[2],
-                    setup_packet[5] << 8 | setup_packet[4],
-                    setup_packet[7] << 8 | setup_packet[6]
-                };
-                return usbctrl_handle_requests(&formated_pkt, dev_id);
-            } else {
-                log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
+    if (ep == EP0) {
+        switch (usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT)) {
+            case USBOTG_HS_EP_STATE_SETUP:
+                log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
+                if (size == 8) {
+                    /* first, we must convert received data into current endianess */
+                    uint8_t *setup_packet = ctx->ctrl_fifo;
+                    usbctrl_setup_pkt_t formated_pkt = {
+                        setup_packet[0],
+                        setup_packet[1],
+                        setup_packet[3] << 8 | setup_packet[2],
+                        setup_packet[5] << 8 | setup_packet[4],
+                        setup_packet[7] << 8 | setup_packet[6]
+                    };
+                    return usbctrl_handle_requests(&formated_pkt, dev_id);
+                } else {
+                    log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
+                }
+                break;
+            default:
+                log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",
+                        usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
+                break;
+        }
+    } else {
+        log_printf("[LIBCTRL] handle outepevent\n");
+        for (uint8_t i = 0; i < ctx->interfaces[ctx->curr_cfg].usb_ep_number; ++i) {
+            if (ctx->interfaces[ctx->curr_cfg].eps[i].ep_num == ep) {
+                if (ctx->interfaces[ctx->curr_cfg].eps[i].handler) {
+                    log_printf("[LIBCTRL] oepint: executing upper class handler for EP %d\n", ep);
+                    ctx->interfaces[ctx->curr_cfg].eps[i].handler(size);
+                }
+                break;
             }
-            break;
-        default:
-            log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",
-                    usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
-            break;
+        }
     }
-    size = size;
 err:
     return errcode;
 }

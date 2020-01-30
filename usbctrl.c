@@ -64,6 +64,16 @@ mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx)
             errcode = MBED_ERROR_NOBACKEND;
             break;
     }
+    if (num_ctx == MAX_USB_CTRL_CTX) {
+        errcode = MBED_ERROR_NOMEM;
+        goto err;
+    }
+    ctx_list[num_ctx] = ctx;
+    num_ctx++;
+    /* initialize context */
+    ctx->interface_num = 0;
+    ctx->address = 0;
+
 err:
     return errcode;
 }
@@ -75,19 +85,6 @@ mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] initializing automaton\n");
-    if (ctx == NULL) {
-        errcode = MBED_ERROR_INVPARAM;
-        goto end;
-    }
-    if (num_ctx == MAX_USB_CTRL_CTX) {
-        errcode = MBED_ERROR_NOMEM;
-        goto end;
-    }
-    ctx_list[num_ctx] = ctx;
-    num_ctx++;
-    /* initialize context */
-    ctx->interface_num = 0;
-    ctx->address = 0;
     memset((void*)ctx->interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
     /* receive FIFO is not set in the driver. Wait for USB reset */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_NOSTORAGE;

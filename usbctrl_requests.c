@@ -348,9 +348,9 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     for (uint8_t i = 0; i < ctx->interfaces[ctx->curr_cfg].usb_ep_number; ++i) {
         usbotghs_ep_dir_t dir;
         if (ctx->interfaces[ctx->curr_cfg].eps[i].mode == USB_EP_MODE_READ) {
-            dir = USBOTG_HS_EP_DIR_OUT;
-        } else {
             dir = USBOTG_HS_EP_DIR_IN;
+        } else {
+            dir = USBOTG_HS_EP_DIR_OUT;
         }
         log_printf("[LIBCTRL] enabling EP %d\n", ctx->interfaces[ctx->curr_cfg].eps[i].ep_num);
         usbotghs_configure_endpoint(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num,
@@ -358,9 +358,8 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
                 dir,
                 ctx->interfaces[ctx->curr_cfg].eps[i].pkt_maxsize,
                 USB_HS_DXEPCTL_SD1PID_SODDFRM);
-        if (dir == USBOTG_HS_EP_DIR_OUT) {
-            usbotghs_activate_endpoint(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
-        }
+        usbotghs_activate_endpoint(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
+        usbotghs_endpoint_clear_nak(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
         ctx->interfaces[ctx->curr_cfg].eps[i].configured = true;
     }
     usbotghs_send_zlp(0);
@@ -815,7 +814,14 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
          * for vendor */
         errcode = usbctrl_handle_vendor_requests(pkt, ctx);
     } else if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_CLASS) {
+
+        log_printf("[USBCTRL] receiving class Request\n");
         /* ... or, is the current request is a class request, then handle in upper layer*/
+        if (ctx->interfaces[ctx->curr_cfg].rqst_handler) {
+            ctx->interfaces[ctx->curr_cfg].rqst_handler(ctx, pkt);
+        }
+
+
     } else {
         /* ... or unknown, return an error */
         errcode = usbctrl_handle_unknown_requests(pkt, ctx);

@@ -119,6 +119,13 @@ typedef enum {
 
 
 /*
+ * handler for EPx (other than control) content reception or transmission
+ * This handler is called on oepint and iepint events by the libcontrol oepint and
+ * iepint handlers for the corresponding EP.
+ */
+typedef void (*usb_ioep_handler_t)(uint32_t size);
+
+/*
  * USB Endpoint definition
  * Each Endpoint is defined by:
  * - its type, mode attribute and usage
@@ -131,7 +138,9 @@ typedef struct {
     usb_ep_attr_t    attr;                  /* EP attributes */
     usb_ep_usage_t   usage;                 /* EP usage */
     uint16_t         pkt_maxsize;           /* pkt maxsize in this EP */
+    usb_ioep_handler_t handler;             /* EP handler */
     uint8_t          ep_num;                /* EP identifier */
+
     bool             configured;            /* EP enable in current config */
 } usb_ep_infos_t;
 
