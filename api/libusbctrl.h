@@ -209,6 +209,7 @@ typedef struct {
    usb_class_t        usb_class;      /*< the standard USB Class */
    uint8_t            usb_subclass;   /*< interface subclass */
    uint8_t            usb_protocol;   /*< interface protocol */
+   uint8_t            cfg_id;         /*< interface associated configuration ID */
    bool               dedicated;      /*< is the interface hosted in a dedicated configuration (not shared with others) ? */
    usb_rqst_handler_t rqst_handler;   /*< interface Requests handler */
    functional_descriptor_p func_desc; /*< pointer to functional descriptor, if it exists */

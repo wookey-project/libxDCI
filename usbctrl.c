@@ -72,6 +72,7 @@ mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx)
     num_ctx++;
     /* initialize context */
     ctx->interface_num = 0;
+    ctx->num_cfg = 0;
     ctx->address = 0;
 
 err:
@@ -186,8 +187,18 @@ mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *c
    /* 1) make a copy of interface. The interface identifier is its cell number  */
    memcpy((void*)&(ctx->interfaces[ctx->interface_num]), (void*)iface, sizeof(usbctrl_interface_t));
    /* 3) set as default if no other ifaces */
-   if (ctx->interface_num == 0) {
-       ctx->curr_cfg = 0;
+   if (ctx->num_cfg == 0) {
+       ctx->curr_cfg = 1;
+       ctx->num_cfg = 1;
+       ctx->interfaces[ctx->interface_num].cfg_id = ctx->curr_cfg;
+   } else {
+       /* 4) or, depending on the interface flags, add it to current config or to a new config */
+       if (iface->dedicated == true) {
+           ctx->num_cfg++;
+           ctx->interfaces[ctx->interface_num].cfg_id = ctx->num_cfg;
+       } else {
+           ctx->interfaces[ctx->interface_num].cfg_id = ctx->curr_cfg;
+       }
    }
    /* at declaration time, all interface EPs are disabled */
    for (uint8_t i = 0; i < ctx->interfaces[ctx->interface_num].usb_ep_number; ++i) {
@@ -195,7 +206,6 @@ mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *c
    }
    /* 3) now that everything is Okay, consider iface registered */
    ctx->interface_num++;
-   ctx->num_cfg++;
    /* 4) iface EPs should be configured when receiving setConfiguration or SetInterface */
    return errcode;
 }

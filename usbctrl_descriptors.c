@@ -158,23 +158,29 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
              * than one interface if needed, including potential successive
              * iface & EPs descriptors */
             /* 1) calculating desc size */
+            uint8_t num_ifaces_for_cfg = 0;
             uint32_t descriptor_size =
-                sizeof(usbctrl_configuration_descriptor_t) +
-                sizeof(usbctrl_interface_descriptor_t) +
-                ctx->interfaces[ctx->curr_cfg].usb_ep_number *
-                    sizeof(usbctrl_endpoint_descriptor_t);
+                sizeof(usbctrl_configuration_descriptor_t);
+            for (uint8_t i = 0; i < ctx->interface_num; ++i) {
+                if (ctx->interfaces[i].cfg_id == ctx->curr_cfg) {
+                    descriptor_size += sizeof(usbctrl_interface_descriptor_t) +
+                        ctx->interfaces[i].usb_ep_number *
+                        sizeof(usbctrl_endpoint_descriptor_t);
+                    num_ifaces_for_cfg++;
+                }
+            }
             if (descriptor_size > 128) {
                 log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
+                goto err;
             }
             log_printf("[USBCTRL] create config desc of size %d\n", descriptor_size);
-            {
             uint8_t *config_desc = buf;
             {
                 usbctrl_configuration_descriptor_t *cfg = (usbctrl_configuration_descriptor_t *)&(config_desc[0]);
                 cfg->bLength = sizeof(usbctrl_configuration_descriptor_t);
                 cfg->wTotalLength = descriptor_size;
                 cfg->bDescriptorType = USB_DESC_CONFIGURATION;
-                cfg->bNumInterfaces = 1;
+                cfg->bNumInterfaces = num_ifaces_for_cfg;
                 cfg->bConfigurationValue = 1;
                 cfg->iConfiguration = 0;
                 cfg->bmAttributes.reserved7 = 1;
@@ -183,48 +189,63 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                 cfg->bmAttributes.reserved = 0;
                 cfg->bMaxPower = 0;
             }
-            {
-                /* pointing to next field: interface descriptor */
-                usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)
-                ((uint8_t*)(&(config_desc[0]) +
-                        sizeof(usbctrl_configuration_descriptor_t)));
-                cfg->bLength = sizeof(usbctrl_interface_descriptor_t);
-                cfg->bDescriptorType = USB_DESC_INTERFACE;
-                cfg->bInterfaceNumber = 0;
-                cfg->bAlternateSetting = 0;
-                cfg->bNumEndpoints = ctx->interfaces[ctx->curr_cfg].usb_ep_number;
-                cfg->bInterfaceClass = ctx->interfaces[ctx->curr_cfg].usb_class;
-                cfg->bInterfaceSubClass = ctx->interfaces[ctx->curr_cfg].usb_subclass;
-                cfg->bInterfaceProtocol = ctx->interfaces[ctx->curr_cfg].usb_protocol;
-                cfg->iInterface = 1;
-            }
-            {
-                /* and for this interface, handling each EP */
-                for (uint8_t i = 0; i < ctx->interfaces[ctx->curr_cfg].usb_ep_number; ++i) {
-                    usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)
-                        ((uint8_t*)(&(config_desc[0]) +
-                                sizeof(usbctrl_configuration_descriptor_t) +
-                                sizeof(usbctrl_interface_descriptor_t) +
-                                i * (sizeof(usbctrl_endpoint_descriptor_t))));
-
-                    cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
-                    cfg->bDescriptorType = USB_DESC_ENDPOINT;
-                    ctx->interfaces[ctx->curr_cfg].eps[i].ep_num = i + 1;
-                    cfg->bEndpointAddress = ctx->interfaces[ctx->curr_cfg].eps[i].ep_num;
-                    if (ctx->interfaces[ctx->curr_cfg].eps[i].mode == USB_EP_MODE_WRITE) {
-                        cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for WRITE (i.e. IN) EPs */
+            /* there can be 1, 2 or more interfaces. interfaces offset depends on the previous
+             * interfaces number, and are calculated depending on the previous interfaces
+             * descriptors (iface+ep) size.
+             * To do this, we start at offset 0 after configuration descriptor for the first
+             * interface, and at the end of each interface, we increment the offset of the size
+             * of the complete interface descriptor, including EP. */
+            uint32_t curr_offset = 0;
+            for (uint8_t iface_id = 0; iface_id < ctx->interface_num; ++iface_id) {
+                if (ctx->interfaces[iface_id].cfg_id == ctx->curr_cfg) {
+                    {
+                        /* pointing to next field: interface descriptor */
+                        usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)
+                            ((uint8_t*)(&(config_desc[0]) +
+                                sizeof(usbctrl_configuration_descriptor_t)))
+                            + curr_offset;
+                        cfg->bLength = sizeof(usbctrl_interface_descriptor_t);
+                        cfg->bDescriptorType = USB_DESC_INTERFACE;
+                        cfg->bInterfaceNumber = 0;
+                        cfg->bAlternateSetting = 0;
+                        cfg->bNumEndpoints = ctx->interfaces[iface_id].usb_ep_number;
+                        cfg->bInterfaceClass = ctx->interfaces[iface_id].usb_class;
+                        cfg->bInterfaceSubClass = ctx->interfaces[iface_id].usb_subclass;
+                        cfg->bInterfaceProtocol = ctx->interfaces[iface_id].usb_protocol;
+                        cfg->iInterface = 1;
                     }
-                    cfg->bmAttributes =
-                        ctx->interfaces[ctx->curr_cfg].eps[i].type       |
-                        ctx->interfaces[ctx->curr_cfg].eps[i].attr << 2  |
-                        ctx->interfaces[ctx->curr_cfg].eps[i].usage << 4;
-                    cfg->wMaxPacketSize = ctx->interfaces[ctx->curr_cfg].eps[i].pkt_maxsize;
-                    cfg->bInterval = 0;
+                    {
+                        uint8_t i = 0;
+                        /* and for this interface, handling each EP */
+                        for (; i < ctx->interfaces[iface_id].usb_ep_number; ++i) {
+                            usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)
+                                ((uint8_t*)(&(config_desc[0]) +
+                                    sizeof(usbctrl_configuration_descriptor_t) +
+                                    + curr_offset +
+                                    sizeof(usbctrl_interface_descriptor_t) +
+                                    i * (sizeof(usbctrl_endpoint_descriptor_t))));
+
+                            cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
+                            cfg->bDescriptorType = USB_DESC_ENDPOINT;
+                            ctx->interfaces[iface_id].eps[i].ep_num = i + 1;
+                            cfg->bEndpointAddress = ctx->interfaces[iface_id].eps[i].ep_num;
+                            if (ctx->interfaces[iface_id].eps[i].mode == USB_EP_MODE_WRITE) {
+                                cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for WRITE (i.e. IN) EPs */
+                            }
+                            cfg->bmAttributes =
+                                ctx->interfaces[iface_id].eps[i].type       |
+                                ctx->interfaces[iface_id].eps[i].attr << 2  |
+                                ctx->interfaces[iface_id].eps[i].usage << 4;
+                            cfg->wMaxPacketSize = ctx->interfaces[iface_id].eps[i].pkt_maxsize;
+                            cfg->bInterval = 0;
+                        }
+                        curr_offset += sizeof(usbctrl_configuration_descriptor_t) +
+                            i * sizeof(usbctrl_endpoint_descriptor_t);
+                    }
                 }
-            }
-            *desc_size = descriptor_size;
             /* returns the descriptor */
             }
+            *desc_size = descriptor_size;
             break;
         }
         case USB_DESC_DEV_QUALIFIER:

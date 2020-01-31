@@ -330,6 +330,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
                                                              usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    uint8_t requested_configuration;
     log_printf("[USBCTRL] Std req: set configuration\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
@@ -343,24 +344,30 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     /* FIXME: for previous potential configuration & interface, deconfigure EPs */
     /* this should be done by detecting any configured EP of any registered iface that is set
      * 'configured' just now */
-
+    requested_configuration = pkt->wValue;
     /* activate endpoints... */
-    for (uint8_t i = 0; i < ctx->interfaces[ctx->curr_cfg].usb_ep_number; ++i) {
-        usbotghs_ep_dir_t dir;
-        if (ctx->interfaces[ctx->curr_cfg].eps[i].mode == USB_EP_MODE_READ) {
-            dir = USBOTG_HS_EP_DIR_IN;
-        } else {
-            dir = USBOTG_HS_EP_DIR_OUT;
+    for (uint8_t iface = 0; iface < ctx->interface_num; ++iface) {
+        if (ctx->interfaces[iface].cfg_id != ctx->curr_cfg) {
+            continue;
         }
-        log_printf("[LIBCTRL] enabling EP %d\n", ctx->interfaces[ctx->curr_cfg].eps[i].ep_num);
-        usbotghs_configure_endpoint(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num,
-                ctx->interfaces[ctx->curr_cfg].eps[i].type,
-                dir,
-                ctx->interfaces[ctx->curr_cfg].eps[i].pkt_maxsize,
-                USB_HS_DXEPCTL_SD1PID_SODDFRM);
-        usbotghs_activate_endpoint(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
-        usbotghs_endpoint_clear_nak(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
-        ctx->interfaces[ctx->curr_cfg].eps[i].configured = true;
+        for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
+            usbotghs_ep_dir_t dir;
+            if (ctx->interfaces[iface].eps[i].mode == USB_EP_MODE_READ) {
+                dir = USBOTG_HS_EP_DIR_OUT;
+            } else {
+                dir = USBOTG_HS_EP_DIR_IN;
+            }
+            log_printf("[LIBCTRL] enabling EP %d (dir %d)\n", ctx->interfaces[iface].eps[i].ep_num, dir);
+            usbotghs_configure_endpoint(ctx->interfaces[iface].eps[i].ep_num,
+                    ctx->interfaces[iface].eps[i].type,
+                    dir,
+                    ctx->interfaces[iface].eps[i].pkt_maxsize,
+                    USB_HS_DXEPCTL_SD1PID_SODDFRM);
+            /* handled by usb_bbb read_cmd() */
+            usbotghs_activate_endpoint(ctx->interfaces[iface].eps[i].ep_num, dir);
+            //usbotghs_endpoint_clear_nak(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
+            ctx->interfaces[iface].eps[i].configured = true;
+        }
     }
     usbotghs_send_zlp(0);
     /* handling standard Request */
@@ -817,11 +824,14 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
 
         log_printf("[USBCTRL] receiving class Request\n");
         /* ... or, is the current request is a class request, then handle in upper layer*/
-        if (ctx->interfaces[ctx->curr_cfg].rqst_handler) {
-            ctx->interfaces[ctx->curr_cfg].rqst_handler(ctx, pkt);
+        for (uint8_t i = 0; i < ctx->interface_num; ++i) {
+            if (ctx->interfaces[i].cfg_id == ctx->curr_cfg) {
+                if (ctx->interfaces[i].rqst_handler) {
+                    log_printf("[USBCTRL] execute iface class handler\n");
+                    ctx->interfaces[i].rqst_handler(ctx, pkt);
+                }
+            }
         }
-
-
     } else {
         /* ... or unknown, return an error */
         errcode = usbctrl_handle_unknown_requests(pkt, ctx);
