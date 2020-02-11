@@ -28,6 +28,36 @@
 #include "libc/syscall.h"
 #include "autoconf.h"
 
+/*********************************************************************************
+ * About handlers
+ *
+ * The Control plane must declare some handlers for various events (see usbotghs_handlers.c
+ * for more informations). These handlers are called on these events in order to execute
+ * control level (or potentially upper level(s)) programs. They can use the USB OTG HS
+ * driver API during their execution.
+ *
+ * Control level handlers are linked directly through their prototype definition here.
+ *
+ * We prefer to use prototype and link time symbol resolution instead of callbacks as:
+ *   1. The USB control plane is not an hotpluggable element
+ *   2. callbacks have security impacts, as they can be corrupted, generating arbitrary
+ *      code execution
+ *
+ *  WARNING: as we use prototypes (and not callbacks), these functions *must* exists at
+ *  link time, for symbol resolution.
+ *  It has been decided that the driver doesn't hold weak symbols for these functions,
+ *  as their absence would make the USB stack unfonctional.
+ *  If one of these function is not set in the control plane (or in any element of the
+ *  application to be linked) it would generate a link time error, corresponding to a
+ *  missing symbol.
+ *
+ */
+
+/* called by libusbctrl when the SetConfiguration request has been received and handled.
+ * From now on, the upper layer EPs are set and ready to use */
+void usbctrl_configuration_set(void);
+
+
 /************************************************
  * About standard USB classes
  *

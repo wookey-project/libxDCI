@@ -242,15 +242,16 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
     } else {
         log_printf("[LIBCTRL] handle outepevent\n");
         for (uint8_t iface = 0; iface < ctx->interface_num; ++iface) {
-            if (ctx->interfaces[iface].cfg_id == ctx->curr_cfg) {
-                for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
-                    if (ctx->interfaces[iface].eps[i].ep_num == ep) {
-                        if (ctx->interfaces[iface].eps[i].handler) {
-                            log_printf("[LIBCTRL] oepint: executing upper class handler for EP %d\n", ep);
-                            ctx->interfaces[iface].eps[i].handler(size);
-                        }
-                        goto err;
+            if (ctx->interfaces[iface].cfg_id != ctx->curr_cfg) {
+                continue;
+            }
+            for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
+                if (ctx->interfaces[iface].eps[i].ep_num == ep) {
+                    printf("[LIBCTRL] oepint: executing upper data handler for EP %d\n", ep);
+                    if (ctx->interfaces[iface].eps[i].handler) {
+                        ctx->interfaces[iface].eps[i].handler(size);
                     }
+                    goto err;
                 }
             }
         }

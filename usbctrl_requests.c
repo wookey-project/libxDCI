@@ -369,6 +369,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
             ctx->interfaces[iface].eps[i].configured = true;
         }
     }
+    usbctrl_configuration_set();
     usbotghs_send_zlp(0);
     /* handling standard Request */
     pkt = pkt;
@@ -411,7 +412,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
     }
     /* FIXME: we should calculate the maximum descriptor we can genrate and compare
      * to current buffer */
-    uint8_t buf[128];
+    uint8_t buf[MAX_DESCRIPTOR_LEN];
     uint32_t size = 0;
     switch (desctype) {
         case USB_REQ_DESCRIPTOR_DEVICE:
