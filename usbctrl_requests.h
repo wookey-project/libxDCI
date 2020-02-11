@@ -114,6 +114,18 @@ typedef enum {
 } usbctrl_feature_selector_t;
 
 /*
+ * Max descriptor len in bytes. Descriptor may include successive descriptors,
+ * for e.g. in case of configuration descriptor requests, to which we respond
+ * by returning the current device descriptor, configuration descriptor, and,
+ * for each interface active, the interface descriptor and associated
+ * endpoint descriptors.
+ * Other descriptor, for e.g. for String descriptors, may also be large, for
+ * example for internationalization, for which the size is 255.
+ */
+#define MAX_DESCRIPTOR_LEN 256
+
+
+/*
  * Handle USB requests (standard setup packets)
  * This API is to be used by te driver as a callback to oepint().
  * This means that the driver needs to fullfill these two arguments:

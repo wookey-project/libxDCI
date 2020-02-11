@@ -105,8 +105,11 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
             log_printf("[USBCTRL] request string desc\n");
             *desc_size = 0;
             uint32_t descriptor_size = sizeof(usbctrl_string_descriptor_t);
-            if (descriptor_size > 128) {
+            if (descriptor_size > MAX_DESCRIPTOR_LEN) {
                 log_printf("[USBCTRL] not enough space for string descriptor !!!\n");
+                errcode = MBED_ERROR_UNSUPORTED_CMD;
+                *desc_size = 0;
+                goto err;
             }
             log_printf("[USBCTRL] create string desc of size %d\n", descriptor_size);
             {
@@ -169,8 +172,10 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                     num_ifaces_for_cfg++;
                 }
             }
-            if (descriptor_size > 128) {
+            if (descriptor_size > MAX_DESCRIPTOR_LEN) {
                 log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
+                errcode = MBED_ERROR_UNSUPORTED_CMD;
+                *desc_size = 0;
                 goto err;
             }
             log_printf("[USBCTRL] create config desc of size %d\n", descriptor_size);
