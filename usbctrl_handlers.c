@@ -187,13 +187,19 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
     // usbotghs_send_zlp(ep);
 
     log_printf("[LIBCTRL] handle inpevent\n");
-    for (uint8_t i = 0; i < ctx->interfaces[ctx->curr_cfg].usb_ep_number; ++i) {
-        if (ctx->interfaces[ctx->curr_cfg].eps[i].ep_num == ep) {
-            if (ctx->interfaces[ctx->curr_cfg].eps[i].handler) {
-                log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
-                ctx->interfaces[ctx->curr_cfg].eps[i].handler(size);
+    for (uint8_t iface = 0; iface < ctx->interface_num; ++iface) {
+        if (ctx->interfaces[iface].cfg_id != ctx->curr_cfg) {
+            continue;
+        }
+        for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
+            if (ctx->interfaces[iface].eps[i].ep_num == ep) {
+                log_printf("[LIBCTRL] found ep in iface (cell %d)\n", i);
+                if (ctx->interfaces[iface].eps[i].handler) {
+                    log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
+                    ctx->interfaces[iface].eps[i].handler(size);
+                }
+                break;
             }
-            break;
         }
     }
     dev_id = dev_id;
@@ -247,7 +253,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
             }
             for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
                 if (ctx->interfaces[iface].eps[i].ep_num == ep) {
-                    printf("[LIBCTRL] oepint: executing upper data handler for EP %d\n", ep);
+                    log_printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d\n",ctx->interfaces[iface].eps[i].handler, ep);
                     if (ctx->interfaces[iface].eps[i].handler) {
                         ctx->interfaces[iface].eps[i].handler(size);
                     }
