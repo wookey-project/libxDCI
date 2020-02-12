@@ -123,10 +123,9 @@ typedef enum {
  * USB Endpoint access mode
  */
 typedef enum {
-    USB_EP_MODE_READ,
-    USB_EP_MODE_WRITE,
-    USB_EP_MODE_DATA /* e.g. DFU EP */
-} usb_ep_mode_t;
+    USB_EP_DIR_OUT, /* EP OUT, receiving in device mode */
+    USB_EP_DIR_IN   /* EP IN, sending in device mode */
+} usb_ep_dir_t;
 
 /*
  * USB Endpoint attribute
@@ -164,7 +163,7 @@ typedef void (*usb_ioep_handler_t)(uint32_t size);
  */
 typedef struct {
     usb_ep_type_t    type;                  /* EP type */
-    usb_ep_mode_t    mode;                  /* EP mode */
+    usb_ep_dir_t     dir;                   /* EP direction */
     usb_ep_attr_t    attr;                  /* EP attributes */
     usb_ep_usage_t   usage;                 /* EP usage */
     uint16_t         pkt_maxsize;           /* pkt maxsize in this EP */

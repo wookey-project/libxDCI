@@ -352,19 +352,27 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
         }
         for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
             usbotghs_ep_dir_t dir;
-            if (ctx->interfaces[iface].eps[i].mode == USB_EP_MODE_READ) {
+            if (ctx->interfaces[iface].eps[i].dir == USB_EP_DIR_OUT) {
                 dir = USBOTG_HS_EP_DIR_OUT;
             } else {
                 dir = USBOTG_HS_EP_DIR_IN;
             }
-            log_printf("[LIBCTRL] enabling EP %d (dir %d)\n", ctx->interfaces[iface].eps[i].ep_num, dir);
-            usbotghs_configure_endpoint(ctx->interfaces[iface].eps[i].ep_num,
+            log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->interfaces[iface].eps[i].ep_num, dir);
+            errcode = usbotghs_configure_endpoint(ctx->interfaces[iface].eps[i].ep_num,
                     ctx->interfaces[iface].eps[i].type,
                     dir,
                     ctx->interfaces[iface].eps[i].pkt_maxsize,
                     USB_HS_DXEPCTL_SD1PID_SODDFRM);
+            if (errcode != MBED_ERROR_NONE) {
+                log_printf("[LIBCTRL] unable to configure EP %d (dir %d): err %d\n", ctx->interfaces[iface].eps[i].ep_num, dir, errcode);
+                goto err;
+            }
             /* handled by usb_bbb read_cmd() */
-            usbotghs_activate_endpoint(ctx->interfaces[iface].eps[i].ep_num, dir);
+#if 0
+            if (ctx->interfaces[iface].eps[i].dir == USB_EP_DIR_OUT) {
+                usbotghs_activate_endpoint(ctx->interfaces[iface].eps[i].ep_num, dir);
+            }
+#endif
             //usbotghs_endpoint_clear_nak(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
             ctx->interfaces[iface].eps[i].configured = true;
         }

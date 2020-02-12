@@ -234,8 +234,8 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                             cfg->bDescriptorType = USB_DESC_ENDPOINT;
                             ctx->interfaces[iface_id].eps[i].ep_num = i + 1;
                             cfg->bEndpointAddress = ctx->interfaces[iface_id].eps[i].ep_num;
-                            if (ctx->interfaces[iface_id].eps[i].mode == USB_EP_MODE_WRITE) {
-                                cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for WRITE (i.e. IN) EPs */
+                            if (ctx->interfaces[iface_id].eps[i].dir == USB_EP_DIR_IN) {
+                                cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for IN EPs */
                             }
                             cfg->bmAttributes =
                                 ctx->interfaces[iface_id].eps[i].type       |
