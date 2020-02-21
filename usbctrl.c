@@ -218,7 +218,7 @@ mbed_error_t usbctrl_start_device(volatile usbctrl_context_t      *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] configuring backend driver\n");
-    if ((errcode = usbotghs_configure(USBOTGHS_MODE_DEVICE)) != MBED_ERROR_NONE) {
+    if ((errcode = usbotghs_configure(USBOTGHS_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
         usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
         goto end;

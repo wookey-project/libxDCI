@@ -362,7 +362,8 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
                     ctx->interfaces[iface].eps[i].type,
                     dir,
                     ctx->interfaces[iface].eps[i].pkt_maxsize,
-                    USB_HS_DXEPCTL_SD1PID_SODDFRM);
+                    USB_HS_DXEPCTL_SD1PID_SODDFRM,
+                    ctx->interfaces[iface].eps[i].handler);
             if (errcode != MBED_ERROR_NONE) {
                 log_printf("[LIBCTRL] unable to configure EP %d (dir %d): err %d\n", ctx->interfaces[iface].eps[i].ep_num, dir, errcode);
                 goto err;

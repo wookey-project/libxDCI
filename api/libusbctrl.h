@@ -56,6 +56,7 @@
 /* called by libusbctrl when the SetConfiguration request has been received and handled.
  * From now on, the upper layer EPs are set and ready to use */
 void usbctrl_configuration_set(void);
+void usbctrl_reset_received(void);
 
 
 /************************************************
@@ -152,7 +153,7 @@ typedef enum {
  * This handler is called on oepint and iepint events by the libcontrol oepint and
  * iepint handlers for the corresponding EP.
  */
-typedef void (*usb_ioep_handler_t)(uint32_t size);
+typedef mbed_error_t (*usb_ioep_handler_t)(uint32_t dev_id, uint32_t size, uint8_t ep_id);
 
 /*
  * USB Endpoint definition
