@@ -28,7 +28,7 @@
 #include "usbctrl_state.h"
 #include "generated/devlist.h"
 /* include usb driver API */
-#include "libusbotghs.h"
+#include "usbctrl_backend.h"
 #include "usbctrl.h"
 
 /*
@@ -55,7 +55,7 @@ mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx)
     }
     switch (ctx->dev_id) {
         case USB_OTG_HS_ID:
-            errcode = usbotghs_declare();
+            errcode = usb_backend_drv_declare();
             break;
         case USB_OTG_FS_ID:
             errcode = MBED_ERROR_NOBACKEND;
@@ -93,7 +93,7 @@ mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx)
 
     usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
-    if ((errcode = usbotghs_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
+    if ((errcode = usb_backend_drv_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
         goto end;
     }
     /* control pipe recv FIFO is ready to be used */
@@ -218,7 +218,7 @@ mbed_error_t usbctrl_start_device(volatile usbctrl_context_t      *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] configuring backend driver\n");
-    if ((errcode = usbotghs_configure(USBOTGHS_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
+    if ((errcode = usb_backend_drv_configure(USBOTGHS_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
         usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
         goto end;

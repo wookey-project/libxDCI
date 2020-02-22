@@ -22,7 +22,7 @@
  *
  */
 
-#include "libusbotghs.h"
+#include "usbctrl_backend.h"
 #include "api/libusbctrl.h"
 #include "usbctrl_handlers.h"
 #include "usbctrl_state.h"
@@ -71,7 +71,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             /* as USB Reset action reinitialize the EP0 FIFOs (flush, purge and deconfigure) they must
              * be reconfigure for EP0 here. */
             log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
-            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -80,7 +80,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             break;
         case USB_DEVICE_STATE_SUSPENDED_DEFAULT:
             /* awake from suspended state, back to default */
-            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -90,7 +90,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             break;
         case USB_DEVICE_STATE_SUSPENDED_ADDRESS:
             /* awake from suspended state, back to address */
-            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -100,7 +100,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             break;
         case USB_DEVICE_STATE_SUSPENDED_CONFIGURED:
             /* awake from suspended state, back to configured */
-            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -109,7 +109,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             break;
         case USB_DEVICE_STATE_DEFAULT:
             /* going back to default... meaning doing nothing */
-            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -118,21 +118,21 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             break;
         case USB_DEVICE_STATE_ADDRESS:
             /* going back to default */
-            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
             }
             /* control pipe recv FIFO is ready to be used */
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             ctx->address = 0;
-            usbotghs_set_address(0);
+            usb_backend_drv_set_address(0);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             /* INFO: deconfigure any potential active EP of current config is automatically
              * done by USB OTG HS core at reset */
 
             /* going back to default */
-            errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -140,7 +140,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             /* when configured, the upper layer must also be reset */
             ctx->address = 0;
-            usbotghs_set_address(0);
+            usb_backend_drv_set_address(0);
             usbctrl_reset_received();
             break;
         default:
@@ -186,7 +186,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
      */
     /* acknowledge data transfert. For control & bulk (not isochronous, IT ?) */
     // acknowledgement in request handling by now...
-    // usbotghs_send_zlp(ep);
+    // usb_backend_drv_send_zlp(ep);
 
     log_printf("[LIBCTRL] handle inpevent\n");
     for (uint8_t iface = 0; iface < ctx->interface_num; ++iface) {
@@ -224,13 +224,13 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
 
     // XXX
     if (ep > 0) {
-    printf("[LIBCTRL] oepint: ep %d state is %d\n", ep, usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
+    printf("[LIBCTRL] oepint: ep %d state is %d\n", ep, usb_backend_drv_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
     }
     /* at ouepevent time, the EP can be in SETUP state or in DATA OUT state.
      * In the first case, we have received a SETUP packet, targetting the libctrl,
      * in the second case, we have received some data, targetting one of the
      * interface which has registered a DATA EP with the corresponding EP id */
-    switch (usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT)) {
+    switch (usb_backend_drv_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT)) {
         case USBOTG_HS_EP_STATE_SETUP:
             log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
             if (size == 8) {
@@ -269,11 +269,11 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * the EP on which we have received some content. This is *not* a valid behavior, and we
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
-            usbotghs_endpoint_set_nak(ep, USBOTG_HS_EP_DIR_OUT);
+            usb_backend_drv_endpoint_set_nak(ep, USBOTG_HS_EP_DIR_OUT);
         }
         default:
             log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",
-                    usbotghs_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
+                    usb_backend_drv_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
             break;
     }
 #if 0
@@ -297,7 +297,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
          * the EP on which we have received some content. This is *not* a valid behavior, and we
          * should inform the host of this */
         errcode = MBED_ERROR_INVSTATE;
-        usbotghs_endpoint_set_nak(ep, USBOTG_HS_EP_DIR_OUT);
+        usb_backend_drv_endpoint_set_nak(ep, USBOTG_HS_EP_DIR_OUT);
     }
 #endif
 err:
