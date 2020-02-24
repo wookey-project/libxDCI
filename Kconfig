@@ -18,6 +18,16 @@ config USR_LIB_USBCTRL_DEBUG
   This option is efficient only if KERNEL_SERIAL is activated.
 
 
+config USBCTRL_MAX_CFG
+  int "Max number of independent configurations"
+  default 1
+  ---help---
+  This define the maximum number of USB alternative configurations. Each
+  configuration hold one or more interface(s), each handling a list of
+  endpoint and an associated USB class.
+
+
+
 config USBCTRL_MAX_CTX
   int "Max number of concurrent contexts supported"
   default 2

@@ -239,7 +239,6 @@ typedef struct {
    usb_class_t        usb_class;      /*< the standard USB Class */
    uint8_t            usb_subclass;   /*< interface subclass */
    uint8_t            usb_protocol;   /*< interface protocol */
-   uint8_t            cfg_id;         /*< interface associated configuration ID */
    bool               dedicated;      /*< is the interface hosted in a dedicated configuration (not shared with others) ? */
    usb_rqst_handler_t rqst_handler;   /*< interface Requests handler */
    functional_descriptor_p func_desc; /*< pointer to functional descriptor, if it exists */
@@ -255,6 +254,13 @@ typedef struct {
 
 #define MAX_INTERFACES_PER_DEVICE 4
 
+typedef struct {
+    uint8_t                first_free_epid;   /* first free EP identifier (starting with 1, as 0 is control) */
+    uint8_t                interface_num;     /*< Number of personalities registered */
+    usbctrl_interface_t    interfaces[MAX_INTERFACES_PER_DEVICE];     /*< For each registered interface */
+} usbctrl_configuration_t;
+
+
 typedef enum {
    USB_CTRL_RCV_FIFO_SATE_NOSTORAGE, /*< No receive FIFO set yet */
    USB_CTRL_RCV_FIFO_SATE_FREE,  /*< Receive FIFO is free (no active content in it) */
@@ -269,12 +275,10 @@ typedef struct usbctrl_context {
     uint32_t               dev_id;              /*< device id, from the USB device driver */
     uint16_t               address;             /*< device address, to be set by std req */
     /* Then, about personalities (info, number) */
-    uint8_t                interface_num;     /*< Number of personalities registered */
-    usbctrl_interface_t    interfaces[MAX_INTERFACES_PER_DEVICE];     /*< For each registered interface,
-                                                                        its associated infos */
     /* then current context state, associated to the USB standard state automaton  */
     uint8_t                 num_cfg;        /*< number of different onfigurations */
     uint8_t                 curr_cfg;       /*< current configuration (starting with 1) */
+    usbctrl_configuration_t cfg[CONFIG_USBCTRL_MAX_CFG]; /* configurations list */
     uint8_t                 state;          /*< USB state machine current state */
     uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
     bool                    ctrl_fifo_state; /*< RECV FIFO of control plane state */

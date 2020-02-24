@@ -345,44 +345,48 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     /* this should be done by detecting any configured EP of any registered iface that is set
      * 'configured' just now */
     requested_configuration = pkt->wValue;
+    /* sanity on requested configuration */
+    if ((requested_configuration == 0) || (requested_configuration > ctx->num_cfg)) {
+        log_printf("[USBCTRL] Invalid requested configuration!\n");
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+
+
+    ctx->curr_cfg = requested_configuration - 1;
+    uint8_t curr_cfg = ctx->curr_cfg;
     /* activate endpoints... */
-    for (uint8_t iface = 0; iface < ctx->interface_num; ++iface) {
-        if (ctx->interfaces[iface].cfg_id != ctx->curr_cfg) {
-            continue;
-        }
-        for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
+    for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
+        for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
             usb_backend_drv_ep_dir_t dir;
-            if (ctx->interfaces[iface].eps[i].dir == USB_EP_DIR_OUT) {
+            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_OUT) {
                 dir = USBOTG_HS_EP_DIR_OUT;
             } else {
                 dir = USBOTG_HS_EP_DIR_IN;
             }
-            log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->interfaces[iface].eps[i].ep_num, dir);
-            errcode = usb_backend_drv_configure_endpoint(ctx->interfaces[iface].eps[i].ep_num,
-                    ctx->interfaces[iface].eps[i].type,
-                    dir,
-                    ctx->interfaces[iface].eps[i].pkt_maxsize,
-                    USB_HS_DXEPCTL_SD1PID_SODDFRM,
-                    ctx->interfaces[iface].eps[i].handler);
-            if (errcode != MBED_ERROR_NONE) {
-                log_printf("[LIBCTRL] unable to configure EP %d (dir %d): err %d\n", ctx->interfaces[iface].eps[i].ep_num, dir, errcode);
-                goto err;
+            log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir);
+            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].type != USB_EP_TYPE_CONTROL) {
+                errcode = usb_backend_drv_configure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num,
+                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].type,
+                        dir,
+                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].pkt_maxsize,
+                        USB_HS_DXEPCTL_SD1PID_SODDFRM,
+                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler);
+                if (errcode != MBED_ERROR_NONE) {
+                    log_printf("[LIBCTRL] unable to configure EP %d (dir %d): err %d\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir, errcode);
+                    goto err;
+                }
             }
-            /* handled by usb_bbb read_cmd() */
-#if 0
-            if (ctx->interfaces[iface].eps[i].dir == USB_EP_DIR_OUT) {
-                usb_backend_drv_activate_endpoint(ctx->interfaces[iface].eps[i].ep_num, dir);
-            }
-#endif
-            //usb_backend_drv_endpoint_clear_nak(ctx->interfaces[ctx->curr_cfg].eps[i].ep_num, dir);
-            ctx->interfaces[iface].eps[i].configured = true;
+            ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true;
         }
     }
     usbctrl_configuration_set();
     usb_backend_drv_send_zlp(0);
     /* handling standard Request */
     pkt = pkt;
+    return errcode;
 err:
+    usb_backend_drv_endpoint_stall(0, USB_EP_DIR_OUT);
     return errcode;
 }
 
@@ -834,13 +838,20 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
 
         log_printf("[USBCTRL] receiving class Request\n");
         /* ... or, is the current request is a class request, then handle in upper layer*/
-        for (uint8_t i = 0; i < ctx->interface_num; ++i) {
-            if (ctx->interfaces[i].cfg_id == ctx->curr_cfg) {
-                if (ctx->interfaces[i].rqst_handler) {
-                    log_printf("[USBCTRL] execute iface class handler\n");
-                    ctx->interfaces[i].rqst_handler(ctx, pkt);
+        uint8_t curr_cfg = ctx->curr_cfg;
+        mbed_error_t upper_stack_err = MBED_ERROR_INVPARAM;
+        for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interface_num; ++i) {
+            if (ctx->cfg[curr_cfg].interfaces[i].rqst_handler) {
+                log_printf("[USBCTRL] execute iface class handler\n");
+                if ((upper_stack_err = ctx->cfg[curr_cfg].interfaces[i].rqst_handler(ctx, pkt)) == MBED_ERROR_NONE) {
+                    /* upper class handler found, we can leave the loop */
+                    break;
                 }
             }
+        }
+        /* fallback if no upper stack class request handler was able to handle the received CLASS request */
+        if (upper_stack_err != MBED_ERROR_NONE) {
+            usb_backend_drv_endpoint_stall(0, USB_EP_DIR_OUT);
         }
     } else {
         /* ... or unknown, return an error */

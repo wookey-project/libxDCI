@@ -71,9 +71,13 @@ mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx)
     ctx_list[num_ctx] = ctx;
     num_ctx++;
     /* initialize context */
-    ctx->interface_num = 0;
-    ctx->num_cfg = 0;
+    ctx->num_cfg = 1;
+    for (uint8_t i = 0; i < CONFIG_USBCTRL_MAX_CFG; ++i) {
+        ctx->cfg[i].interface_num = 0;
+        ctx->cfg[i].first_free_epid = 1;
+    }
     ctx->address = 0;
+    ctx->curr_cfg = 0;
 
 err:
     return errcode;
@@ -86,7 +90,7 @@ mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] initializing automaton\n");
-    memset((void*)ctx->interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
+    memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
     /* receive FIFO is not set in the driver. Wait for USB reset */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_NOSTORAGE;
     /* initialize with POWERED. We wait for the first reset event */
@@ -98,6 +102,10 @@ mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx)
     }
     /* control pipe recv FIFO is ready to be used */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+
+    /* default config is 0. In it, first free EP id is 1 */
+    ctx->cfg[0].first_free_epid = 1;
+
 
 end:
     return errcode;
@@ -131,9 +139,9 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
     if (ep == EP0) {
         return true;
     }
-    for (uint8_t i = 0; i < ctx->interface_num; ++i) {
-        for (uint8_t j = 0; j < ctx->interfaces[i].usb_ep_number; ++j) {
-            if (ctx->interfaces[i].eps[j].ep_num == ep) {
+    for (uint8_t i = 0; i < ctx->cfg[ctx->curr_cfg].interface_num; ++i) {
+        for (uint8_t j = 0; j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number; ++j) {
+            if (ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) {
                 return true;
             }
         }
@@ -148,7 +156,7 @@ bool usbctrl_is_interface_exists(usbctrl_context_t *ctx, uint8_t iface)
         return false;
     }
 
-    if (iface < ctx->interface_num) {
+    if (iface < ctx->cfg[ctx->curr_cfg].interface_num) {
         return true;
     }
     return false;
@@ -161,8 +169,8 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
         return NULL;
     }
 
-    if (iface < ctx->interface_num) {
-        return &(ctx->interfaces[iface]);
+    if (iface < ctx->cfg[ctx->curr_cfg].interface_num) {
+        return &(ctx->cfg[ctx->curr_cfg].interfaces[iface]);
     }
     return NULL;
 }
@@ -173,40 +181,50 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
 mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *ctx,
                                        __out    usbctrl_interface_t  *iface)
 {
+    uint8_t iface_config = 0;
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
     if (ctx == NULL || iface == NULL) {
         errcode = MBED_ERROR_INVPARAM;
     }
     /* check space */
-   if (ctx->interface_num == MAX_INTERFACES_PER_DEVICE) {
+    if (ctx->cfg[ctx->curr_cfg].interface_num == MAX_INTERFACES_PER_DEVICE) {
         errcode = MBED_ERROR_NOMEM;
-   }
-   /* let's register */
-   log_printf("declaring new interface class %x, %d EPs\n", iface->usb_class, iface->usb_ep_number);
+    }
+    if (iface->dedicated == true && ctx->cfg[ctx->curr_cfg].interface_num != 0) {
+        ctx->num_cfg++;
+        iface_config = ctx->num_cfg;
+        ctx->cfg[iface_config].first_free_epid = 1;
+    } else {
+        iface_config = ctx->curr_cfg;
+    }
+    if (iface_config >= CONFIG_USBCTRL_MAX_CFG) {
+        errcode = MBED_ERROR_NOMEM;
+        goto err;
+    }
+    /* iface identifier in target configuration */
+    uint8_t iface_num = ctx->cfg[iface_config].interface_num;
+
+    /* let's register */
+   log_printf("declaring new interface class %x, %d EPs in Cfg %d/%d\n", iface->usb_class, iface->usb_ep_number, iface_config, iface_num);
    /* 1) make a copy of interface. The interface identifier is its cell number  */
-   memcpy((void*)&(ctx->interfaces[ctx->interface_num]), (void*)iface, sizeof(usbctrl_interface_t));
-   /* 3) set as default if no other ifaces */
-   if (ctx->num_cfg == 0) {
-       ctx->curr_cfg = 1;
-       ctx->num_cfg = 1;
-       ctx->interfaces[ctx->interface_num].cfg_id = ctx->curr_cfg;
-   } else {
-       /* 4) or, depending on the interface flags, add it to current config or to a new config */
-       if (iface->dedicated == true) {
-           ctx->num_cfg++;
-           ctx->interfaces[ctx->interface_num].cfg_id = ctx->num_cfg;
+   memcpy((void*)&(ctx->cfg[iface_config].interfaces[iface_num]), (void*)iface, sizeof(usbctrl_interface_t));
+   /* 2) or, depending on the interface flags, add it to current config or to a new config */
+   /* at declaration time, all interface EPs are disabled  and calculate EP identifier for the interface */
+   for (uint8_t i = 0; i < ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number; ++i) {
+       volatile usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]);
+       ep->configured = false;
+       if (ep->type == USB_EP_TYPE_CONTROL) {
+           ep->ep_num = 0;
        } else {
-           ctx->interfaces[ctx->interface_num].cfg_id = ctx->curr_cfg;
+           ep->ep_num = ctx->cfg[iface_config].first_free_epid++;
+           /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
        }
    }
-   /* at declaration time, all interface EPs are disabled */
-   for (uint8_t i = 0; i < ctx->interfaces[ctx->interface_num].usb_ep_number; ++i) {
-       ctx->interfaces[ctx->interface_num].eps[i].configured = false;
-   }
-   /* 3) now that everything is Okay, consider iface registered */
-   ctx->interface_num++;
-   /* 4) iface EPs should be configured when receiving setConfiguration or SetInterface */
+   /* 4) now that everything is Okay, consider iface registered */
+   ctx->cfg[iface_config].interface_num++;
+   /* 5) iface EPs should be configured when receiving setConfiguration or SetInterface */
+err:
    return errcode;
 }
 

@@ -189,16 +189,14 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
     // usb_backend_drv_send_zlp(ep);
 
     log_printf("[LIBCTRL] handle inpevent\n");
-    for (uint8_t iface = 0; iface < ctx->interface_num; ++iface) {
-        if (ctx->interfaces[iface].cfg_id != ctx->curr_cfg) {
-            continue;
-        }
-        for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
-            if (ctx->interfaces[iface].eps[i].ep_num == ep) {
+    uint8_t curr_cfg = ctx->curr_cfg;
+    for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
+        for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
+            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep) {
                 log_printf("[LIBCTRL] found ep in iface (cell %d)\n", i);
-                if (ctx->interfaces[iface].eps[i].handler) {
+                if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
                     log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
-                    ctx->interfaces[iface].eps[i].handler(dev_id, size, ep);
+                    ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
                 }
                 break;
             }
@@ -251,15 +249,13 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
             }
             break;
         case USBOTG_HS_EP_STATE_DATA_OUT: {
-            for (uint8_t iface = 0; iface < ctx->interface_num; ++iface) {
-                if (ctx->interfaces[iface].cfg_id != ctx->curr_cfg) {
-                    continue;
-                }
-                for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
-                    if (ctx->interfaces[iface].eps[i].ep_num == ep) {
-                        printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d (size %d)\n",ctx->interfaces[iface].eps[i].handler, ep, size);
-                        if (ctx->interfaces[iface].eps[i].handler) {
-                            ctx->interfaces[iface].eps[i].handler(dev_id, size, ep);
+            uint8_t curr_cfg = ctx->curr_cfg;
+            for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
+                for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
+                    if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep) {
+                        printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d (size %d)\n",ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler, ep, size);
+                        if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
+                            ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
                         }
                         goto err;
                     }
@@ -276,30 +272,6 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                     usb_backend_drv_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
             break;
     }
-#if 0
-    } else {
-        log_printf("[LIBCTRL] handle outepevent\n");
-        for (uint8_t iface = 0; iface < ctx->interface_num; ++iface) {
-            if (ctx->interfaces[iface].cfg_id != ctx->curr_cfg) {
-                continue;
-            }
-            for (uint8_t i = 0; i < ctx->interfaces[iface].usb_ep_number; ++i) {
-                if (ctx->interfaces[iface].eps[i].ep_num == ep) {
-                    log_printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d\n",ctx->interfaces[iface].eps[i].handler, ep);
-                    if (ctx->interfaces[iface].eps[i].handler) {
-                        ctx->interfaces[iface].eps[i].handler(size);
-                    }
-                    goto err;
-                }
-            }
-        }
-        /* if we arrive here, this means that no active EP has been found above, corresponding to
-         * the EP on which we have received some content. This is *not* a valid behavior, and we
-         * should inform the host of this */
-        errcode = MBED_ERROR_INVSTATE;
-        usb_backend_drv_endpoint_set_nak(ep, USBOTG_HS_EP_DIR_OUT);
-    }
-#endif
 err:
     return errcode;
 }
