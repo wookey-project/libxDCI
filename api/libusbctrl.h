@@ -219,7 +219,16 @@ struct usbctrl_context;
 typedef mbed_error_t     (*usb_rqst_handler_t)(struct usbctrl_context  *ctx,
                                               usbctrl_setup_pkt_t *inpkt);
 
-typedef uint8_t * functional_descriptor_p;
+/*
+ * Handler prototype for Class level descriptor getter. An upper stack must
+ * have such handler if it possess such descriptor. Otherwise, it can be set
+ * to NULL in the interface structure.
+ */
+typedef mbed_error_t
+      (*usb_class_get_descriptor_handler_t)(uint8_t            *buf,
+                                            uint32_t           *desc_size,
+                                            struct usbctrl_context  *ctx);
+
 
 /*
  * This is the interface definition.
@@ -241,8 +250,7 @@ typedef struct {
    uint8_t            usb_protocol;   /*< interface protocol */
    bool               dedicated;      /*< is the interface hosted in a dedicated configuration (not shared with others) ? */
    usb_rqst_handler_t rqst_handler;   /*< interface Requests handler */
-   functional_descriptor_p func_desc; /*< pointer to functional descriptor, if it exists */
-   uint8_t            func_desc_len;  /*< functional descriptor length (in byte)  */
+   usb_class_get_descriptor_handler_t class_desc_handler; /* class level descriptor getter */
    uint8_t            usb_ep_number;  /*< the number of EP associated */
    usb_ep_infos_t     eps[MAX_EP_PER_PERSONALITY];  /*< for each EP, the associated
                                                       informations */

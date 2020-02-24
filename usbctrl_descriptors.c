@@ -49,11 +49,11 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
  * requested descriptor. The buffer size is under the control of the
  * get_descriptor standard request handler
  */
-mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
-                                    uint8_t                   *buf,
-                                    uint32_t                  *desc_size,
-                                    usbctrl_context_t         *ctx,
-                                    usbctrl_setup_pkt_t       *pkt)
+mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
+                                    __out uint8_t                   *buf,
+                                    __out uint32_t                  *desc_size,
+                                    __in  usbctrl_context_t         *ctx,
+                                    __in usbctrl_setup_pkt_t       *pkt)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
 
@@ -165,6 +165,29 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
             uint8_t curr_cfg = ctx->curr_cfg;
             uint8_t iface_num = ctx->cfg[curr_cfg].interface_num;
 
+            /* is there, at upper layer, an additional class descriptor for
+             * current configuration ? if yes, we get back this descriptor
+             * and add it to the complete configuration descriptor we send
+             * to the host. */
+            /* Here, we only calculate, for each interface, if there is a
+             * class descriptor, its size. The effective descriptor will
+             * be stored later, when the overall configuration descriptor
+             * is forged. */
+            uint32_t class_desc_size = 0;
+            for (uint8_t i = 0; i < iface_num; ++i) {
+                if (ctx->cfg[curr_cfg].interfaces[i].class_desc_handler != NULL) {
+                    uint32_t max_buf_size = *desc_size;
+                    errcode = ctx->cfg[curr_cfg].interfaces[i].class_desc_handler(buf, &max_buf_size, ctx);
+                    if (errcode != MBED_ERROR_NONE) {
+                        goto err;
+                    }
+                    class_desc_size += max_buf_size;
+                }
+            }
+
+            /*
+             * Calculate and generate the complete configuration descriptor
+             */
             uint32_t descriptor_size =
                 sizeof(usbctrl_configuration_descriptor_t);
             for (uint8_t i = 0; i < iface_num; ++i) {
@@ -172,6 +195,10 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                     ctx->cfg[curr_cfg].interfaces[i].usb_ep_number *
                     sizeof(usbctrl_endpoint_descriptor_t);
             }
+            /* we add potential class descriptors found above ... From now on, the global descriptor size is
+             * complete, and can be sanitized properly in comparison with the passed buffer size */
+            descriptor_size += class_desc_size;
+
             if (descriptor_size > MAX_DESCRIPTOR_LEN) {
                 log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
                 errcode = MBED_ERROR_UNSUPORTED_CMD;
@@ -179,7 +206,8 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                 goto err;
             }
             log_printf("[USBCTRL] create config desc of size %d\n", descriptor_size);
-            uint8_t *config_desc = buf;
+            uint32_t curr_offset = 0;
+            uint8_t *config_desc = &(buf[curr_offset]);
             {
                 usbctrl_configuration_descriptor_t *cfg = (usbctrl_configuration_descriptor_t *)&(config_desc[0]);
                 cfg->bLength = sizeof(usbctrl_configuration_descriptor_t);
@@ -193,6 +221,7 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                 cfg->bmAttributes.remote_wakeup = 0;
                 cfg->bmAttributes.reserved = 0;
                 cfg->bMaxPower = 0;
+                curr_offset += sizeof(usbctrl_configuration_descriptor_t);
             }
             /* there can be 1, 2 or more interfaces. interfaces offset depends on the previous
              * interfaces number, and are calculated depending on the previous interfaces
@@ -200,14 +229,10 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
              * To do this, we start at offset 0 after configuration descriptor for the first
              * interface, and at the end of each interface, we increment the offset of the size
              * of the complete interface descriptor, including EP. */
-            uint32_t curr_offset = 0;
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
                     {
                         /* pointing to next field: interface descriptor */
-                        usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)
-                            ((uint8_t*)(&(config_desc[0]) +
-                                sizeof(usbctrl_configuration_descriptor_t)))
-                            + curr_offset;
+                        usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)&(buf[curr_offset]);
                         cfg->bLength = sizeof(usbctrl_interface_descriptor_t);
                         cfg->bDescriptorType = USB_DESC_INTERFACE;
                         cfg->bInterfaceNumber = 0;
@@ -217,17 +242,24 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                         cfg->bInterfaceSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
                         cfg->bInterfaceProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
                         cfg->iInterface = 1;
+                        curr_offset += sizeof(usbctrl_interface_descriptor_t);
                     }
                     {
-                        uint8_t i = 0;
+                        /* class level descriptor of current interface */
+                        if (ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler != NULL) {
+                            uint8_t *cfg = &(buf[curr_offset]);
+                            uint32_t max_buf_size = *desc_size - curr_offset;
+                            errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(cfg, &max_buf_size, ctx);
+                            if (errcode != MBED_ERROR_NONE) {
+                                goto err;
+                            }
+                            curr_offset += max_buf_size;
+                        }
+                    }
+                    {
                         /* and for this interface, handling each EP */
-                        for (; i < ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number; ++i) {
-                            usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)
-                                ((uint8_t*)(&(config_desc[0]) +
-                                    sizeof(usbctrl_configuration_descriptor_t) +
-                                    + curr_offset +
-                                    sizeof(usbctrl_interface_descriptor_t) +
-                                    i * (sizeof(usbctrl_endpoint_descriptor_t))));
+                        for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number; ++i) {
+                            usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)&(buf[curr_offset]);
 
                             cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
                             cfg->bDescriptorType = USB_DESC_ENDPOINT;
@@ -241,9 +273,8 @@ mbed_error_t usbctrl_get_descriptor(usbctrl_descriptor_type_t  type,
                                 ctx->cfg[curr_cfg].interfaces[iface_id].eps[i].usage << 4;
                             cfg->wMaxPacketSize = ctx->cfg[curr_cfg].interfaces[iface_id].eps[i].pkt_maxsize;
                             cfg->bInterval = 0;
+                            curr_offset += sizeof(usbctrl_endpoint_descriptor_t);
                         }
-                        curr_offset += sizeof(usbctrl_configuration_descriptor_t) +
-                            i * sizeof(usbctrl_endpoint_descriptor_t);
                     }
             /* returns the descriptor */
             }
