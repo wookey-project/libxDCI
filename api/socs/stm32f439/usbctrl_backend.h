@@ -84,6 +84,7 @@
 #define usb_backend_drv_send_zlp            usbotghs_send_zlp
 #define usb_backend_drv_set_address         usbotghs_set_address
 #define usb_backend_drv_set_recv_fifo       usbotghs_set_recv_fifo
+#define usb_backend_drv_get_ep_fifo         usbotghs_get_ep_fifo
 
 
 #endif/*!USBCTRL_BACKEND_H_*/

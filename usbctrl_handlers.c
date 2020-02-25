@@ -168,6 +168,10 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
     return errcode;
 }
 
+
+/*
+ * IN EP event (data sent) for EP 0
+ */
 mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -189,16 +193,25 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
 
     log_printf("[LIBCTRL] handle inpevent\n");
     uint8_t curr_cfg = ctx->curr_cfg;
-    for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
-        for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
-            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep) {
-                log_printf("[LIBCTRL] found ep in iface (cell %d)\n", i);
-                if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
-                    log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
-                    /* XXX: c'est ma FIFO ? oui, c'est pour moi. Non, c'est pour au dessus :-)*/
-                    ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
+    /* If we are in a request processing, we just close it. request processing
+     * that are closed here are the ones which send data (get_descriptor & co.)
+     * For them, the flag ctx->ctrl_req_processing is risen at request exec and
+     * is cleared here. other requests (the one which do not send data)
+     * have this flag clear syncrhonously. */
+    if (ctx->ctrl_req_processing == true) {
+        ctx->ctrl_req_processing = false;
+    } else {
+        for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
+            for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
+                if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep) {
+                    log_printf("[LIBCTRL] found ep in iface (cell %d)\n", i);
+                    if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
+                        log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
+                        /* XXX: c'est ma FIFO ? oui, c'est pour moi. Non, c'est pour au dessus :-)*/
+                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
+                    }
+                    break;
                 }
-                break;
             }
         }
     }
@@ -208,6 +221,9 @@ err:
 }
 
 
+/*
+ * OUT EP event (data recv) for EP 0
+ */
 mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -220,10 +236,6 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
         goto err;
     }
 
-    // XXX
-    if (ep > 0) {
-    printf("[LIBCTRL] oepint: ep %d state is %d\n", ep, usb_backend_drv_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
-    }
     /* at ouepevent time, the EP can be in SETUP state or in DATA OUT state.
      * In the first case, we have received a SETUP packet, targetting the libctrl,
      * in the second case, we have received some data, targetting one of the
@@ -254,21 +266,33 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
         case USBOTG_HS_EP_STATE_DATA_OUT: {
             uint8_t curr_cfg = ctx->curr_cfg;
             if (size == 0) {
+                /* Well; nothing to do with size = 0 ? */
                 break;
             }
             for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
                 for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
                     if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep) {
-                        printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d (size %d)\n",ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler, ep, size);
-                        if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
-                            /* has the upper stack reset the EP0 recv FIFO with its own FIFO ? */
-                            /* XXX: TODO */
-                            ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
-                            /* now that data are transfered (oepint finished) whe can set back our FIFO for
-                             * EP0, in order to support next EP0 events */
-                            /* XXX: TODO */
+                        /* EP0 special: We have received data from the host on CTRL EP.
+                         * These data can target our CTRL usage,  or another upper stack one's...
+                         * We can differenciate such cases by compare the currently configured
+                         * FIFO at driver level with our ususal recv FIFO. If the driver,
+                         * during the rxflvl time, used a FIFO not controlled by us, this means
+                         * that the current DATA out transfer is not for us.
+                         * In that last case:
+                         * 1. we call the upper layer stack
+                         * 2. we set back our FIFO to handle properly next setup packets
+                         */
+                        uint8_t *fifo = usb_backend_drv_get_ep_fifo(ep, USBOTG_HS_EP_DIR_OUT);
+                        if (fifo != ctx->ctrl_fifo) {
+                            log_printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d (size %d)\n",ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler, ep, size);
+                            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
+                               ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
+                                /* now that data are transfered (oepint finished) whe can set back our FIFO for
+                                 * EP0, in order to support next EP0 events */
+                                errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+                            }
+                            goto err;
                         }
-                        goto err;
                     }
                 }
             }

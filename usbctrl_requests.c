@@ -142,6 +142,8 @@ static mbed_error_t usbctrl_std_req_handle_clear_feature(usbctrl_setup_pkt_t *pk
     /* handling standard Request */
     pkt = pkt;
     ctx = ctx;
+    /*request finish here */
+    ctx->ctrl_req_processing = false;
 err:
     return errcode;
 }
@@ -162,6 +164,8 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
             /* This case is not forbidden by USB2.0 standard, but the behavior is
              * undefined. We can, for example, stall out. (FIXME) */
             usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
+            /*request finish here */
+            ctx->ctrl_req_processing = false;
             break;
         case USB_DEVICE_STATE_ADDRESS:
             if (usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_ENDPOINT &&
@@ -169,12 +173,16 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                 /* only interface or endpoint 0 allowed in ADDRESS state */
                 /* request error: sending STALL on status or data */
                 usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             if ((pkt->wIndex & 0xf) != 0) {
                 /* only interface or endpoint 0 allowed in ADDRESS state */
                 /* request error: sending STALL on status or data */
                 usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             /* handling get_status() for other cases */
@@ -184,6 +192,8 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                     uint8_t epnum = pkt->wIndex & 0xf;
                     if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
                         usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
+                        /*request finish here */
+                        ctx->ctrl_req_processing = false;
                         goto err;
                     }
                     /* FIXME: check EP direction too before returning status */
@@ -192,6 +202,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                     uint8_t resp[2] = { 0 };
                     usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
                     usb_backend_drv_endpoint_clear_nak(0, USBOTG_HS_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
                     break;
                 }
                 default:
@@ -206,6 +217,8 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
+            /*request finish here */
+            ctx->ctrl_req_processing = false;
             usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
     }
@@ -222,11 +235,15 @@ static mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t *pk
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
+        /*request finish here */
+        ctx->ctrl_req_processing = false;
         goto err;
     }
     /* handling standard Request */
     pkt = pkt;
     ctx = ctx;
+    /*request finish here */
+    ctx->ctrl_req_processing = false;
 err:
     return errcode;
 }
@@ -277,6 +294,8 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
             break;
     }
 err:
+    /*request finish here */
+    ctx->ctrl_req_processing = false;
     return errcode;
 }
 
@@ -314,6 +333,8 @@ static mbed_error_t usbctrl_std_req_handle_get_configuration(usbctrl_setup_pkt_t
             /* this should never be reached with the is_std_requests_allowed() function */
 
             usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
+            /*request finish here */
+            ctx->ctrl_req_processing = false;
             break;
     }
     pkt = pkt;
@@ -382,9 +403,13 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     usb_backend_drv_send_zlp(0);
     /* handling standard Request */
     pkt = pkt;
+    /*request finish here */
+    ctx->ctrl_req_processing = false;
     return errcode;
 err:
     usb_backend_drv_endpoint_stall(0, USB_EP_DIR_OUT);
+    /*request finish here */
+    ctx->ctrl_req_processing = false;
     return errcode;
 }
 
@@ -419,6 +444,8 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
     maxlength = pkt->wLength;
     if (maxlength == 0) {
         /* nothing to send */
+        /*request finish here */
+        ctx->ctrl_req_processing = false;
         goto err;
     }
     /* FIXME: we should calculate the maximum descriptor we can genrate and compare
@@ -429,13 +456,19 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
         case USB_REQ_DESCRIPTOR_DEVICE:
             log_printf("[USBCTRL] Std req: get device descriptor\n");
             if (pkt->wIndex != 0) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             if (maxlength == 0) {
                 errcode = usb_backend_drv_send_zlp(0);
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
             } else {
                 if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
-                log_printf("[USBCTRL] Failure while generating descriptor !!!\n");
+                    log_printf("[USBCTRL] Failure while generating descriptor !!!\n");
+                    /*request finish here */
+                    ctx->ctrl_req_processing = false;
                     goto err;
                 }
                 log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)\n", maxlength, size);
@@ -458,12 +491,18 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             log_printf("[USBCTRL] Std req: get configuration descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             if (maxlength == 0) {
                 errcode = usb_backend_drv_send_zlp(0);
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
             } else {
                 if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
+                    /*request finish here */
+                    ctx->ctrl_req_processing = false;
                     goto err;
                 }
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
@@ -487,10 +526,14 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
         case USB_REQ_DESCRIPTOR_STRING:
             log_printf("[USBCTRL] Std req: get string descriptor\n");
             if ((errcode = usbctrl_get_descriptor(USB_DESC_STRING, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             if (maxlength == 0) {
                 errcode = usb_backend_drv_send_zlp(0);
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
             } else {
                 if (maxlength > size) {
                     errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
@@ -508,12 +551,18 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             /* wIndex (language ID) should be zero */
             log_printf("[USBCTRL] Std req: get interface descriptor\n");
             if (pkt->wIndex != 0) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             if (maxlength == 0) {
                 errcode = usb_backend_drv_send_zlp(0);
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
             } else {
                 if ((errcode = usbctrl_get_descriptor(USB_DESC_INTERFACE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
+                    /*request finish here */
+                    ctx->ctrl_req_processing = false;
                     goto err;
                 }
                 if (maxlength > size) {
@@ -532,9 +581,13 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             log_printf("[USBCTRL] Std req: get EP descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             if ((errcode = usbctrl_get_descriptor(USB_DESC_ENDPOINT, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             if (maxlength > size) {
@@ -552,27 +605,39 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             log_printf("[USBCTRL] Std req: get dev qualifier descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             /*TODO */
+            /*request finish here */
+            ctx->ctrl_req_processing = false;
             usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
         case USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG:
             log_printf("[USBCTRL] Std req: get othspeed descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             /*TODO */
+            /*request finish here */
+            ctx->ctrl_req_processing = false;
             usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
         case USB_REQ_DESCRIPTOR_INTERFACE_POWER:
             log_printf("[USBCTRL] Std req: get iface power descriptor\n");
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
+                /*request finish here */
+                ctx->ctrl_req_processing = false;
                 goto err;
             }
             /*TODO */
+            /*request finish here */
+            ctx->ctrl_req_processing = false;
             usb_backend_drv_endpoint_stall(EP0, USBOTG_HS_EP_DIR_IN);
             break;
         default:
@@ -606,6 +671,8 @@ static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *p
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
+        /*request finish here */
+        ctx->ctrl_req_processing = false;
         goto err;
     }
     /* handling standard Request */
@@ -615,6 +682,8 @@ static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *p
      */
 
     usb_backend_drv_send_zlp(0);
+    /*request finish here */
+    ctx->ctrl_req_processing = false;
 err:
     return errcode;
 }
@@ -628,11 +697,15 @@ static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
+        /* request finish here */
+        ctx->ctrl_req_processing = false;
         goto err;
     }
     /* handling standard Request */
     pkt = pkt;
     usb_backend_drv_send_zlp(0);
+    /*request finish here */
+    ctx->ctrl_req_processing = false;
 err:
     return errcode;
 }
@@ -738,6 +811,9 @@ static inline mbed_error_t usbctrl_handle_vendor_requests(usbctrl_setup_pkt_t *p
         goto err;
     }
     pkt = pkt;
+
+    /* request finish here */
+    ctx->ctrl_req_processing = false;
 err:
     return errcode;
 }
@@ -827,10 +903,12 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     }
 
     if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_STD) {
+        ctx->ctrl_req_processing = true;
         /* For current request of current context, is the current context is a standard
          * request ? If yes, handle localy */
         errcode = usbctrl_handle_std_requests(pkt, ctx);
     } else if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_VENDOR) {
+        ctx->ctrl_req_processing = true;
         /* ... or, is the current request is a vendor request, then handle locally
          * for vendor */
         errcode = usbctrl_handle_vendor_requests(pkt, ctx);

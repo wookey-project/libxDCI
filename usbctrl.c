@@ -100,6 +100,7 @@ mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx)
     }
     /* control pipe recv FIFO is ready to be used */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+    ctx->ctrl_req_processing = false;
 
     /* default config is 0. In it, first free EP id is 1 */
     ctx->cfg[0].first_free_epid = 1;
