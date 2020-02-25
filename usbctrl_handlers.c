@@ -272,6 +272,12 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
             for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
                 for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
                     if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep) {
+                        /*
+                         * XXX: when using ctx->ctrl_req_processing flag, is the FIFO comparison
+                         * still useful ?
+                         * Though. We *must* set the recv FIFO again, considering that no
+                         * DATA in on EP0 happen for CTRL lib, only for upper stack.
+                         */
                         /* EP0 special: We have received data from the host on CTRL EP.
                          * These data can target our CTRL usage,  or another upper stack one's...
                          * We can differenciate such cases by compare the currently configured

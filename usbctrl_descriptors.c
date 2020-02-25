@@ -65,7 +65,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
     switch (type) {
         case USB_DESC_DEVICE: {
-            printf("[USBCTRL] request device desc (num cfg: %d)\n", ctx->num_cfg);
+            log_printf("[USBCTRL] request device desc (num cfg: %d)\n", ctx->num_cfg);
             usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;
             desc->bLength = sizeof(usbctrl_device_descriptor_t);
             desc->bDescriptorType = 0x1; /* USB Desc Device */
@@ -155,7 +155,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             break;
         }
         case USB_DESC_CONFIGURATION: {
-            printf("[USBCTRL] request configuration desc\n");
+            log_printf("[USBCTRL] request configuration desc\n");
             /* configuration descriptor is dynamic, depends on current config and its number of endpoints... */
             /* FIXME, we should be able to return a config descriptor with more
              * than one interface if needed, including potential successive
@@ -179,10 +179,10 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                     uint32_t max_buf_size = MAX_DESCRIPTOR_LEN;
                     errcode = ctx->cfg[curr_cfg].interfaces[i].class_desc_handler(buf, &max_buf_size, ctx);
                     if (errcode != MBED_ERROR_NONE) {
-                        printf("[LIBCTRL] failure while getting class desc: %d\n", errcode);
+                        log_printf("[LIBCTRL] failure while getting class desc: %d\n", errcode);
                         goto err;
                     }
-                    printf("[LIBCTRL] found one class level descriptor of size %d\n", max_buf_size);
+                    log_printf("[LIBCTRL] found one class level descriptor of size %d\n", max_buf_size);
                     class_desc_size += max_buf_size;
                 }
             }
@@ -208,12 +208,12 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             descriptor_size += class_desc_size;
 
             if (descriptor_size > MAX_DESCRIPTOR_LEN) {
-                printf("[USBCTRL] not enough space for config descriptor !!!\n");
+                log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
                 errcode = MBED_ERROR_UNSUPORTED_CMD;
                 *desc_size = 0;
                 goto err;
             }
-            printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
+            log_printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
             uint32_t curr_offset = 0;
             uint8_t *config_desc = &(buf[curr_offset]);
             {

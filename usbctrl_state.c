@@ -255,7 +255,7 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
      * Didn't find any request associated to current state. This is not a
      * valid transition. We should stall the request.
      */
-    printf("%s: invalid transition from state %d, request %d\n", __func__,
+    log_printf("%s: invalid transition from state %d, request %d\n", __func__,
            current_state, transition);
     usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
     return false;
