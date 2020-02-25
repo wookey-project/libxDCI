@@ -3,8 +3,6 @@
 #include "usbctrl.h"
 #include "usbctrl_descriptors.h"
 
-/* include driver header */
-#include "usbctrl_backend.h"
 
 
 /**********************************************************************
@@ -817,12 +815,14 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     /* Sanitation */
     if (pkt == NULL) {
         errcode = MBED_ERROR_INVPARAM;
+        usb_backend_drv_endpoint_stall(EP0, USB_EP_DIR_OUT);
         goto err;
     }
     /* Detect which context is assocated to current request and set local ctx */
     if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         /* trapped on oepint() from a device which is not handled here ! what ? */
         errcode = MBED_ERROR_UNKNOWN;
+        usb_backend_drv_endpoint_stall(EP0, USB_EP_DIR_OUT);
         goto err;
     }
 

@@ -29,6 +29,33 @@
 #include "autoconf.h"
 
 /*********************************************************************************
+ * About backends
+ *
+ * The libusbctrl can handle various backends. A backend is a USB driver API.
+ * In order to keep the overall libusbctrl (and upper stacks) implementation
+ * portable on various hardwares, the libusbctrl provides an abstraction layer
+ * which handle renaming and potential overload of driver-level API.
+ * This abstraction layer is loaded here, using the system-wide configuration
+ * as selector.
+ */
+
+
+/*
+ * By now, the libusbctrl only supports the USB OTG HS for STM32F4 plateforms.
+ * Feel free to add some more drivers !
+ * CAUTION: please, try to write drivers that are as much as possible API
+ * compatible with the USB OTG HS driver (its upper API is not HW specific).
+ * This will reduce the overload of the abstraction layer.
+ */
+#if defined(CONFIG_STM32F439)
+# include "socs/stm32f439/usbctrl_backend.h"
+#else
+# error "architecture not yet supported!"
+#endif
+
+
+
+/*********************************************************************************
  * About handlers
  *
  * The Control plane must declare some handlers for various events (see usbotghs_handlers.c

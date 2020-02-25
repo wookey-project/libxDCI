@@ -25,7 +25,7 @@ APP_BUILD_DIR = $(BUILD_DIR)/libs/$(LIB_NAME)
 CFLAGS := $(LIBS_CFLAGS)
 # libtoken needs libecc
 CFLAGS += $(EXTERNAL_CFLAGS) $(LIBSIGN_CFLAGS)
-CFLAGS += -Iapi/socs/$(SOC)
+CFLAGS += -Iapi
 CFLAGS += -MMD -MP -O3
 
 #############################################################

@@ -27,8 +27,6 @@
 #include "libc/string.h"
 #include "usbctrl_state.h"
 #include "generated/devlist.h"
-/* include usb driver API */
-#include "usbctrl_backend.h"
 #include "usbctrl.h"
 
 /*

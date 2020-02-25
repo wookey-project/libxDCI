@@ -22,7 +22,6 @@
  *
  */
 
-#include "usbctrl_backend.h"
 #include "api/libusbctrl.h"
 #include "usbctrl_handlers.h"
 #include "usbctrl_state.h"
@@ -196,6 +195,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
                 log_printf("[LIBCTRL] found ep in iface (cell %d)\n", i);
                 if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
                     log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
+                    /* XXX: c'est ma FIFO ? oui, c'est pour moi. Non, c'est pour au dessus :-)*/
                     ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
                 }
                 break;
@@ -243,19 +243,30 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                     setup_packet[5] << 8 | setup_packet[4],
                     setup_packet[7] << 8 | setup_packet[6]
                 };
-                return usbctrl_handle_requests(&formated_pkt, dev_id);
+                errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
+                //usb_backend_drv_endpoint_clear_nak(EP0, USB_EP_DIR_OUT);
+                return errcode;
             } else {
                 log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
+                usb_backend_drv_endpoint_stall(ep, USBOTG_HS_EP_DIR_OUT);
             }
             break;
         case USBOTG_HS_EP_STATE_DATA_OUT: {
             uint8_t curr_cfg = ctx->curr_cfg;
+            if (size == 0) {
+                break;
+            }
             for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
                 for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
                     if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep) {
                         printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d (size %d)\n",ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler, ep, size);
                         if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
+                            /* has the upper stack reset the EP0 recv FIFO with its own FIFO ? */
+                            /* XXX: TODO */
                             ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
+                            /* now that data are transfered (oepint finished) whe can set back our FIFO for
+                             * EP0, in order to support next EP0 events */
+                            /* XXX: TODO */
                         }
                         goto err;
                     }

@@ -26,7 +26,7 @@
 
 #include "libc/types.h"
 #include "libc/stdio.h"
-#include "api/libusbctrl.h"
+#include "libusbctrl.h"
 
 /*********************************************************
  * General tooling
