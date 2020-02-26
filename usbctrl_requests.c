@@ -724,6 +724,8 @@ static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pk
     pkt = pkt;
     usb_backend_drv_send_zlp(0);
 err:
+    /*request finish here */
+    ctx->ctrl_req_processing = false;
     return errcode;
 }
 
