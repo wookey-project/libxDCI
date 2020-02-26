@@ -197,7 +197,6 @@ typedef struct {
     uint16_t         pkt_maxsize;           /* pkt maxsize in this EP */
     usb_ioep_handler_t handler;             /* EP handler */
     uint8_t          ep_num;                /* EP identifier */
-
     bool             configured;            /* EP enable in current config */
 } usb_ep_infos_t;
 
@@ -309,10 +308,9 @@ typedef struct usbctrl_context {
     /* first, about device driver interactions */
     uint32_t               dev_id;              /*< device id, from the USB device driver */
     uint16_t               address;             /*< device address, to be set by std req */
-    /* Then, about personalities (info, number) */
     /* then current context state, associated to the USB standard state automaton  */
     uint8_t                 num_cfg;        /*< number of different onfigurations */
-    uint8_t                 curr_cfg;       /*< current configuration (starting with 1) */
+    uint8_t                 curr_cfg;       /*< current configuration */
     usbctrl_configuration_t cfg[CONFIG_USBCTRL_MAX_CFG]; /* configurations list */
     uint8_t                 state;          /*< USB state machine current state */
     uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
