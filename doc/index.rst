@@ -321,13 +321,27 @@ The libUSBCtrl is handling a complete USB driver abstraction for all upper stack
 the effective driver API, which may vary a little (starting with its name) from a driver to another. Although
 these actions are generic to any driver and USB stack implementation::
 
-   usb_backend_drv_endpoint_clear_nak
-   usb_backend_drv_endpoint_set_nak
-   usb_backend_drv_endpoint_stall
-   usb_backend_drv_get_ep_state
-   usb_backend_drv_send_data
-   usb_backend_drv_send_zlp
-   usb_backend_drv_set_recv_fifo
+   mbed_error_t usb_backend_drv_endpoint_clear_nak(uint8_t                  ep_id,
+                                                   usb_backend_drv_ep_dir_t dir);
+
+   mbed_error_t usb_backend_drv_endpoint_set_nak(uint8_t                  ep_id,
+                                                 usb_backend_drv_ep_dir_t dir);
+
+   mbed_error_t usb_backend_drv_endpoint_stall(uint8_t                  ep_id,
+                                               usb_backend_drv_ep_dir_t dir);
+
+   mbed_error_t usb_backend_drv_get_ep_state(uint8_t                  ep_id,
+                                             usb_backend_drv_ep_dir_t dir);
+
+   mbed_error_t usb_backend_drv_send_data(uint8_t  *src,
+                                          uint32_t  size,
+                                          uint8_t   ep);
+
+   mbed_error_t usb_backend_drv_send_zlp(uint8_t  ep);
+
+   mbed_error_t usb_backend_drv_set_recv_fifo(uint8_t  *dst,
+                                              uint32_t  size,
+                                              uint8_t   ep);
 
 
 Sending and receiving packets
