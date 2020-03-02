@@ -55,12 +55,27 @@
 /*
  * First, specify the effective driver header to load
  */
-#include "libusbotghs.h"
 
 /*
  * Abstraction layer for the STM32F4 USB OTG HS driver
  * Here, only preprocessing usage is enough.
  */
+
+#if CONFIG_USR_DRV_USB_HS
+#include "libusbotghs.h"
+
+/*
+ * EP name abstraction
+ */
+#define EP0 USBOTG_HS_EP0
+#define EP1 USBOTG_HS_EP1
+#define EP2 USBOTG_HS_EP2
+#define EP3 USBOTG_HS_EP3
+#define EP4 USBOTG_HS_EP4
+#define EP5 USBOTG_HS_EP5
+#define EP6 USBOTG_HS_EP6
+#define EP7 USBOTG_HS_EP7
+
 
 /*
  * About driver's API types.
@@ -68,6 +83,33 @@
  * abstraction layer).
  */
 #define usb_backend_drv_ep_dir_t usbotghs_ep_dir_t
+#define USB_BACKEND_DRV_MODE_DEVICE USBOTGHS_MODE_DEVICE
+
+#define USB_BACKEND_DRV_EP_DIR_IN   USBOTG_HS_EP_DIR_IN
+#define USB_BACKEND_DRV_EP_DIR_OUT  USBOTG_HS_EP_DIR_OUT
+
+
+#define USB_BACKEND_DRV_EP_TYPE_CONTROL     USBOTG_HS_EP_TYPE_CONTROL
+#define USB_BACKEND_DRV_EP_TYPE_ISOCHRONOUS USBOTG_HS_EP_TYPE_ISOCHRONOUS
+#define USB_BACKEND_DRV_EP_TYPE_BULK        USBOTG_HS_EP_TYPE_BULK
+#define USB_BACKEND_DRV_EP_TYPE_INT         USBOTG_HS_EP_TYPE_INT
+
+
+#define USB_BACKEND_DRV_EP_STATE_IDLE      USBOTG_HS_EP_STATE_IDLE
+#define USB_BACKEND_DRV_EP_STATE_SETUP_WIP USBOTG_HS_EP_STATE_SETUP_WIP
+#define USB_BACKEND_DRV_EP_STATE_SETUP     USBOTG_HS_EP_STATE_SETUP
+#define USB_BACKEND_DRV_EP_STATE_STATUS    USBOTG_HS_EP_STATE_STATUS
+#define USB_BACKEND_DRV_EP_STATE_STALL     USBOTG_HS_EP_STATE_STALL
+#define USB_BACKEND_DRV_EP_STATE_DATA_IN_WIP USBOTG_HS_EP_STATE_DATA_IN_WIP
+#define USB_BACKEND_DRV_EP_STATE_DATA_in   USBOTG_HS_EP_STATE_DATA_IN
+#define USB_BACKEND_DRV_EP_STATE_DATA_OUT_WIP   USBOTG_HS_EP_STATE_DATA_OUT_WIP
+#define USB_BACKEND_DRV_EP_STATE_DATA_OUT  USBOTG_HS_EP_STATE_DATA_OUT
+#define USB_BACKEND_DRV_EP_STATE_INVALID   USBOTG_HS_EP_STATE_INVALID
+
+#define USB_BACKEND_EP_EVENFRAME   USB_HS_DXEPCTL_SD0PID_SEVNFRM
+#define USB_BACKEND_EP_ODDFRAME    USB_HS_DXEPCTL_SD1PID_SODDFRM
+
+
 
 /*
  * About driver's API prototypes
@@ -85,5 +127,69 @@
 #define usb_backend_drv_ack                 usbotghs_endpoint_clear_nak
 #define usb_backend_drv_nak                 usbotghs_endpoint_set_nak
 #define usb_backend_drv_stall               usbotghs_endpoint_stall
+
+#else
+
+
+#include "libusbotgfs.h"
+
+/*
+ * EP name abstraction
+ */
+#define EP0 USBOTG_FS_EP0
+#define EP1 USBOTG_FS_EP1
+#define EP2 USBOTG_FS_EP2
+#define EP3 USBOTG_FS_EP3
+#define EP4 USBOTG_FS_EP4
+#define EP5 USBOTG_FS_EP5
+#define EP6 USBOTG_FS_EP6
+#define EP7 USBOTG_FS_EP7
+
+
+
+#define usb_backend_drv_ep_dir_t usbotgfs_ep_dir_t
+#define USB_BACKEND_DRV_MODE_DEVICE USBOTGFS_MODE_DEVICE
+
+#define USB_BACKEND_DRV_EP_DIR_IN   USBOTG_FS_EP_DIR_IN
+#define USB_BACKEND_DRV_EP_DIR_OUT  USBOTG_FS_EP_DIR_OUT
+
+#define USB_BACKEND_DRV_EP_TYPE_CONTROL     USBOTG_FS_EP_TYPE_CONTROL
+#define USB_BACKEND_DRV_EP_TYPE_ISOCHRONOUS USBOTG_FS_EP_TYPE_ISOCHRONOUS
+#define USB_BACKEND_DRV_EP_TYPE_BULK        USBOTG_FS_EP_TYPE_BULK
+#define USB_BACKEND_DRV_EP_TYPE_INT         USBOTG_FS_EP_TYPE_INT
+
+
+#define USB_BACKEND_DRV_EP_STATE_IDLE      USBOTG_FS_EP_STATE_IDLE
+#define USB_BACKEND_DRV_EP_STATE_SETUP_WIP USBOTG_FS_EP_STATE_SETUP_WIP
+#define USB_BACKEND_DRV_EP_STATE_SETUP     USBOTG_FS_EP_STATE_SETUP
+#define USB_BACKEND_DRV_EP_STATE_STATUS    USBOTG_FS_EP_STATE_STATUS
+#define USB_BACKEND_DRV_EP_STATE_STALL     USBOTG_FS_EP_STATE_STALL
+#define USB_BACKEND_DRV_EP_STATE_DATA_IN_WIP USBOTG_FS_EP_STATE_DATA_IN_WIP
+#define USB_BACKEND_DRV_EP_STATE_DATA_in   USBOTG_FS_EP_STATE_DATA_IN
+#define USB_BACKEND_DRV_EP_STATE_DATA_OUT_WIP   USBOTG_FS_EP_STATE_DATA_OUT_WIP
+#define USB_BACKEND_DRV_EP_STATE_DATA_OUT  USBOTG_FS_EP_STATE_DATA_OUT
+#define USB_BACKEND_DRV_EP_STATE_INVALID   USBOTG_FS_EP_STATE_INVALID
+
+#define USB_BACKEND_EP_EVENFRAME   USB_FS_DXEPCTL_SD0PID_SEVNFRM
+#define USB_BACKEND_EP_ODDFRAME    USB_FS_DXEPCTL_SD1PID_SODDFRM
+/*
+ * About driver's API prototypes
+ */
+#define usb_backend_drv_configure           usbotgfs_configure
+#define usb_backend_drv_declare             usbotgfs_declare
+#define usb_backend_drv_activate_endpoint   usbotgfs_activate_endpoint
+#define usb_backend_drv_configure_endpoint  usbotgfs_configure_endpoint
+#define usb_backend_drv_get_ep_state        usbotgfs_get_ep_state
+#define usb_backend_drv_send_data           usbotgfs_send_data
+#define usb_backend_drv_send_zlp            usbotgfs_send_zlp
+#define usb_backend_drv_set_address         usbotgfs_set_address
+#define usb_backend_drv_set_recv_fifo       usbotgfs_set_recv_fifo
+/* USB protocol standard handshaking */
+#define usb_backend_drv_ack                 usbotgfs_endpoint_clear_nak
+#define usb_backend_drv_nak                 usbotgfs_endpoint_set_nak
+#define usb_backend_drv_stall               usbotgfs_endpoint_stall
+
+
+#endif
 
 #endif/*!USBCTRL_BACKEND_H_*/

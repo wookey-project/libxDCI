@@ -244,8 +244,8 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
      * In the first case, we have received a SETUP packet, targetting the libctrl,
      * in the second case, we have received some data, targetting one of the
      * interface which has registered a DATA EP with the corresponding EP id */
-    switch (usb_backend_drv_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT)) {
-        case USBOTG_HS_EP_STATE_SETUP:
+    switch (usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT)) {
+        case USB_BACKEND_DRV_EP_STATE_SETUP:
             log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
             if (size == 8) {
                 /* first, we shoule not accept setup pkt from other EP than 0.
@@ -264,10 +264,10 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                 return errcode;
             } else {
                 log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
-                usb_backend_drv_stall(ep, USBOTG_HS_EP_DIR_OUT);
+                usb_backend_drv_stall(ep, USB_BACKEND_DRV_EP_DIR_OUT);
             }
             break;
-        case USBOTG_HS_EP_STATE_DATA_OUT: {
+        case USB_BACKEND_DRV_EP_STATE_DATA_OUT: {
             uint8_t curr_cfg = ctx->curr_cfg;
             if (size == 0) {
                 /* Well; nothing to do with size = 0 ? */
@@ -309,11 +309,11 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * the EP on which we have received some content. This is *not* a valid behavior, and we
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
-            usb_backend_drv_nak(ep, USBOTG_HS_EP_DIR_OUT);
+            usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);
         }
         default:
             log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",
-                    usb_backend_drv_get_ep_state(ep, USBOTG_HS_EP_DIR_OUT));
+                    usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT));
             break;
     }
 err:
