@@ -260,11 +260,11 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                     setup_packet[7] << 8 | setup_packet[6]
                 };
                 errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
-                //usb_backend_drv_endpoint_clear_nak(EP0, USB_EP_DIR_OUT);
+                //usb_backend_drv_ack(EP0, USB_EP_DIR_OUT);
                 return errcode;
             } else {
                 log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
-                usb_backend_drv_endpoint_stall(ep, USBOTG_HS_EP_DIR_OUT);
+                usb_backend_drv_stall(ep, USBOTG_HS_EP_DIR_OUT);
             }
             break;
         case USBOTG_HS_EP_STATE_DATA_OUT: {
@@ -309,7 +309,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * the EP on which we have received some content. This is *not* a valid behavior, and we
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
-            usb_backend_drv_endpoint_set_nak(ep, USBOTG_HS_EP_DIR_OUT);
+            usb_backend_drv_nak(ep, USBOTG_HS_EP_DIR_OUT);
         }
         default:
             log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",

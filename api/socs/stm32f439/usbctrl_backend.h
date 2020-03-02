@@ -76,13 +76,14 @@
 #define usb_backend_drv_declare             usbotghs_declare
 #define usb_backend_drv_activate_endpoint   usbotghs_activate_endpoint
 #define usb_backend_drv_configure_endpoint  usbotghs_configure_endpoint
-#define usb_backend_drv_endpoint_clear_nak  usbotghs_endpoint_clear_nak
-#define usb_backend_drv_endpoint_set_nak    usbotghs_endpoint_set_nak
-#define usb_backend_drv_endpoint_stall      usbotghs_endpoint_stall
 #define usb_backend_drv_get_ep_state        usbotghs_get_ep_state
 #define usb_backend_drv_send_data           usbotghs_send_data
 #define usb_backend_drv_send_zlp            usbotghs_send_zlp
 #define usb_backend_drv_set_address         usbotghs_set_address
 #define usb_backend_drv_set_recv_fifo       usbotghs_set_recv_fifo
+/* USB protocol standard handshaking */
+#define usb_backend_drv_ack                 usbotghs_endpoint_clear_nak
+#define usb_backend_drv_nak                 usbotghs_endpoint_set_nak
+#define usb_backend_drv_stall               usbotghs_endpoint_stall
 
 #endif/*!USBCTRL_BACKEND_H_*/

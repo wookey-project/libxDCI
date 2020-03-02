@@ -321,14 +321,14 @@ The libUSBCtrl is handling a complete USB driver abstraction for all upper stack
 the effective driver API, which may vary a little (starting with its name) from a driver to another. Although
 these actions are generic to any driver and USB stack implementation::
 
-   mbed_error_t usb_backend_drv_endpoint_clear_nak(uint8_t                  ep_id,
-                                                   usb_backend_drv_ep_dir_t dir);
+   mbed_error_t usb_backend_drv_ack(uint8_t                  ep_id,
+                                    usb_backend_drv_ep_dir_t dir);
 
-   mbed_error_t usb_backend_drv_endpoint_set_nak(uint8_t                  ep_id,
-                                                 usb_backend_drv_ep_dir_t dir);
+   mbed_error_t usb_backend_drv_nak(uint8_t                  ep_id,
+                                    usb_backend_drv_ep_dir_t dir);
 
-   mbed_error_t usb_backend_drv_endpoint_stall(uint8_t                  ep_id,
-                                               usb_backend_drv_ep_dir_t dir);
+   mbed_error_t usb_backend_drv_stall(uint8_t                  ep_id,
+                                      usb_backend_drv_ep_dir_t dir);
 
    mbed_error_t usb_backend_drv_get_ep_state(uint8_t                  ep_id,
                                              usb_backend_drv_ep_dir_t dir);
@@ -357,7 +357,7 @@ triggered when the data is sent to the host.
 Receiving a packet on a OUT Endpoint::
 
    usb_backend_drv_set_recv_fifo
-   usb_backend_drv_endpoint_clear_nak
+   usb_backend_drv_ack
 
 Again, at this time, no data is received yet. The OUT Endpoint handler will be triggered as soon as
 a transfer complete is received on the corresponding endpoint, informing the application that data
@@ -369,12 +369,12 @@ Handling handshake and control flow
 To inform the USB host that the EP is free to receive new data (previous data has been successively consumed),
 the data should be acknowledge. acknowledgement is per-endpoint. This is done with::
 
-   usb_backend_drv_endpoint_clear_nak
+   usb_backend_drv_ack
 
 To inform the USB host that the data received was not handled correctly (corruption or failure), a NAK must
 be sent to the host. This is done using::
 
-   usb_backend_drv_endpoint_set_nak
+   usb_backend_drv_nak
 
 There is cases when the host is using ZLP (Zero-length-Packet, a transfer of 0 bytes) acknowledgement, using as a ACK
 to a received data content, informing the host that the data has been processed correctly.
