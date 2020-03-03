@@ -59,6 +59,11 @@
 /*
  * Abstraction layer for the STM32F4 USB OTG HS driver
  * Here, only preprocessing usage is enough.
+ *
+ * TODO: by now, abstraction is mutually exclusive for multiple backend IP.
+ * The goal is to allow the usage of per-context, independent IP handling,
+ * even for the same application. The libctrl API is enough for that
+ * (device ID is passed to handler and associated to each context).
  */
 
 #if CONFIG_USR_DRV_USB_HS
