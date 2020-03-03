@@ -201,9 +201,9 @@ typedef struct {
 } usb_ep_infos_t;
 
 /************************************************
- * about personnalities
+ * about interfaces
  *
- * A interface is a USB device profile (e.g.
+ * An interfaces is a USB device profile (e.g.
  * a SCSI mass storage device, a Raw HID device, etc.)
  * based on a standard USB type (RAW, BULK, etc...)
  * and composed of 1 or more EP(s). In some case,
@@ -213,7 +213,7 @@ typedef struct {
 /*
  * A interface can have up to this number of endpoints.
  */
-#define MAX_EP_PER_PERSONALITY 8
+#define MAX_EP_PER_INTERFACE 8
 
 /*
  * A interface may have to handle dedicated
@@ -278,7 +278,7 @@ typedef struct {
    usb_rqst_handler_t rqst_handler;   /*< interface Requests handler */
    usb_class_get_descriptor_handler_t class_desc_handler; /* class level descriptor getter */
    uint8_t            usb_ep_number;  /*< the number of EP associated */
-   usb_ep_infos_t     eps[MAX_EP_PER_PERSONALITY];  /*< for each EP, the associated
+   usb_ep_infos_t     eps[MAX_EP_PER_INTERFACE];  /*< for each EP, the associated
                                                       informations */
 } usbctrl_interface_t;
 
@@ -290,7 +290,7 @@ typedef struct {
 
 typedef struct {
     uint8_t                first_free_epid;   /* first free EP identifier (starting with 1, as 0 is control) */
-    uint8_t                interface_num;     /*< Number of personalities registered */
+    uint8_t                interface_num;     /*< Number of interfaces registered */
     usbctrl_interface_t    interfaces[MAX_INTERFACES_PER_DEVICE];     /*< For each registered interface */
 } usbctrl_configuration_t;
 
@@ -336,7 +336,7 @@ mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx);
  *
  * Initialization *does not* touch the device. It only handle the local USB context.
  * The context is mapped to the device when requesting device start.
- * This permits to declare multiple classes/personalities before starting the device and
+ * This permits to declare multiple classes/itnerfaces before starting the device and
  * receiving the first requests from the host.
  */
 mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx);
@@ -379,7 +379,7 @@ mbed_error_t usbctrl_declare_interface(__in      volatile usbctrl_context_t   *c
  * bind and enable the device, initialize the communication and wait for the
  * initial requests from the host.
  *
- * By now, it is not possible to declare new personalities *after* the device
+ * By now, it is not possible to declare new interfaces *after* the device
  * is started.
  */
 mbed_error_t usbctrl_start_device(volatile usbctrl_context_t      *ctx);
