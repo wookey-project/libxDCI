@@ -128,6 +128,8 @@
 #define usb_backend_drv_nak                 usbotghs_endpoint_set_nak
 #define usb_backend_drv_stall               usbotghs_endpoint_stall
 
+#define usb_backend_get_ep_mpsize           usbotghs_get_ep_mpsize
+
 #else
 
 
@@ -189,6 +191,7 @@
 #define usb_backend_drv_nak                 usbotgfs_endpoint_set_nak
 #define usb_backend_drv_stall               usbotgfs_endpoint_stall
 
+#define usb_backend_get_ep_mpsize           usbotgfs_get_ep_mpsize
 
 #endif
 

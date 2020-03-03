@@ -1,5 +1,4 @@
 config USR_LIB_USBCTRL
-  select USR_DRV_USB
   bool  "userspace USB portable control stack"
   default y
   ---help---

@@ -216,8 +216,15 @@ mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *c
        if (ep->type == USB_EP_TYPE_CONTROL) {
            ep->ep_num = 0;
        } else {
+           uint32_t drv_ep_mpsize;
            ep->ep_num = ctx->cfg[iface_config].first_free_epid++;
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
+           /* check that declared ep mpsize is compatible with backend driver */
+           drv_ep_mpsize = usb_backend_get_ep_mpsize();
+           if (ep->pkt_maxsize > drv_ep_mpsize) {
+               log_printf("truncating EP max packet size to backend driver EP max pktsize\n");
+               ep->pkt_maxsize = drv_ep_mpsize;
+           }
        }
    }
    /* 4) now that everything is Okay, consider iface registered */
