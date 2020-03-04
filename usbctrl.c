@@ -38,35 +38,38 @@
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 
 static volatile uint8_t num_ctx = 0;
-volatile usbctrl_context_t    *ctx_list[MAX_USB_CTRL_CTX] = { 0 };
+volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 
 
-mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx)
+mbed_error_t usbctrl_declare(uint32_t dev_id,
+                             uint32_t *ctxh)
 {
     log_printf("[USBCTRL] declaring USB backend\n");
     mbed_error_t errcode = MBED_ERROR_NONE;
 
     /* sanitiation */
-    if (ctx == NULL) {
+    if (ctxh == NULL) {
         errcode = MBED_ERROR_INVPARAM;
         goto err;
-    }
-    switch (ctx->dev_id) {
-        case USB_OTG_HS_ID:
-            errcode = usb_backend_drv_declare();
-            break;
-        case USB_OTG_FS_ID:
-            errcode = MBED_ERROR_NOBACKEND;
-            break;
-        default:
-            errcode = MBED_ERROR_NOBACKEND;
-            break;
     }
     if (num_ctx == MAX_USB_CTRL_CTX) {
         errcode = MBED_ERROR_NOMEM;
         goto err;
     }
-    ctx_list[num_ctx] = ctx;
+    switch (dev_id) {
+        case USB_OTG_HS_ID:
+            errcode = usb_backend_drv_declare();
+            break;
+        case USB_OTG_FS_ID:
+            errcode = usb_backend_drv_declare();
+            break;
+        default:
+            errcode = MBED_ERROR_NOBACKEND;
+            break;
+    }
+    ctx_list[num_ctx].dev_id = dev_id;
+    *ctxh = num_ctx;
+    volatile usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
     num_ctx++;
     /* initialize context */
     ctx->num_cfg = 1;
@@ -84,9 +87,15 @@ err:
 /*
  * basics for now
  */
-mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx)
+mbed_error_t usbctrl_initialize(uint32_t ctxh)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    /* sanitize */
+    if (ctxh >= num_ctx) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto end;
+    }
+    volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     log_printf("[USBCTRL] initializing automaton\n");
     memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
     /* receive FIFO is not set in the driver. Wait for USB reset */
@@ -110,6 +119,28 @@ end:
     return errcode;
 }
 
+mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
+                                uint32_t *handler)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    /* sanitize */
+    if (ctx == NULL || handler == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto end;
+    }
+    /* search */
+    for (uint8_t i = 0; i < num_ctx; ++i) {
+        if (&(ctx_list[i]) == ctx) {
+            *handler = i;
+            goto end;
+        }
+    }
+    errcode = MBED_ERROR_NOTFOUND;
+end:
+    return errcode;
+}
+
+
 mbed_error_t usbctrl_get_context(uint32_t device_id,
                                  usbctrl_context_t **ctx)
 {
@@ -121,11 +152,9 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
     }
     /* search */
     for (uint8_t i = 0; i < num_ctx; ++i) {
-        if (ctx_list[i] != 0) {
-            if (ctx_list[i]->dev_id == device_id) {
-                *ctx = (usbctrl_context_t*)ctx_list[i];
-                goto end;
-            }
+        if (ctx_list[i].dev_id == device_id) {
+            *ctx = (usbctrl_context_t*)&(ctx_list[i]);
+            goto end;
         }
     }
     errcode = MBED_ERROR_NOTFOUND;
@@ -177,15 +206,20 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
 /*
  * Here we declare a new USB interface for the given context.
  */
-mbed_error_t usbctrl_declare_interface(__in     volatile  usbctrl_context_t   *ctx,
+mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                                        __out    usbctrl_interface_t  *iface)
 {
     uint8_t iface_config = 0;
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
-    if (ctx == NULL || iface == NULL) {
+    if (ctxh >= num_ctx) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    if (iface == NULL) {
         errcode = MBED_ERROR_INVPARAM;
     }
+    volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     /* check space */
     if (ctx->cfg[ctx->curr_cfg].interface_num == MAX_INTERFACES_PER_DEVICE) {
         errcode = MBED_ERROR_NOMEM;
@@ -238,9 +272,16 @@ err:
 /*
  * Libctrl is a device-side control plane, the device is configured in device mode
  */
-mbed_error_t usbctrl_start_device(volatile usbctrl_context_t      *ctx)
+mbed_error_t usbctrl_start_device(uint32_t ctxh)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    /* sanitize */
+    if (ctxh >= num_ctx) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto end;
+    }
+    volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
+
     log_printf("[USBCTRL] configuring backend driver\n");
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
@@ -251,10 +292,18 @@ end:
     return errcode;
 }
 
-mbed_error_t usbctrl_stop_device(volatile usbctrl_context_t      *ctx)
+mbed_error_t usbctrl_stop_device(uint32_t ctxh)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    /* sanitize */
+    if (ctxh >= num_ctx) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
+
     ctx = ctx;
     /* FIXME: TODO */
+err:
     return errcode;
 }

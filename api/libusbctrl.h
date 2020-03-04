@@ -240,9 +240,7 @@ typedef struct __packed {
  * control pipe handling, associated with an error state.
  */
 
-struct usbctrl_context;
-
-typedef mbed_error_t     (*usb_rqst_handler_t)(struct usbctrl_context  *ctx,
+typedef mbed_error_t     (*usb_rqst_handler_t)(uint32_t usbdci_handler,
                                               usbctrl_setup_pkt_t *inpkt);
 
 /*
@@ -253,7 +251,7 @@ typedef mbed_error_t     (*usb_rqst_handler_t)(struct usbctrl_context  *ctx,
 typedef mbed_error_t
       (*usb_class_get_descriptor_handler_t)(uint8_t            *buf,
                                             uint32_t           *desc_size,
-                                            struct usbctrl_context  *ctx);
+                                            uint32_t            usbdci_handler);
 
 
 /*
@@ -283,43 +281,6 @@ typedef struct {
 } usbctrl_interface_t;
 
 /************************************************
- * about libctrl context
- ***********************************************/
-
-#define MAX_INTERFACES_PER_DEVICE 4
-
-typedef struct {
-    uint8_t                first_free_epid;   /* first free EP identifier (starting with 1, as 0 is control) */
-    uint8_t                interface_num;     /*< Number of interfaces registered */
-    usbctrl_interface_t    interfaces[MAX_INTERFACES_PER_DEVICE];     /*< For each registered interface */
-} usbctrl_configuration_t;
-
-
-typedef enum {
-   USB_CTRL_RCV_FIFO_SATE_NOSTORAGE, /*< No receive FIFO set yet */
-   USB_CTRL_RCV_FIFO_SATE_FREE,  /*< Receive FIFO is free (no active content in it) */
-   USB_CTRL_RCV_FIFO_SATE_BUSY,  /*< Receive FIFO is locked. A provider is writing
-                                     data in it (DMA, trigger...) */
-   USB_CTRL_RCV_FIFO_SATE_READY  /*< Receive FIFO is ready. There is content to get from
-                                     it, no provider is accessing it */
-} ctrl_plane_rx_fifo_state_t;
-
-typedef struct usbctrl_context {
-    /* first, about device driver interactions */
-    uint32_t               dev_id;              /*< device id, from the USB device driver */
-    uint16_t               address;             /*< device address, to be set by std req */
-    /* then current context state, associated to the USB standard state automaton  */
-    uint8_t                 num_cfg;        /*< number of different onfigurations */
-    uint8_t                 curr_cfg;       /*< current configuration */
-    usbctrl_configuration_t cfg[CONFIG_USBCTRL_MAX_CFG]; /* configurations list */
-    uint8_t                 state;          /*< USB state machine current state */
-    uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
-    bool                    ctrl_fifo_state; /*< RECV FIFO of control plane state */
-    volatile bool           ctrl_req_processing; /* a control level request is being processed */
-} usbctrl_context_t;
-
-
-/************************************************
  * about libctrl API
  ***********************************************/
 
@@ -327,7 +288,8 @@ typedef struct usbctrl_context {
  * Declare the USB device through the ctrl interface, get back, for the current context,
  * the associated device identifier in ctx. This part handling the device part only.
  */
-mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx);
+mbed_error_t usbctrl_declare(uint32_t dev_id,
+                             uint32_t *ctxh);
 
 /*
  * create the first USB context, and create endpoint 0 for default
@@ -339,25 +301,25 @@ mbed_error_t usbctrl_declare(volatile usbctrl_context_t*ctx);
  * This permits to declare multiple classes/itnerfaces before starting the device and
  * receiving the first requests from the host.
  */
-mbed_error_t usbctrl_initialize(volatile usbctrl_context_t*ctx);
+mbed_error_t usbctrl_initialize(uint32_t ctxh);
 
 /*
  * Bind the device to the task, if not mapped
  * (ask the driver to map)
  */
-mbed_error_t usbctrl_bind(volatile usbctrl_context_t*ctx);
+mbed_error_t usbctrl_bind(uint32_t ctxh);
 
 /*
  * Unmap the device, if mapped
  * (ask the driver to unmap)
  */
-mbed_error_t usbctrl_unbind(volatile usbctrl_context_t*ctx);
+mbed_error_t usbctrl_unbind(uint32_t ctxh);
 
 /*
  * definitivery release the device
  * (ask the driver to release)
  */
-mbed_error_t usbctrl_release(volatile usbctrl_context_t*ctx);
+mbed_error_t usbctrl_release(uint32_t ctxh);
 
 /*
  * declare a new USB interface. Endpoints are created, EP refs are set in
@@ -371,7 +333,7 @@ mbed_error_t usbctrl_release(volatile usbctrl_context_t*ctx);
  * (EP identifiers, etc.) depending on the current global device interface state.
  *
  */
-mbed_error_t usbctrl_declare_interface(__in      volatile usbctrl_context_t   *ctx,
+mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                                        __out    usbctrl_interface_t  *up);
 
 /*
@@ -382,12 +344,12 @@ mbed_error_t usbctrl_declare_interface(__in      volatile usbctrl_context_t   *c
  * By now, it is not possible to declare new interfaces *after* the device
  * is started.
  */
-mbed_error_t usbctrl_start_device(volatile usbctrl_context_t      *ctx);
+mbed_error_t usbctrl_start_device(uint32_t ctxh);
 
 /*
  * FIXME: Stop the device ? unmap and then ? Sending something to the host ? USB std
  * check is needed here. This feature may be interesting in some cases.
  */
-mbed_error_t usbctrl_stop_device(volatile usbctrl_context_t       *ctx);
+mbed_error_t usbctrl_stop_device(uint32_t ctxh);
 
 #endif/*!LIBUSB_CTRL_H_*/

@@ -25,6 +25,7 @@
 #define USBCTRL_STATE_H_
 
 #include "api/libusbctrl.h"
+#include "usbctrl.h"
 #include "usbctrl_requests.h"
 
 /*
