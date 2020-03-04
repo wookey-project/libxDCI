@@ -27,6 +27,7 @@
 #include "libc/string.h"
 #include "usbctrl_state.h"
 #include "generated/devlist.h"
+#include "usbctrl_handlers.h"
 #include "usbctrl.h"
 
 /*
@@ -65,6 +66,7 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
             break;
         default:
             errcode = MBED_ERROR_NOBACKEND;
+            goto err;
             break;
     }
     ctx_list[num_ctx].dev_id = dev_id;
@@ -96,17 +98,13 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
         goto end;
     }
     volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    log_printf("[USBCTRL] initializing automaton\n");
+    printf("[USBCTRL] initializing automaton\n");
     memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
     /* receive FIFO is not set in the driver. Wait for USB reset */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_NOSTORAGE;
     /* initialize with POWERED. We wait for the first reset event */
 
     usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
-    /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
-    if ((errcode = usb_backend_drv_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
-        goto end;
-    }
     /* control pipe recv FIFO is ready to be used */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
     ctx->ctrl_req_processing = false;
@@ -286,6 +284,11 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
         usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
+        goto end;
+    }
+    /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
+    if ((errcode = usb_backend_drv_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
+        printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
         goto end;
     }
 end:

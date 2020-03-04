@@ -66,138 +66,112 @@
  * (device ID is passed to handler and associated to each context).
  */
 
-#if CONFIG_USR_DRV_USB_HS
-#include "libusbotghs.h"
-
 /*
- * EP name abstraction
+ * Generic typedefs. each device driver is responsible for:
+ * 1. use the same enumerate values
+ * 2. handle the translation in its generic abstraction, if needed.
+ *    In this last case, the driver upper abstraction is responsible for
+ *    defining inline functions that translate below types into local driver
+ *    types. For a given SoC, please try to handle these time in the same way
+ *    to avoid such constraint, which may generate overcost.
+ *
+ *
+ * In the case of usbotghs and usbotgfs, this part does not require
+ * translation from the drivers are both of them use the same enumerations
+ * and types as both IP are nearly the same.
+ * We can directly use preprocessing values that will be passed to forward-declarated
+ * prototypes.
  */
-#define EP0 USBOTG_HS_EP0
-#define EP1 USBOTG_HS_EP1
-#define EP2 USBOTG_HS_EP2
-#define EP3 USBOTG_HS_EP3
-#define EP4 USBOTG_HS_EP4
-#define EP5 USBOTG_HS_EP5
-#define EP6 USBOTG_HS_EP6
-#define EP7 USBOTG_HS_EP7
+typedef enum {
+    EP0 = 0,
+    EP1 = 1,
+    EP2 = 2,
+    EP3 = 3,
+    EP4 = 4,
+    EP5 = 5,
+    EP6 = 6,
+    EP7 = 7,
+    EP8 = 8
+} usb_backend_drv_ep_nb_t;
+
+typedef enum {
+    USB_BACKEND_DRV_MODE_HOST = 0,
+    USB_BACKEND_DRV_MODE_DEVICE = 1
+} usb_backend_drv_mode_t;
 
 
-/*
- * About driver's API types.
- * Here we keep the enumerates 'as-is' (no modification of the enumeration in the
- * abstraction layer).
- */
-#define usb_backend_drv_ep_dir_t usbotghs_ep_dir_t
-#define USB_BACKEND_DRV_MODE_DEVICE USBOTGHS_MODE_DEVICE
+typedef enum {
+    USB_BACKEND_DRV_EP_DIR_IN  = 0,
+    USB_BACKEND_DRV_EP_DIR_OUT = 1
+} usb_backend_drv_ep_dir_t;
 
-#define USB_BACKEND_DRV_EP_DIR_IN   USBOTG_HS_EP_DIR_IN
-#define USB_BACKEND_DRV_EP_DIR_OUT  USBOTG_HS_EP_DIR_OUT
+typedef enum {
+    USB_BACKEND_DRV_EP_TYPE_CONTROL     = 0,
+    USB_BACKEND_DRV_EP_TYPE_ISOCHRONOUS = 1,
+    USB_BACKEND_DRV_EP_TYPE_BULK        = 2,
+    USB_BACKEND_DRV_EP_TYPE_INT         = 3
+} usb_backend_drv_ep_type_t;
 
+typedef enum {
+    USB_BACKEND_DRV_EP_STATE_IDLE         = 0,
+    USB_BACKEND_DRV_EP_STATE_SETUP_WIP    = 1,
+    USB_BACKEND_DRV_EP_STATE_SETUP        = 2,
+    USB_BACKEND_DRV_EP_STATE_STATUS       = 3,
+    USB_BACKEND_DRV_EP_STATE_STALL        = 4,
+    USB_BACKEND_DRV_EP_STATE_DATA_IN_WIP  = 5,
+    USB_BACKEND_DRV_EP_STATE_DATA_in      = 6,
+    USB_BACKEND_DRV_EP_STATE_DATA_OUT_WIP = 7,
+    USB_BACKEND_DRV_EP_STATE_DATA_OUT     = 8,
+    USB_BACKEND_DRV_EP_STATE_INVALID      = 9
+} usb_backend_drv_ep_state_t;
 
-#define USB_BACKEND_DRV_EP_TYPE_CONTROL     USBOTG_HS_EP_TYPE_CONTROL
-#define USB_BACKEND_DRV_EP_TYPE_ISOCHRONOUS USBOTG_HS_EP_TYPE_ISOCHRONOUS
-#define USB_BACKEND_DRV_EP_TYPE_BULK        USBOTG_HS_EP_TYPE_BULK
-#define USB_BACKEND_DRV_EP_TYPE_INT         USBOTG_HS_EP_TYPE_INT
-
-
-#define USB_BACKEND_DRV_EP_STATE_IDLE      USBOTG_HS_EP_STATE_IDLE
-#define USB_BACKEND_DRV_EP_STATE_SETUP_WIP USBOTG_HS_EP_STATE_SETUP_WIP
-#define USB_BACKEND_DRV_EP_STATE_SETUP     USBOTG_HS_EP_STATE_SETUP
-#define USB_BACKEND_DRV_EP_STATE_STATUS    USBOTG_HS_EP_STATE_STATUS
-#define USB_BACKEND_DRV_EP_STATE_STALL     USBOTG_HS_EP_STATE_STALL
-#define USB_BACKEND_DRV_EP_STATE_DATA_IN_WIP USBOTG_HS_EP_STATE_DATA_IN_WIP
-#define USB_BACKEND_DRV_EP_STATE_DATA_in   USBOTG_HS_EP_STATE_DATA_IN
-#define USB_BACKEND_DRV_EP_STATE_DATA_OUT_WIP   USBOTG_HS_EP_STATE_DATA_OUT_WIP
-#define USB_BACKEND_DRV_EP_STATE_DATA_OUT  USBOTG_HS_EP_STATE_DATA_OUT
-#define USB_BACKEND_DRV_EP_STATE_INVALID   USBOTG_HS_EP_STATE_INVALID
-
-#define USB_BACKEND_EP_EVENFRAME   USB_HS_DXEPCTL_SD0PID_SEVNFRM
-#define USB_BACKEND_EP_ODDFRAME    USB_HS_DXEPCTL_SD1PID_SODDFRM
-
-
-
-/*
- * About driver's API prototypes
- */
-#define usb_backend_drv_configure           usbotghs_configure
-#define usb_backend_drv_declare             usbotghs_declare
-#define usb_backend_drv_activate_endpoint   usbotghs_activate_endpoint
-#define usb_backend_drv_configure_endpoint  usbotghs_configure_endpoint
-#define usb_backend_drv_get_ep_state        usbotghs_get_ep_state
-#define usb_backend_drv_send_data           usbotghs_send_data
-#define usb_backend_drv_send_zlp            usbotghs_send_zlp
-#define usb_backend_drv_set_address         usbotghs_set_address
-#define usb_backend_drv_set_recv_fifo       usbotghs_set_recv_fifo
-/* USB protocol standard handshaking */
-#define usb_backend_drv_ack                 usbotghs_endpoint_clear_nak
-#define usb_backend_drv_nak                 usbotghs_endpoint_set_nak
-#define usb_backend_drv_stall               usbotghs_endpoint_stall
-
-#define usb_backend_get_ep_mpsize           usbotghs_get_ep_mpsize
-
-#else
-
-
-#include "libusbotgfs.h"
-
-/*
- * EP name abstraction
- */
-#define EP0 USBOTG_FS_EP0
-#define EP1 USBOTG_FS_EP1
-#define EP2 USBOTG_FS_EP2
-#define EP3 USBOTG_FS_EP3
-#define EP4 USBOTG_FS_EP4
-#define EP5 USBOTG_FS_EP5
-#define EP6 USBOTG_FS_EP6
-#define EP7 USBOTG_FS_EP7
+typedef enum {
+    USB_BACKEND_DRV_EPx_MPSIZE_64BYTES = 64,
+    USB_BACKEND_DRV_EPx_MPSIZE_128BYTES = 128,
+    USB_BACKEND_DRV_EPx_MPSIZE_512BYTES = 512,
+    USB_BACKEND_DRV_EPx_MPSIZE_1024BYTES  = 1024,
+} usb_backend_drv_epx_mpsize_t;
 
 
 
-#define usb_backend_drv_ep_dir_t usbotgfs_ep_dir_t
-#define USB_BACKEND_DRV_MODE_DEVICE USBOTGFS_MODE_DEVICE
+typedef enum {
+    USB_BACKEND_EP_EVENFRAME  = 0,
+    USB_BACKEND_EP_ODDFRAME   = 1
+} usb_backend_drv_ep_toggle_t;
 
-#define USB_BACKEND_DRV_EP_DIR_IN   USBOTG_FS_EP_DIR_IN
-#define USB_BACKEND_DRV_EP_DIR_OUT  USBOTG_FS_EP_DIR_OUT
-
-#define USB_BACKEND_DRV_EP_TYPE_CONTROL     USBOTG_FS_EP_TYPE_CONTROL
-#define USB_BACKEND_DRV_EP_TYPE_ISOCHRONOUS USBOTG_FS_EP_TYPE_ISOCHRONOUS
-#define USB_BACKEND_DRV_EP_TYPE_BULK        USBOTG_FS_EP_TYPE_BULK
-#define USB_BACKEND_DRV_EP_TYPE_INT         USBOTG_FS_EP_TYPE_INT
-
-
-#define USB_BACKEND_DRV_EP_STATE_IDLE      USBOTG_FS_EP_STATE_IDLE
-#define USB_BACKEND_DRV_EP_STATE_SETUP_WIP USBOTG_FS_EP_STATE_SETUP_WIP
-#define USB_BACKEND_DRV_EP_STATE_SETUP     USBOTG_FS_EP_STATE_SETUP
-#define USB_BACKEND_DRV_EP_STATE_STATUS    USBOTG_FS_EP_STATE_STATUS
-#define USB_BACKEND_DRV_EP_STATE_STALL     USBOTG_FS_EP_STATE_STALL
-#define USB_BACKEND_DRV_EP_STATE_DATA_IN_WIP USBOTG_FS_EP_STATE_DATA_IN_WIP
-#define USB_BACKEND_DRV_EP_STATE_DATA_IN   USBOTG_FS_EP_STATE_DATA_IN
-#define USB_BACKEND_DRV_EP_STATE_DATA_OUT_WIP   USBOTG_FS_EP_STATE_DATA_OUT_WIP
-#define USB_BACKEND_DRV_EP_STATE_DATA_OUT  USBOTG_FS_EP_STATE_DATA_OUT
-#define USB_BACKEND_DRV_EP_STATE_INVALID   USBOTG_FS_EP_STATE_INVALID
-
-#define USB_BACKEND_EP_EVENFRAME   USB_FS_DXEPCTL_SD0PID_SEVNFRM
-#define USB_BACKEND_EP_ODDFRAME    USB_FS_DXEPCTL_SD1PID_SODDFRM
+typedef mbed_error_t (*usb_backend_drv_ioep_handler_t)(uint32_t dev_id, uint32_t size, uint8_t ep);
 /*
  * About driver's API prototypes
+ * Here, we only define symbols. These symbols are resolved by the generic
+ * frontend part of the corresponding driver (usb otg hs or usb otg fs
+ * are responsible for aliasing their symbols with the generic symbols.
+ * At link time, symbols are resolved by the linker, which finish the
+ * association between the generic backend and the selected driver.
  */
-#define usb_backend_drv_configure           usbotgfs_configure
-#define usb_backend_drv_declare             usbotgfs_declare
-#define usb_backend_drv_activate_endpoint   usbotgfs_activate_endpoint
-#define usb_backend_drv_configure_endpoint  usbotgfs_configure_endpoint
-#define usb_backend_drv_get_ep_state        usbotgfs_get_ep_state
-#define usb_backend_drv_send_data           usbotgfs_send_data
-#define usb_backend_drv_send_zlp            usbotgfs_send_zlp
-#define usb_backend_drv_set_address         usbotgfs_set_address
-#define usb_backend_drv_set_recv_fifo       usbotgfs_set_recv_fifo
+mbed_error_t usb_backend_drv_configure(usb_backend_drv_mode_t mode,
+                                       usb_backend_drv_ioep_handler_t ieph,
+                                       usb_backend_drv_ioep_handler_t oeph);
+
+mbed_error_t usb_backend_drv_declare(void);
+mbed_error_t usb_backend_drv_activate_endpoint(uint8_t               id,
+                                         usb_backend_drv_ep_dir_t     dir);
+mbed_error_t usb_backend_drv_configure_endpoint(uint8_t               ep,
+                                         usb_backend_drv_ep_type_t    type,
+                                         usb_backend_drv_ep_dir_t     dir,
+                                         usb_backend_drv_epx_mpsize_t mpsize,
+                                         usb_backend_drv_ep_toggle_t  dtoggle,
+                                         usb_backend_drv_ioep_handler_t handler);
+
+mbed_error_t usb_backend_drv_get_ep_state(uint8_t epnum, usb_backend_drv_ep_dir_t dir);
+mbed_error_t usb_backend_drv_send_data(uint8_t *src, uint32_t size, uint8_t ep);
+mbed_error_t usb_backend_drv_send_zlp(uint8_t ep);
+void         usb_backend_drv_set_address(uint16_t addr);
+mbed_error_t usb_backend_drv_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t ep);
 /* USB protocol standard handshaking */
-#define usb_backend_drv_ack                 usbotgfs_endpoint_clear_nak
-#define usb_backend_drv_nak                 usbotgfs_endpoint_set_nak
-#define usb_backend_drv_stall               usbotgfs_endpoint_stall
+mbed_error_t usb_backend_drv_ack(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
+mbed_error_t usb_backend_drv_nak(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
+mbed_error_t usb_backend_drv_stall(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 
-#define usb_backend_get_ep_mpsize           usbotgfs_get_ep_mpsize
-
-#endif
+uint32_t usb_backend_get_ep_mpsize(void);
 
 #endif/*!USBCTRL_BACKEND_H_*/
