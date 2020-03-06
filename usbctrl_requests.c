@@ -908,7 +908,8 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         goto err;
     }
 
-    if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_STD) {
+    if (   (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_STD)
+        && (usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE)) {
         ctx->ctrl_req_processing = true;
         /* For current request of current context, is the current context is a standard
          * request ? If yes, handle localy */
@@ -918,10 +919,12 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         /* ... or, is the current request is a vendor request, then handle locally
          * for vendor */
         errcode = usbctrl_handle_vendor_requests(pkt, ctx);
-    } else if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_CLASS) {
+    } else if (   (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_CLASS)
+               || (usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE)) {
 
         log_printf("[USBCTRL] receiving class Request\n");
-        /* ... or, is the current request is a class request, then handle in upper layer*/
+        /* ... or, is the current request is a class request or target a dedicated
+         * interface, then handle in upper layer*/
         uint8_t curr_cfg = ctx->curr_cfg;
         mbed_error_t upper_stack_err = MBED_ERROR_INVPARAM;
         for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interface_num; ++i) {

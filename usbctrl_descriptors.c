@@ -301,7 +301,20 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 ctx->cfg[curr_cfg].interfaces[iface_id].eps[i].attr << 2  |
                                 ctx->cfg[curr_cfg].interfaces[iface_id].eps[i].usage << 4;
                             cfg->wMaxPacketSize = ctx->cfg[curr_cfg].interfaces[iface_id].eps[i].pkt_maxsize;
-                            cfg->bInterval = 0;
+                            /* See table 9.3: microframe interval: bInterval specification */
+                            if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[i].type == USB_EP_TYPE_INTERRUPT) {
+                                /* in case of HS driver, bInterval == 2^(interval-1), where interval is the
+                                 * uframe length. In FS, the interval is free between 1 and 255. To simplify
+                                 * the handling of bInterval, knowing that drivers both set uFrame interval to 3
+                                 * we use the same 2^(interval-1) calculation for HS and FS */
+                                /* TODO: here, we consider that the usb backend driver set the uFrame interval to 3,
+                                 * it would be better to get back the uFrame interval from the driver and calculate
+                                 * the bInterval value */
+                                cfg->bInterval = 7;
+                            } else {
+                                /* for BULK EP, we set bInterval to 0 */
+                                cfg->bInterval = 0;
+                            }
                             curr_offset += sizeof(usbctrl_endpoint_descriptor_t);
                         }
                     }
