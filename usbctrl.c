@@ -246,10 +246,15 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        volatile usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]);
        ep->configured = false;
        if (ep->type == USB_EP_TYPE_CONTROL) {
+           printf("declare EP (control) id 0\n");
            ep->ep_num = 0;
+           iface->eps[i].ep_num = 0;
        } else {
            uint32_t drv_ep_mpsize;
-           ep->ep_num = ctx->cfg[iface_config].first_free_epid++;
+           ep->ep_num = ctx->cfg[iface_config].first_free_epid;
+           iface->eps[i].ep_num = ep->ep_num;
+           printf("declare EP (not control) id %d\n", ep->ep_num);
+           ctx->cfg[iface_config].first_free_epid++;
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
            /* check that declared ep mpsize is compatible with backend driver */
            drv_ep_mpsize = usb_backend_get_ep_mpsize();
