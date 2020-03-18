@@ -83,6 +83,14 @@
  * prototypes.
  */
 typedef enum {
+    USB_BACKEND_DRV_PORT_LOWSPEED = 0,
+    USB_BACKEND_DRV_PORT_FULLSPEED = 1,
+    USB_BACKEND_DRV_PORT_HIGHSPEED = 2
+} usb_backend_drv_port_speed_t;
+
+
+
+typedef enum {
     EP0 = 0,
     EP1 = 1,
     EP2 = 2,
@@ -172,6 +180,11 @@ mbed_error_t usb_backend_drv_ack(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 mbed_error_t usb_backend_drv_nak(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 mbed_error_t usb_backend_drv_stall(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 
+mbed_error_t usb_backend_drv_endpoint_disable(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
+mbed_error_t usb_backend_drv_endpoint_enable(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
+
 uint32_t usb_backend_get_ep_mpsize(void);
+
+usb_backend_drv_port_speed_t usb_backend_drv_get_speed(void);
 
 #endif/*!USBCTRL_BACKEND_H_*/

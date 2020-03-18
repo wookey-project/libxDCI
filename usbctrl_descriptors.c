@@ -310,7 +310,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 /* TODO: here, we consider that the usb backend driver set the uFrame interval to 3,
                                  * it would be better to get back the uFrame interval from the driver and calculate
                                  * the bInterval value */
-                                cfg->bInterval = 7;
+                                /* calculating interval depending on backend driver, to get
+                                 * back the same polling interval (i.e. 64 ms, hardcoded by now */
+                                if (usb_backend_drv_get_speed() == USB_BACKEND_DRV_PORT_HIGHSPEED) {
+                                    cfg->bInterval = 9;
+                                } else {
+                                    cfg->bInterval = 64;
+                                }
                             } else {
                                 /* for BULK EP, we set bInterval to 0 */
                                 cfg->bInterval = 0;
