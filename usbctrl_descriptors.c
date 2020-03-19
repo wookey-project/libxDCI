@@ -312,10 +312,28 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                  * the bInterval value */
                                 /* calculating interval depending on backend driver, to get
                                  * back the same polling interval (i.e. 64 ms, hardcoded by now */
+                                uint8_t poll = ctx->cfg[curr_cfg].interfaces[iface_id].eps[i].poll_interval;
+                                /* falling back to 1ms polling, if not set */
+                                if (poll == 0) {
+                                    log_printf("[USBCTRL] invalid poll interval %d\n", poll);
+                                    poll = 1;
+                                }
                                 if (usb_backend_drv_get_speed() == USB_BACKEND_DRV_PORT_HIGHSPEED) {
-                                    cfg->bInterval = 9;
+                                    /* value in poll is set in ms, in HS, value is 2^(interval-1)*125us
+                                     * here, we get the position of the first bit at 1 in poll value, and add 2 to this
+                                     * value, to get the same result as the above */
+                                    uint8_t i = 0;
+                                    /* get back the position of the first '1' bit */
+                                    while (!(poll & 0x1)) {
+                                        poll >>= 1;
+                                        i++;
+                                    }
+                                    /* binary shift left by 2, to handle (interval-1)*125us from a value in milisecond */
+                                    i+=2;
+                                    cfg->bInterval = i;
                                 } else {
-                                    cfg->bInterval = 64;
+                                    /* in Fullspeed, the bInterval field is directly set in ms, between 1 and 255 */
+                                    cfg->bInterval = poll;
                                 }
                             } else {
                                 /* for BULK EP, we set bInterval to 0 */

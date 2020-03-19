@@ -197,6 +197,7 @@ typedef struct {
     uint16_t         pkt_maxsize;           /* pkt maxsize in this EP */
     usb_ioep_handler_t handler;             /* EP handler */
     uint8_t          ep_num;                /* EP identifier */
+    uint8_t          poll_interval;         /* EP polling interval in ms (for interrupt IN EP */
     bool             configured;            /* EP enable in current config */
 } usb_ep_infos_t;
 
