@@ -119,6 +119,7 @@ As a consequence, an endpoint structure is defined as the following::
        uint16_t         pkt_maxsize;           /* pkt maxsize in this EP */
        usb_ioep_handler_t handler;             /* EP handler */
        uint8_t          ep_num;                /* EP identifier */
+       uint8_t          poll_interval;         /* EP poll interval in ms (IN Token interval for Interupts EPs) */
        bool             configured;            /* EP enable in current config */
    } usb_ep_infos_t;
 
