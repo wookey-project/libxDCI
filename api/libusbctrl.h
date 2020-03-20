@@ -250,7 +250,8 @@ typedef mbed_error_t     (*usb_rqst_handler_t)(uint32_t usbdci_handler,
  * to NULL in the interface structure.
  */
 typedef mbed_error_t
-      (*usb_class_get_descriptor_handler_t)(uint8_t            *buf,
+      (*usb_class_get_descriptor_handler_t)(uint8_t             iface_id,
+                                            uint8_t            *buf,
                                             uint32_t           *desc_size,
                                             uint32_t            usbdci_handler);
 
@@ -270,6 +271,7 @@ typedef mbed_error_t
  * functional descriptor transmission to the host on the corresponding request.
  */
 typedef struct {
+   uint8_t            id;             /*< interface id, set by libxDCI */
    usb_class_t        usb_class;      /*< the standard USB Class */
    uint8_t            usb_subclass;   /*< interface subclass */
    uint8_t            usb_protocol;   /*< interface protocol */

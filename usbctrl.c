@@ -240,7 +240,10 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
    log_printf("declaring new interface class %x, %d EPs in Cfg %d/%d\n", iface->usb_class, iface->usb_ep_number, iface_config, iface_num);
    /* 1) make a copy of interface. The interface identifier is its cell number  */
    memcpy((void*)&(ctx->cfg[iface_config].interfaces[iface_num]), (void*)iface, sizeof(usbctrl_interface_t));
-   /* 2) or, depending on the interface flags, add it to current config or to a new config */
+   /* 2) set the interface identifier */
+   ctx->cfg[iface_config].interfaces[iface_num].id = iface_num;
+   iface->id = iface_num;
+   /* 3) or, depending on the interface flags, add it to current config or to a new config */
    /* at declaration time, all interface EPs are disabled  and calculate EP identifier for the interface */
    for (uint8_t i = 0; i < ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number; ++i) {
        volatile usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]);
