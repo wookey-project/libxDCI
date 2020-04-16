@@ -266,6 +266,8 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                 log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
                 usb_backend_drv_stall(ep, USB_BACKEND_DRV_EP_DIR_OUT);
             }
+            /* Setup transaction complete, we can ACK */
+            usb_backend_drv_ack(ep, USB_BACKEND_DRV_EP_DIR_OUT);
             break;
         case USB_BACKEND_DRV_EP_STATE_DATA_OUT: {
             uint8_t curr_cfg = ctx->curr_cfg;
@@ -294,6 +296,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                          * 1. we call the upper layer stack
                          * 2. we set back our FIFO to handle properly next setup packets
                          */
+
                         log_printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d (size %d)\n",ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler, ep, size);
                         if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
                             ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
@@ -301,6 +304,9 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                              * EP0, in order to support next EP0 events */
                             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
                         }
+                        /* Here, ACK syncrhonously (or not, in main thread for e.g. is under
+                         * the responsability of the upper stack implementation, depending
+                         * on the way it is written. */
                         goto err;
                     }
                 }
@@ -310,6 +316,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
             usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);
+            break;
         }
         default:
             log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",
