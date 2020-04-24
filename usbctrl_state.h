@@ -32,6 +32,7 @@
  * USB device standard automaton. This automaton is described in USB 2.0 standard,
  * Figure 9.1
  */
+
 typedef enum {
     USB_DEVICE_STATE_ATTACHED = 0,         /* Attached but not powered. Should never be reached from device side */
     USB_DEVICE_STATE_POWERED,              /* Attached and powered, first reset not received yet */
@@ -64,12 +65,23 @@ typedef enum {
 /*
  * Return the current state of the USB device
  */
+
 usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx);
 
 /*
  * set the current state of the USB device
  */
+
+#if defined(__FRAMAC__)
+mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
+                               __in usb_device_state_t newstate);
+#else
 mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
+                               __in usb_device_state_t newstate);
+#endif/*!__FRAMAC__*/ 
+
+
+mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
                                __in usb_device_state_t newstate);
 
 

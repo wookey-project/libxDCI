@@ -174,6 +174,28 @@ static const struct {
  * USB CTRL State automaton getters and setters
  *********************************************/
 
+/*@ predicate is_valid_state(usb_device_state_t i) = 
+        i == USB_DEVICE_STATE_ATTACHED ||
+        i == USB_DEVICE_STATE_POWERED ||
+        i == USB_DEVICE_STATE_SUSPENDED_POWER ||
+        i == USB_DEVICE_STATE_SUSPENDED_DEFAULT ||
+        i == USB_DEVICE_STATE_SUSPENDED_ADDRESS ||
+        i == USB_DEVICE_STATE_SUSPENDED_CONFIGURED ||
+        i == USB_DEVICE_STATE_DEFAULT ||
+        i == USB_DEVICE_STATE_ADDRESS ||
+        i == USB_DEVICE_STATE_CONFIGURED ||
+        i == USB_DEVICE_STATE_INVALID ;
+*/
+
+
+/*@
+  @ requires \valid_read(ctx) ;
+  @ requires is_valid_state(ctx->state) ;
+  @ assigns \nothing ;
+  @ ensures (ctx == \null) ==> \result == USB_DEVICE_STATE_INVALID ;
+  @ ensures (ctx != \null) ==> \result == ctx->state ;
+*/
+
 usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx)
 {
    if (ctx == NULL) {
@@ -187,6 +209,34 @@ usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx)
  * mode (through trigger execution). Please use aprintf only
  * here.
  */
+
+/*@
+  @ requires \valid(ctx) ;
+  @ requires is_valid_state(newstate) ;
+  @ assigns ctx->state ;
+  @ ensures (ctx == \null) ==> (\result == MBED_ERROR_INVPARAM) ;
+  @ ensures (newstate >= USB_DEVICE_STATE_INVALID ) ==> (\result == MBED_ERROR_INVPARAM) ;
+  @ ensures (ctx != \null && newstate < USB_DEVICE_STATE_INVALID)  ==> (\result == MBED_ERROR_NONE && ctx->state == newstate) ;
+*/
+
+#if defined(__FRAMAC__)
+mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
+                               __in usb_device_state_t newstate)
+{
+    /* FIXME: transient, maybe we need to lock here. */
+   if (ctx == NULL) {
+       return MBED_ERROR_INVPARAM;
+   }
+    if (newstate >= USB_DEVICE_STATE_INVALID) {
+        //log_printf("[USBCTRL] invalid state transition !\n");
+        return MBED_ERROR_INVPARAM;
+    }
+    //log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
+    ctx->state = newstate;
+
+    return MBED_ERROR_NONE;
+}
+#else
 mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
                                __in usb_device_state_t newstate)
 {
@@ -195,14 +245,16 @@ mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
        return MBED_ERROR_INVPARAM;
    }
     if (newstate >= USB_DEVICE_STATE_INVALID) {
-        log_printf("[USBCTRL] invalid state transition !\n");
+        //log_printf("[USBCTRL] invalid state transition !\n");
         return MBED_ERROR_INVPARAM;
     }
-    log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
+    //log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
     ctx->state = newstate;
 
     return MBED_ERROR_NONE;
 }
+#endif/*!__FRAMAC__*/ 
+
 
 
 /******************************************************
@@ -246,6 +298,10 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
                                  usb_device_trans_t transition,
                                  usbctrl_context_t *ctx)
 {
+    /*@
+        @ loop unroll MAX_TRANSITION_STATE;
+    */
+
     for (uint8_t i = 0; i < MAX_TRANSITION_STATE; ++i) {
         if (usb_automaton[current_state].req_trans[i].request == transition) {
             return true;

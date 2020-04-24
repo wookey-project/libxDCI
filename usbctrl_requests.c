@@ -40,7 +40,9 @@ typedef enum {
    USB_REQ_RECIPIENT_OTHER        = 3,
 } usbctrl_req_recipient_t;
 
-
+#if defined(__FRAMAC__)
+    volatile bool conf_set = false;
+#endif/*!__FRAMAC__*/ 
 
 
 static inline usbctrl_req_type_t usbctrl_std_req_get_type(usbctrl_setup_pkt_t *pkt)
@@ -399,14 +401,20 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
             ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true;
         }
     }
-    usbctrl_configuration_set();
+
+    #if defined(__FRAMAC__)
+        conf_set = true;    // Cyril : la fonction usbctrl_configuration_set() est définie dans un main.c, elle assigne conf_set à true, donc je l'ai mis en dur
+    #else
+        usbctrl_configuration_set();
+    #endif/*!__FRAMAC__*/ 
+
     usb_backend_drv_send_zlp(0);
     /* handling standard Request */
     pkt = pkt;
     /*request finish here */
     ctx->ctrl_req_processing = false;
     return errcode;
-err:
+    err:
     usb_backend_drv_stall(0, USB_EP_DIR_OUT);
     /*request finish here */
     ctx->ctrl_req_processing = false;

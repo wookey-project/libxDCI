@@ -1,0 +1,51 @@
+De manière générale, les modifications sont encadrées
+
+#if defined(__FRAMAC__)
+
+#endif/*!__FRAMAC__*/
+
+
+Quand j'ai modifié le code, j'ai mis un commentaire qui commence par Cyril : (donc avec un grep on peut tous les trouver)
+
+
+Modification des includes dans plusieurs fichiers .c pour inclure:
+- la libc de wookey : include_frama/libc
+- une partie de la libc de frama-c (fonction strlen pour le moment) : include_frama/lib_frama
+- le code du driver usbotghs (qui sera utilisé lorsque des fonctions usbctrl_backend seront appelées) : include_frama/socs/stm32f439
+mbed_error_t usbotghs_ulpi_reset(void)
+- une partie du code du driver, modifiée pour frama : usbotghs_frama.c / .h dans include_frama/driver_api (ajout d'une fonction et d'une spec)
+
+Ajout d'un rép avec les fichiers résultats de frama
+
+
+1 fichier contient l'essentiel des modifs : usbctrl.c
+ - ajout d'un main comme point d'entrée pour frama-c, avec test de toutes les fonctions du fichiers sauf start et stop device
+ - ajout de spec frama-c pour toutes fonctions, sauf ces 2 là
+ - autres modifs : ajout d'un test sur le nombre de contexte dans usbctrl_declare_interface (vu avec toi philippe)
+ 				   ajout d'un goto dans la fonction usbctrl_declare_interface (vu avec toi philippe)
+ 				   modification de 2 == en >= dans 2 sanitize (voir le fichier)
+ 				   memset et memcpy remplacés "manuellement" par une initialisation de structure et par une copie champ par champ des données dans la nouvelle structure (dans un ifdef frama)
+
+fichiers usbctrl_state.h et .c modifiés pour frama:
+	- probleme du volatile dans set_state, donc j'ai fait le choix de définir une fonction set_state sans volatile pour frama
+	- ajout des spec des fonctions get_state et set_state, car ces fonctions sont appelées par des fonctions dans usbctrl.c
+
+fichier usbctrl_request modifié pour frama: la fonction usbctrl_configuration_set() n'est pas définie, donc ça générait un warning lors du lancement de frama-c. J'ai trouvé une définition de cette fonction dans un fichier main.c, (dans le rep app à la racine de wookey). Comme la fonction définissait simplement une variable, je l'ai écrite en dur dans le fichier pour enlever le warning de frama-c
+
+
+
+Résultats obtenus :
+J'ai d'abord lancé frama-c, sans spec et avec EVA : après quelques corrections, les seuls warning restent dans le driver, donc pour le moment je n'y ai pas touché.
+J'ai ensuite spécifié les fonctions pour lancer frama-c avec wp. Tout n'est pas passé:
+ - sans wp, mais avec les spec des fonctions, EVA n'arrive pas au bout et laisse plusieurs points en orange / bleu (notamment les assigns...)
+ - avec wp, voilà les problèmes que j'ai:
+ 			- usbctrl_declare : cette fonction appelle la fonction usb_backend_drv_declare, qui appelle usbotghs_declare(). Cette fonction renvoie un code d'erreur parmi 2 erreurs possibles. Comme cette fonction inclut un memset et un memcpy, j'ai choisi de faire une "fausse fonction" simplement pour frama-c, qui renvoie juste un code erreur (MBED_ERROR_NONE) et j'ai spécifié la fonction simplement, avec 
+ 			/*@
+    			assigns \nothing ;
+    			ensures \result == MBED_ERROR_NONE;
+			*/
+			ça passe pour wp, je vérifie avec un assert dans usbctrl_declare que le code d'erreur est le bon, mais wp ne parvient pas à prouver que cette fonction ne fait rien d'autre, et donc laisse en orange les assigns et les ensures pour le behavior ok (celui dans lequel on passe dans les fonctions). J'ai testé en commentant, pas de soucis pour wp. Je ne comprends pas trop le probleme, mais manifestement pour wp, usbotghs_declare() peut modifier plus de chose que prévu...
+
+			usbctrl_is_endpoint_exists : complete behaviors pas prouvé (mais sûrement du à des assume qui ne couvrent pas tout le champ des possibilités). Je dois vérifier ça
+
+			 usbctrl_declare_interface : fonction qui me donne le plus de difficultés, notamment dans la boucle par loop assigns et loop variant ne sont pas prouvés
