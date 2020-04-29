@@ -83,7 +83,22 @@
 /* called by libusbctrl when the SetConfiguration request has been received and handled.
  * From now on, the upper layer EPs are set and ready to use */
 void usbctrl_configuration_set(void);
-void usbctrl_reset_received(void);
+
+#if defined(__FRAMAC__)
+    bool reset_requested = false;
+    
+/*@
+    @ assigns reset_requested ;
+    @ ensures reset_requested == true ;
+*/
+
+void usbctrl_reset_received(void){
+    reset_requested = true; 
+}
+      
+#else
+    void usbctrl_reset_received(void);
+#endif/*!__FRAMAC__*/ 
 
 
 /************************************************

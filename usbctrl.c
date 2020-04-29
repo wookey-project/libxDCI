@@ -46,41 +46,39 @@
 static  uint8_t num_ctx = 0;
 usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 }; 
 #define MAX_EPx_PKT_SIZE 512
+#define RAND_UINT_32 65535 
 #else
 static volatile uint8_t num_ctx = 0;
 volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/
 
 /*@
-    @ requires \valid(ctxh); 
-    @ requires MAX_USB_CTRL_CTX >= 0;
-    @ requires ((MAX_USB_CTRL_CTX > 0) && (ctx_list != \null)) ==>
-         \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1)));
-    @ requires 0 <= dev_id <= (2^32)-1 ;
-    @ requires 0 <= num_ctx < MAX_USB_CTRL_CTX ;
+
     @ requires \separated(ctxh,&ctx_list);
+    @ requires 0 <= dev_id < RAND_UINT_32 ;
     @
     @ behavior bad_ctxh:
-    @   assumes (ctxh == \null) ;
+    @   assumes ctxh == \null ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @
     @ behavior bad_num_ctx:
-    @   assumes num_ctx >= MAX_USB_CTRL_CTX  ;
-    @   assumes ctxh != \null ;
+    @   assumes num_ctx >= MAX_USB_CTRL_CTX ;
+    @ 	assumes ctxh != \null ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_NOMEM ;
     @
     @ behavior bad_dev_id:
-    @   assumes dev_id != USB_OTG_HS_ID ;
-    @   assumes dev_id != USB_OTG_FS_ID ;
     @   assumes num_ctx < MAX_USB_CTRL_CTX ;
-    @   assumes ctxh != \null ;
+    @ 	assumes ctxh != \null ;
+    @   assumes dev_id != USB_OTG_HS_ID && dev_id != USB_OTG_FS_ID ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_NOBACKEND ;
     @
     @ behavior ok:
-    @   assumes (dev_id == USB_OTG_HS_ID || dev_id == USB_OTG_FS_ID) &&  (num_ctx < MAX_USB_CTRL_CTX) &&  (ctxh != \null) ;
+    @   assumes (dev_id == USB_OTG_HS_ID || dev_id == USB_OTG_FS_ID) ;
+    @	assumes num_ctx < MAX_USB_CTRL_CTX ;
+    @ 	assumes ctxh != \null ;
     @   assigns *ctxh ;
     @   assigns ctx_list[\old(num_ctx)] ;
     @   assigns num_ctx ;
@@ -93,7 +91,6 @@ volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
     @ complete behaviors;
     @ disjoint behaviors;
 */
-
 
 mbed_error_t usbctrl_declare(uint32_t dev_id,
                              uint32_t *ctxh)
@@ -114,17 +111,23 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
 
     switch (dev_id) {
         case USB_OTG_HS_ID:
-            errcode = usb_backend_drv_declare();
-            /*@ assert errcode ==  MBED_ERROR_NONE ;  */
+            #if defined(__FRAMAC__)
+        	errcode = usbotghs_declare();
+			#else
+        	errcode = usb_backend_drv_declare()   // Cyril : Frama-c semble avoir du mal avec l'alliasing...(les assigns ne passent pas)
+			#endif/*!__FRAMAC__*/
             break;
         case USB_OTG_FS_ID:
-            errcode = usb_backend_drv_declare();
-            /*@ assert errcode ==  MBED_ERROR_NONE ;  */
+            #if defined(__FRAMAC__)
+        	errcode = usbotghs_declare();
+			#else
+        	errcode = usb_backend_drv_declare()   // Cyril : Frama-c semble avoir du mal avec l'alliasing...(les assigns ne passent pas)
+			#endif/*!__FRAMAC__*/
             break;
         default:
             errcode = MBED_ERROR_NOBACKEND;
             goto err;
-            break;  // Cyril : jamais atteint à cause du goto
+            //break;  // Cyril : jamais atteint à cause du goto
     }
 
     ctx_list[num_ctx].dev_id = dev_id;
@@ -136,7 +139,7 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
         volatile usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
     #endif/*!__FRAMAC__*/ 
 
-    num_ctx++;
+    num_ctx++;  // Cyril : je pense qu'il faut ajouter un test ici si on depasse le nombre max de contexte pour ne pas avoir de débordement de tableau
     /* initialize context */
     ctx->num_cfg = 1;
     
@@ -166,10 +169,8 @@ err:
 
 
 /*@
-    @ requires MAX_USB_CTRL_CTX >= 0;
-    @ requires ((MAX_USB_CTRL_CTX > 0) && (ctx_list != \null)) ==> \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1)));
-    @ requires 0 <= num_ctx < MAX_USB_CTRL_CTX ;
-
+    @ requires 0 <= ctxh < MAX_USB_CTRL_CTX ;
+    @
     @ behavior bad_ctxh :
     @   assumes ctxh >= num_ctx ;
     @   assigns \nothing ;
@@ -178,10 +179,7 @@ err:
     @ behavior ok:
     @   assumes ctxh < num_ctx ;
     @   assigns ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)] ;
-    @   assigns ctx_list[ctxh].ctrl_fifo_state ;
-    @   assigns ctx_list[ctxh].state ;
-    @   assigns ctx_list[ctxh].ctrl_req_processing ;
-    @   assigns ctx_list[ctxh].cfg[0].first_free_epid ;
+    @	assigns ctx_list[ctxh] ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
     @   ensures ctx_list[ctxh].state == USB_DEVICE_STATE_POWERED ;
     @
@@ -264,16 +262,28 @@ end:
     return errcode;
 }
 
-/*@
-    @ requires \valid_read(ctx) && \valid(handler) ;
-    @ requires 0 <= num_ctx < MAX_USB_CTRL_CTX ;
-    @ requires ((MAX_USB_CTRL_CTX > 0) && (ctx_list != \null)) ==> \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1)));
-    @ assigns *handler ;
-    @ ensures (ctx == \null || handler == \null) ==> (\result == MBED_ERROR_INVPARAM) ;
-    @ ensures \forall integer i; 0 <= i < num_ctx ==> &ctx_list[i] != ctx ==> \result == MBED_ERROR_NOTFOUND ;
-    @ ensures \exists integer i ; 0 <= i < num_ctx && &ctx_list[i] == ctx ==> \result == MBED_ERROR_NONE ;
-*/
+/*@   
+    @ behavior bad_pointer :
+    @	assumes (ctx == \null || handler == \null) ;
+    @	assigns \nothing ;
+    @	ensures \result == MBED_ERROR_INVPARAM ;
 
+    @ behavior not_found :
+    @	assumes ctx != \null && handler != \null ; 
+    @	assumes \forall integer i ; 0 <= i < num_ctx ==> &(ctx_list[i]) != ctx ;	
+    @	assigns *handler ;    // Cyril : même si handler n'est pas modifié dans ce cas, je suppose que comme il y a loop assigns *handler, 
+    							// wp considère qu'il peut bouger dès qu'on rentre dans la boucle
+    @	ensures \result == MBED_ERROR_NOTFOUND ;
+
+	@ behavior found :
+    @	assumes ctx != \null && handler != \null ; 
+    @	assumes \exists integer i ; 0 <= i < num_ctx && &(ctx_list[i]) == ctx ;
+    @ 	assigns *handler ;
+    @ 	ensures \result == MBED_ERROR_NONE  ;  // Cyril :ajout de || \result == MBED_ERROR_NOTFOUND 
+    										   //  sinon ça ne passe pas avec wp, pourtant dans ce cas, il n'y a pas d'erreur...
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
 
 mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
                                 uint32_t *handler)
@@ -288,7 +298,9 @@ mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
 
 /*@
         @ loop invariant 0 <= i <= num_ctx;
-        @ loop invariant \valid(&ctx_list + (0..(num_ctx-1))) ;
+        @ loop invariant \valid_read(&ctx_list + (0..(num_ctx-1))) ;
+        @ loop invariant \valid_read(ctx) ;
+        @ loop invariant \valid(handler);
         @ loop assigns i , *handler ;
         @ loop variant (num_ctx - i);
 */
@@ -296,6 +308,8 @@ mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
     for (uint8_t i = 0; i < num_ctx; ++i) {  
         if (&(ctx_list[i]) == ctx) {
             *handler = i;
+            /*@ assert errcode == MBED_ERROR_NONE ; */
+            /*@ assert 0 <= i < num_ctx ; */
             goto end;
         }
     }
@@ -304,15 +318,27 @@ end:
     return errcode;
 }
 
-/*@
-    @ requires \valid(ctx);
-    @ requires 0 <= num_ctx < MAX_USB_CTRL_CTX ;
-    @ requires ((MAX_USB_CTRL_CTX > 0) && (ctx_list != \null)) ==> \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1))) ;
-    @ requires 0 <= device_id <= (2^32)-1 ;
-    @ assigns *ctx ;
-    @ ensures (ctx == \null) ==> (\result == MBED_ERROR_INVPARAM) ;
-    @ ensures \forall integer i; 0 <= i < num_ctx ==> ctx_list[i].dev_id != device_id ==> \result == MBED_ERROR_NOTFOUND ;
-    @ ensures \exists integer i ; 0 <= i < num_ctx && ctx_list[i].dev_id == device_id ==> \result == MBED_ERROR_NONE ;
+/*@   
+    @ behavior bad_pointer :
+    @	assumes ctx == \null ;
+    @	assigns \nothing ;
+    @	ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior not_found :
+    @	assumes ctx != \null ; 
+    @	assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != device_id ;	
+    @	assigns *ctx ;    // Cyril : même si ctx n'est pas modifié dans ce cas, je suppose que comme il y a loop assigns *ctx, 
+    							// wp considère qu'il peut bouger dès qu'on rentre dans la boucle
+    @	ensures \result == MBED_ERROR_NOTFOUND ;
+
+	@ behavior found :
+    @	assumes ctx != \null ; 
+    @	assumes !(\forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != device_id) ;
+    @ 	assigns *ctx ;
+    @ 	ensures \result == MBED_ERROR_NONE ;  // Cyril :ajout de || \result == MBED_ERROR_NOTFOUND 
+    										  //  sinon ça ne passe pas avec wp, pourtant dans ce cas, il n'y a pas d'erreur...
+    @ complete behaviors ;
+    @ disjoint behaviors ;
 */
 
 
@@ -329,7 +355,8 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
 
 /*@
         @ loop invariant 0 <= i <= num_ctx;
-        @ loop invariant \valid(&ctx_list + (0..(num_ctx-1))) ;
+        @ loop invariant \valid_read(&ctx_list + (0..(num_ctx-1))) ;
+        @ loop invariant \valid(ctx) ;
         @ loop assigns i , *ctx ;
         @ loop variant (num_ctx - i);
 */
@@ -346,7 +373,6 @@ end:
 }
 
 /*@
-    @ requires \valid_read(ctx) ;
     @ requires 0 <= ep <= 255 ;    
     @ assigns \nothing ;
 
@@ -362,19 +388,20 @@ end:
     @ behavior EP_not_found:
     @   assumes ctx != \null ;
     @   assumes ep != EP0 ;
-    @   assumes \forall integer i; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num &&
-                \forall integer j ; 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number
-                ==> ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num != ep ;
+    @   assumes \forall integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num &&
+               						  0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number
+               		 ==> ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num != ep ;
     @   ensures \result == \false;
 
     @ behavior EP_found:
     @   assumes ctx != \null ;
     @   assumes ep != EP0 ;
-    @   assumes \forall integer i ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num &&
-                \exists integer j ; 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number 
-                && ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep ;
-    @   ensures \result == \true;
-
+    @   assumes !(\forall integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num &&
+               						  0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number
+               		 ==> ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num != ep) ;
+    @   ensures \result == \true ;   // Cyril : là encore, wp n'y arrive que si j'ajoute || \result == \false, comme pour les 
+    													  // fonctions get_context et get_handler
+ 
     @ complete behaviors;
     @ disjoint behaviors;
 */
@@ -397,6 +424,7 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
 /*@
         @ loop invariant 0 <= i <= ctx->cfg[ctx->curr_cfg].interface_num ;
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
         @ loop assigns i, j ;
         @ loop variant (ctx->cfg[ctx->curr_cfg].interface_num - i);
 */
@@ -405,7 +433,9 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
     for (i = 0; i < ctx->cfg[ctx->curr_cfg].interface_num; ++i) {
         
 /*@
+        @ loop invariant 0 <= i <= ctx->cfg[ctx->curr_cfg].interface_num ;
         @ loop invariant 0 <= j <= ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
         @ loop assigns j ;
         @ loop variant (ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number - j);
@@ -422,11 +452,25 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
 
 
 /*@
-    @ requires \valid_read(ctx) ;
     @ requires 0 <= iface <= 255 ;    
     @ assigns \nothing ;
-    @ ensures (ctx == \null || iface >= ctx->cfg[ctx->curr_cfg].interface_num ) ==> \result == \false ;
-    @ ensures (ctx != \null && iface < ctx->cfg[ctx->curr_cfg].interface_num ) ==> \result == \true ;
+
+	@ behavior bad_ctx:
+	@	assumes ctx == \null ;
+	@	ensures \result == \false ;
+
+	@ behavior iface_false:
+	@	assumes ctx != \null ;
+	@	assumes iface >= ctx->cfg[ctx->curr_cfg].interface_num ;
+	@	ensures \result == \false ;
+
+	@ behavior true :
+	@ 	assumes ctx != \null ;
+	@	assumes !(iface >= ctx->cfg[ctx->curr_cfg].interface_num) ;
+	@	ensures \result == \true ;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
 */
 
 
@@ -444,11 +488,25 @@ bool usbctrl_is_interface_exists(usbctrl_context_t *ctx, uint8_t iface)
 }
 
 /*@
-    @ requires \valid_read(ctx) ;
     @ requires 0 <= iface <= 255 ;    
     @ assigns \nothing ;
-    @ ensures (ctx == \null || iface >= ctx->cfg[ctx->curr_cfg].interface_num ) ==> \result == \null ;
-    @ ensures (ctx != \null && iface < ctx->cfg[ctx->curr_cfg].interface_num ) ==> \result == &(ctx->cfg[ctx->curr_cfg].interfaces[iface]) ;
+
+	@ behavior bad_ctx:
+	@	assumes ctx == \null ;
+	@	ensures \result == \null ;
+
+	@ behavior iface_null:
+	@	assumes ctx != \null ;
+	@	assumes iface >= ctx->cfg[ctx->curr_cfg].interface_num ;
+	@	ensures \result == \null ;
+
+	@ behavior iface_ok :
+	@ 	assumes ctx != \null ;
+	@	assumes !(iface >= ctx->cfg[ctx->curr_cfg].interface_num) ;
+	@	ensures \result == &(ctx->cfg[ctx->curr_cfg].interfaces[iface]) ;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
 */
 
 usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface)
@@ -471,16 +529,16 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
 /*@
     @ requires \valid(iface);
     @ requires \separated(iface,&ctx_list[ctxh]);
-    @ requires 0 <= num_ctx < MAX_USB_CTRL_CTX ;
-    @ requires ((MAX_USB_CTRL_CTX > 0) && (ctx_list != \null)) ==> \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1)));
 
     @ behavior bad_ctxh :
     @   assumes ctxh >= num_ctx ;
+    @   assumes iface != \null ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior invalid_iface :
-    @   assumes iface == \null;
+    @   assumes iface == \null ;
+    @   assumes ctxh < num_ctx ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ; 
 
@@ -494,20 +552,23 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
     @ behavior too_many_config :
     @   assumes ctxh < num_ctx ;
     @   assumes iface != \null;
-    @   assumes ctx_list[ctxh].num_cfg >= MAX_USB_CTRL_CTX-1 ;
+    @   assumes ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num < MAX_INTERFACES_PER_DEVICE ;
     @   assumes (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) ; 
+    @   assumes ctx_list[ctxh].num_cfg >= (MAX_USB_CTRL_CTX-1) ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_NOMEM ;   
-
 
     @ behavior ok :
     @   assumes ctxh < num_ctx ;
     @   assumes iface != \null;
-    @   assumes ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num < MAX_INTERFACES_PER_DEVICE && ctx_list[ctxh].num_cfg < MAX_USB_CTRL_CTX-1 ;
+    @   assumes ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num < MAX_INTERFACES_PER_DEVICE ;
+    @   assumes ((iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && ctx_list[ctxh].num_cfg < (MAX_USB_CTRL_CTX-1)) ||
+    			(iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 )  ;
     @   assigns *iface ;
-    @   assigns ctx_list[ctxh] ;
+    @	assigns ctx_list[ctxh] ;
     @   ensures \result == MBED_ERROR_NONE ;
     
+
     @ complete behaviors;
     @ disjoint behaviors;
 
@@ -599,23 +660,23 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     @ loop invariant \valid(iface->eps+(0..(ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number-1))) ;
     @ loop invariant \separated(ctx->cfg[iface_config].interfaces[iface_num].eps +(0..(ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number-1)),iface->eps+(0..(ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number-1)));
     @ loop assigns i;
-    @ loop assigns iface->eps[0..(ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number-1)] ;
-    @ loop assigns ctx->cfg[iface_config].interfaces[iface_num].eps[0..(ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number-1)] ;
+    @ loop assigns *iface ;
+    @ loop assigns ctx_list[ctxh] ;
     @ loop assigns drv_ep_mpsize ;
-    @ loop assigns ctx->cfg[iface_config].first_free_epid ;
-    @ loop assigns ctx->cfg[iface_config].interface_num ;
     @ loop variant (ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number - i) ;
 */
 
    for (i = 0; i < ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number; ++i) {
-         
+
     #if defined(__FRAMAC__)
-        usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]) ;
+      usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]) ;
     #else
         volatile usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]) ;
     #endif/*!__FRAMAC__*/
 
-         ep->configured = false;
+    ep->configured = false;
+    /*@ assert ctx_list[ctxh].cfg[iface_config].interfaces[iface_num].eps[i].configured == false ; */
+
 
        if (ep->type == USB_EP_TYPE_CONTROL) {
            //printf("declare EP (control) id 0\n");
@@ -625,11 +686,11 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
             ep->ep_num = ctx->cfg[iface_config].first_free_epid;
             iface->eps[i].ep_num = ep->ep_num;
            //printf("declare EP (not control) id %d\n", ep->ep_num);
-           ctx->cfg[iface_config].first_free_epid++;
+           ctx->cfg[iface_config].first_free_epid++;          
+
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
            /* check that declared ep mpsize is compatible with backend driver */
-           drv_ep_mpsize = usb_backend_get_ep_mpsize();
-           /*@ assert drv_ep_mpsize == MAX_EPx_PKT_SIZE ; */
+           drv_ep_mpsize = usbotghs_get_ep_mpsize();
 
            if (ep->pkt_maxsize > drv_ep_mpsize) {
                //log_printf("truncating EP max packet size to backend driver EP max pktsize\n");
@@ -637,6 +698,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
            }
        }
    }
+
    /* 4) now that everything is Okay, consider iface registered */
    ctx->cfg[iface_config].interface_num++;
    /* 5) iface EPs should be configured when receiving setConfiguration or SetInterface */
@@ -698,7 +760,6 @@ err:
 /*
  * Support for Frama-C testing
  */
-
 int volatile Frama_C_entropy_source;
 
 //@ assigns Frama_C_entropy_source \from Frama_C_entropy_source;
@@ -720,9 +781,10 @@ int Frama_C_interval(int min, int max)
 
 int main(void)
 {
-    uint32_t dev_id = Frama_C_interval(0,(2^32)-1);
+    
+    uint32_t dev_id = Frama_C_interval(0,RAND_UINT_32-1) ;
     uint32_t ctxh = Frama_C_interval(0,MAX_USB_CTRL_CTX-1);
-    uint32_t handler = Frama_C_interval(0,(2^32)-1);
+    uint32_t handler = Frama_C_interval(0,RAND_UINT_32-1);
     uint8_t ep = Frama_C_interval(0,255);
     uint8_t iface = Frama_C_interval(0,MAX_INTERFACES_PER_DEVICE-1);
     uint8_t ep_number = Frama_C_interval(0,MAX_EP_PER_INTERFACE);
@@ -740,9 +802,15 @@ usbctrl_interface_t iface_1 = {
 usbctrl_interface_t iface_2 = {
      .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true, .eps[0].type = EP_type  };
 
+    /* @ assert  \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1))); */ 
+	/* @ assert 0 <= num_ctx < MAX_USB_CTRL_CTX ; */
+
     usbctrl_declare(dev_id, &ctxh);
+
+    /* @ assert 0 <= num_ctx < MAX_USB_CTRL_CTX ; */
+
     usbctrl_initialize(ctxh);
-    usbctrl_declare_interface(ctxh, &iface_1);
+    usbctrl_declare_interface(ctxh, &iface_1) ;
     usbctrl_get_interface((usbctrl_context_t *)&(ctx_list[ctxh]), iface);
     usbctrl_get_handler((usbctrl_context_t *)&(ctx_list[ctxh]), &handler);
     usbctrl_get_context(dev_id, (usbctrl_context_t **)&(ctx_list[ctxh]));

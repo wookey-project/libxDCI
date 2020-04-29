@@ -1223,8 +1223,14 @@ mbed_error_t usb_backend_drv_configure(usb_backend_drv_mode_t mode,
                                        usb_backend_drv_ioep_handler_t oeph)
     __attribute__ ((alias("usbotghs_configure")));
 
+/*@ 
+    @ assigns \nothing ;
+    @ ensures \result == MBED_ERROR_NONE ;
+ */
 mbed_error_t usb_backend_drv_declare(void)
     __attribute__ ((alias("usbotghs_declare")));
+
+
 mbed_error_t usb_backend_drv_activate_endpoint(uint8_t               id,
                                          usb_backend_drv_ep_dir_t     dir)
     __attribute__ ((alias("usbotghs_activate_endpoint")));
