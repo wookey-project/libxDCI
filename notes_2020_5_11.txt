@@ -1,0 +1,27 @@
+Principaux points bloquants (pour le moment)
+
+- variable volatile. L'option wp-no-volatile n'est pas retenue compte tenu de ses effets, voir si possible de traiter ce cas sans désactiver les volatile avec #if defined framaC...
+- fonctions backend : wp ne gère pas correctement l'aliasing (assigns ne sont pas prouvés). Si j'appelle directement la fonction du driver, je peux passer la preuve, mais
+ 	j'arrive à d'autres difficultés avec les fonctions du driver : est-ce qu'ils faut les spécifier? et bcp lisent ou écrivent dans des registres, et donc ça foire avec frama (valid mémory access)
+ 	Choix de :
+ 		- passer les backend sous forme de #define, après un  #if defined framaC (comme ça je touche pas au code)
+ 		- utiliser une option de frama pour lui dire dans quelle plage d'adresse le code a accès : -absolute-valid-range 0x40040000-0x40080000 (exemple du driver highspeed, dans mon cas)
+ 		- regarder ce que font les fonctions du driver, généralement juste vérifier qu'elles remontent bien une erreur, sauf pour fifo qui est censé écrire dans une structure (vérifier qu'il n'y a pas de débordement lors de cette écriture)
+
+- pour les pointeurs de fonctions, utiliser l'exemple de usbhid.c pour définir des pointeurs de fonctions si nécessaire
+
+- réfléchir comment tout parcourir avec EVA sachant que le changement d'état est souvent initié par un signal extérieur... (pour le moment je ne parcours pas tout le code avec EVA...) (normal que je sois pas pour le moment dans l'état configured...)
+
+- voir comment accéder à ctx_list dans les specs des fonctions request.c et handler.c (pour le moment, FramaC n'y arrive pas)
+
+
+Liste bugs :
+- usbctrl_set_state, mettre newstate > USB_DEVICE_STATE_INVALID au lieu de newstate >= USB_DEVICE_STATE_INVALID
+Problème découvert avec EVA dans la fonction is_valid_transition, ou le dernier set_state ne passait pas, justement parce qu'il demandait de mettre state = USB_DEVICE_STATE_INVALID
+
+- usbctrl_handle_requests : ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE, juste avant le return et après le label err : . Or on peut y arriver sans que ctx soit alloué, donc bug possible
+
+- autre bug : usbctrl_std_req_handle_get_configuration, ctx->ctrl_req_processing = false; // Cyril : je n'arrive jamais là, donc je ne peux pas assigner req_processing (switch default, mais avec le test initial cas impossible)
+
+- usbctrl_std_req_handle_set_configuration : requested_configuration = pkt->wValue;  pkt->wValue est un uint16_t, alors que uint8_t requested_configuration (faire gaffe avec le reste...)
+						

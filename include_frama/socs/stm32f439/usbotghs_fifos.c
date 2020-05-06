@@ -23,7 +23,11 @@
  */
 
 #include "usbctrl_backend.h"
+#if defined(__FRAMAC__)
 #include "libc/regutils.h"
+#else
+#include "libc/regutils.h"
+#endif/*!__FRAMAC__*/
 #include "libc/types.h"
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"

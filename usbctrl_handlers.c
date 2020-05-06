@@ -27,12 +27,27 @@
 #include "usbctrl_state.h"
 #include "usbctrl.h"
 
+
 mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     dev_id = dev_id;
     return errcode;
 }
+
+/* @
+    @ assigns \nothing ;  // en fait, je touche à un contexte global, déclaré dans un autre fichier...je ne sais pas comment le dire (ctx_list)
+
+    @ ensures \forall integer i ; 0 <= i < MAX_USB_CTRL_CTX ==> ctx_list[i].dev_id != dev_id 
+                                ==> \result == MBED_ERROR_INVPARAM ;
+    @ 
+    @ ensures \exists integer i ; 0 <= i < MAX_USB_CTRL_CTX && ctx_list[i].dev_id == dev_id && 
+
+*/
+
+// dans les ensures, je dois dire : si je suis dans tel état, je termine dans tel état à la fin de la fonction
+// mais pour ça je dois faire référence à ctx->state, déclaré dans la fonction...donc je peux pas le mettre ici. 
+//  Je dois utiliser ctx_list, qui n'est pas connu par la fonction usbctrl_handle_reset
 
 mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 {
@@ -52,6 +67,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
+
     usb_device_state_t state = usbctrl_get_state(ctx);
     /* resetting directly depends on the current state */
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
@@ -70,7 +86,13 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             /* as USB Reset action reinitialize the EP0 FIFOs (flush, purge and deconfigure) they must
              * be reconfigure for EP0 here. */
             //log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+
+            #if defined(__FRAMAC__)
+                errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            #else
+                errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            #endif/*!__FRAMAC__*/
+
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -124,7 +146,10 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             /* control pipe recv FIFO is ready to be used */
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             ctx->address = 0;
-            usb_backend_drv_set_address(0);
+            #if defined(__FRAMAC__)
+            #else
+            usb_backend_drv_set_address(0); 
+            #endif/*!__FRAMAC__*/
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             /* INFO: deconfigure any potential active EP of current config is automatically
@@ -139,7 +164,13 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             /* when configured, the upper layer must also be reset */
             ctx->address = 0;
-            usb_backend_drv_set_address(0);
+            
+            #if defined(__FRAMAC__)
+           
+            #else
+            /* assert rte: mem_access: \valid_read(reg); */  // Cyril : voici le message de Frama quand on finit par utiliser __INLINE uint32_t read_reg_value(volatile uint32_t * reg)
+            usb_backend_drv_set_address(0); // Cyril : cette fonction finit par appeler reg_value, qui ne passe pas avec eva pour un probleme de \valid(reg) : adresse registre en dur, dans mon cas adresse mémoire invalide
+            #endif/*!__FRAMAC__*/
             usbctrl_reset_received();
             break;
         default:
@@ -155,8 +186,11 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
      * This action is generic thinks to the automaton and can be executed out
      * of the above switch().
      * after sanitation, should not fail */
-    usbctrl_set_state(ctx, usbctrl_next_state(state,
-                          USB_DEVICE_TRANS_RESET));
+    usbctrl_set_state(ctx, usbctrl_next_state(state, USB_DEVICE_TRANS_RESET));
+
+    /*@ assert ctx->state == USB_DEVICE_STATE_DEFAULT ; */   // c'est un cas particulier, l'état initial est powered, après le reset le device est en défaut
+    /* @ assert ctx_list[0].state == USB_DEVICE_STATE_DEFAULT ; */
+
 err:
     return errcode;
 }
@@ -244,7 +278,12 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
      * In the first case, we have received a SETUP packet, targetting the libctrl,
      * in the second case, we have received some data, targetting one of the
      * interface which has registered a DATA EP with the corresponding EP id */
+    #if defined(__FRAMAC__)
+    uint8_t State = Frama_C_interval(0,9);
+    switch(State){
+    #else
     switch (usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT)) {
+    #endif/*!__FRAMAC__*/
         case USB_BACKEND_DRV_EP_STATE_SETUP:
             log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
             if (size == 8) {
@@ -309,7 +348,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * the EP on which we have received some content. This is *not* a valid behavior, and we
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
-            usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);
+            //usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);
         }
         default:
             log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",

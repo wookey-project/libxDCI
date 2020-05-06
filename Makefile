@@ -87,7 +87,7 @@ $(APP_BUILD_DIR):
 # Frama-C
 #####################################################################
 
-SESSION:=result_frama/frama-c-rte-eva-wp-no-split.session
+SESSION:=result_frama/frama-c-rte-eva-wp-split.session
 JOBS:=$(shell nproc)
 TIMEOUT:=15
 
@@ -104,6 +104,29 @@ frama-c-parsing:
 		 -no-frama-c-stdlib \
 		 -cpp-extra-args="-nostdinc -I include_frama" 
 
+frama-c-eva:
+	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
+	            -no-frama-c-stdlib \
+	            -warn-left-shift-negative \
+	            -warn-right-shift-negative \
+	            -warn-signed-downcast \
+	            -warn-signed-overflow \
+	            -warn-unsigned-downcast \
+	            -warn-unsigned-overflow \
+				-kernel-msg-key pp \
+				-cpp-extra-args="-nostdinc -I include_frama" \
+		    -rte \
+		    -eva \
+		    -eva-warn-undefined-pointer-comparison none \
+		    -eva-auto-loop-unroll 10 \
+		    -eva-slevel 100 \
+		    -eva-symbolic-locations-domain \
+		    -eva-equality-domain  \
+		    -eva-auto-loop-unroll 10 \
+		    -eva-split-return auto \
+		    -eva-partition-history 2 \
+		    -eva-log a:frama-c-rte-eva.log \
+			-save result_frama/frama-c-rte-eva.session
 
 frama-c:
 	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
@@ -130,6 +153,7 @@ frama-c:
    		    -then \
    		    -wp \
   			-wp-model "Typed+ref+int" \
+  			-wp-literals \
   			-wp-no-dynamic \
   			-wp-prover alt-ergo,cvc4,z3 \
    			-wp-timeout $(TIMEOUT) -save $(SESSION)  \

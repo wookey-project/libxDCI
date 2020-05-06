@@ -1,7 +1,11 @@
 #ifndef STM32F4XX_USBOTG_HS_REGS_H
 # define STM32F4XX_USBOTG_HS_REGS_H
 
-# include "libc/regutils.h"
+#if defined(__FRAMAC__)
+#include "libc/regutils.h"
+#else
+#include "libc/regutils.h"
+#endif/*!__FRAMAC__*/
 # include "libc/types.h"
 #include "usb_otg_hs.h"
 

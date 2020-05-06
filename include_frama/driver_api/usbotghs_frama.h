@@ -27,7 +27,13 @@
 
 #include "autoconf.h"
 
+
+#if defined(__FRAMAC__)
 #include "libc/regutils.h"
+#else
+#include "libc/regutils.h"
+#endif/*!__FRAMAC__*/
+
 #include "libc/types.h"
 #include "libc/stdio.h"
 
@@ -71,6 +77,23 @@ typedef enum {
 /*
  * local context hold by the driver
  */
+#if defined(__FRAMAC__)
+typedef struct {
+    uint8_t                      id;           /* EP id (libusbctrl view) */
+    bool                         configured;   /* is EP configured in current configuration ? */
+    uint16_t                     mpsize;       /* max packet size (bitfield, 11 bits, in bytes) */
+    usbotghs_ep_type_t           type;         /* EP type */
+    usbotghs_ep_state_t state;        /* EP current state */
+    usbotghs_ep_dir_t   dir;
+    usbotghs_ioep_handler_t      handler;      /* EP Handler for (I|O)EPEVENT */
+
+    uint8_t            *fifo;         /* associated RAM FIFO (recv) */
+    uint32_t            fifo_idx;     /* current FIFO index  (recv) */
+    uint32_t            fifo_size;    /* associated RAM FIFO max size (recv) */
+    bool                fifo_lck;     /* DMA, locking mechanism (recv) */
+    bool                core_txfifo_empty; /* core TxFIFO (Half) empty */
+} usbotghs_ep_t;
+#else
 typedef struct {
     uint8_t                      id;           /* EP id (libusbctrl view) */
     bool                         configured;   /* is EP configured in current configuration ? */
@@ -86,11 +109,25 @@ typedef struct {
     volatile bool                fifo_lck;     /* DMA, locking mechanism (recv) */
     volatile bool                core_txfifo_empty; /* core TxFIFO (Half) empty */
 } usbotghs_ep_t;
+#endif/*!__FRAMAC__*/
 
 #define USBOTGHS_MAX_IN_EP   8
 #define USBOTGHS_MAX_OUT_EP  3
 
 /* current context of the USB OTG HS Core */
+#if defined(__FRAMAC__)
+typedef struct {
+    device_t            dev;             /* associated device_t structure */
+    int                 dev_desc;        /* device descriptor */
+    usbotghs_dev_mode_t mode;            /* current OTG mode (host or device) */
+    bool                gonak_req;       /* global OUT NAK requested */
+    bool                gonak_active;    /* global OUT NAK effective */
+    uint16_t            fifo_idx;        /* consumed Core FIFO */
+    usbotghs_ep_t       in_eps[USBOTGHS_MAX_IN_EP];       /* list of HW supported IN EPs */
+    usbotghs_ep_t       out_eps[USBOTGHS_MAX_OUT_EP];      /* list of HW supported OUT EPs */
+    usbotghs_speed_t    speed;        /* device enumerated speed, default HS */
+} usbotghs_context_t;
+#else
 typedef struct {
     device_t            dev;             /* associated device_t structure */
     int                 dev_desc;        /* device descriptor */
@@ -102,6 +139,8 @@ typedef struct {
     usbotghs_ep_t       out_eps[USBOTGHS_MAX_OUT_EP];      /* list of HW supported OUT EPs */
     volatile usbotghs_speed_t    speed;        /* device enumerated speed, default HS */
 } usbotghs_context_t;
+#endif/*!__FRAMAC__*/
+
 
 usbotghs_context_t *usbotghs_get_context(void);
 
@@ -154,7 +193,9 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep);
  * @return MBED_ERROR_NONE if setup is ok, or various possible other errors (INVSTATE
  * for invalid enpoint type, INVPARAM if dst is NULL or size invalid)
  */
-mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t ep);
+
+mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t ep); // Cyril : cette fonction est également définie dans usbotghs_fifos.h. Pourquoi 2 fois la définition?
+
 
 /*
  * Send a special zero-length packet on EP ep

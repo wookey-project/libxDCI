@@ -92,6 +92,22 @@ typedef enum {
     USB_REQ_SYNCH_FRAME       = 0xc,
 } usbctrl_request_code_t;
 
+/*@ predicate is_valid_request_code(usbctrl_request_code_t i) = 
+        i == USB_REQ_GET_STATUS ||
+        i == USB_REQ_CLEAR_FEATURE ||
+        i == USB_REQ_FUTURE1 ||
+        i == USB_REQ_SET_FEATURE ||
+        i == USB_REQ_FUTURE2 ||
+        i == USB_REQ_SET_ADDRESS ||
+        i == USB_REQ_GET_DESCRIPTOR ||
+        i == USB_REQ_SET_DESCRIPTOR ||
+        i == USB_REQ_GET_CONFIGURATION ||
+        i == USB_REQ_SET_CONFIGURATION ||
+        i == USB_REQ_GET_INTERFACE ||
+        i == USB_REQ_SET_INTERFACE ||
+        i == USB_REQ_SYNCH_FRAME ;
+*/
+
 typedef enum {
     USB_DESC_DEVICE          = 0x1,
     USB_DESC_CONFIGURATION   = 0x2,
@@ -102,6 +118,17 @@ typedef enum {
     USB_DESC_OTHER_SPEED_CFG = 0x7,
     USB_DESC_IFACE_POWER     = 0x8
 } usbctrl_descriptor_type_t;
+
+/*@ predicate is_valid_descriptor_type(usbctrl_descriptor_type_t i) = 
+        i == USB_DESC_DEVICE ||
+        i == USB_DESC_CONFIGURATION ||
+        i == USB_DESC_STRING ||
+        i == USB_DESC_INTERFACE ||
+        i == USB_DESC_ENDPOINT ||
+        i == USB_DESC_DEV_QUALIFIER ||
+        i == USB_DESC_OTHER_SPEED_CFG ||
+        i == USB_DESC_IFACE_POWER ;
+*/
 
 /*
  * standard feature selector for setup packet.

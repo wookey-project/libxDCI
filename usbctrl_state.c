@@ -187,13 +187,23 @@ static const struct {
         i == USB_DEVICE_STATE_INVALID ;
 */
 
+/*@ predicate is_valid_transition(usb_device_trans_t i) = 
+        i == USB_DEVICE_TRANS_POWER_INTERRUPT ||
+        i == USB_DEVICE_TRANS_RESET ||
+        i == USB_DEVICE_TRANS_BUS_INACTIVE ||
+        i == USB_DEVICE_TRANS_BUS_ACTIVE ||
+        i == USB_DEVICE_TRANS_HUB_CONFIGURED ||
+        i == USB_DEVICE_TRANS_HUB_DECONFIGURED ||
+        i == USB_DEVICE_TRANS_HUB_RESET ||
+        i == USB_DEVICE_TRANS_ADDRESS_ASSIGNED ||
+        i == USB_DEVICE_TRANS_DEV_CONFIGURED ||
+        i == USB_DEVICE_TRANS_DEV_DECONFIGURED ;
+*/
 
 /*@
-  @ requires \valid_read(ctx) ;
-  @ requires is_valid_state(ctx->state) ;
   @ assigns \nothing ;
   @ ensures (ctx == \null) ==> \result == USB_DEVICE_STATE_INVALID ;
-  @ ensures (ctx != \null) ==> \result == ctx->state ;
+  @ ensures ((ctx != \null) && is_valid_state(ctx->state)) ==> \result == ctx->state ;
 */
 
 usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx)
@@ -211,12 +221,10 @@ usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx)
  */
 
 /*@
-  @ requires \valid(ctx) ;
-  @ requires is_valid_state(newstate) ;
   @ assigns ctx->state ;
   @ ensures (ctx == \null) ==> (\result == MBED_ERROR_INVPARAM) ;
-  @ ensures (newstate >= USB_DEVICE_STATE_INVALID ) ==> (\result == MBED_ERROR_INVPARAM) ;
-  @ ensures (ctx != \null && newstate < USB_DEVICE_STATE_INVALID)  ==> (\result == MBED_ERROR_NONE && ctx->state == newstate) ;
+  @ ensures (newstate > USB_DEVICE_STATE_INVALID ) ==> (\result == MBED_ERROR_INVPARAM) ;
+  @ ensures (ctx != \null && is_valid_state(ctx->state) && newstate <= USB_DEVICE_STATE_INVALID)  ==> (\result == MBED_ERROR_NONE && ctx->state == newstate) ;
 */
 
 #if defined(__FRAMAC__)
@@ -227,12 +235,14 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
    if (ctx == NULL) {
        return MBED_ERROR_INVPARAM;
    }
-    if (newstate >= USB_DEVICE_STATE_INVALID) {
+    if (newstate > USB_DEVICE_STATE_INVALID) {
         //log_printf("[USBCTRL] invalid state transition !\n");
         return MBED_ERROR_INVPARAM;
     }
     //log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
     ctx->state = newstate;
+
+      /* assert ctx->state == newstate; */
 
     return MBED_ERROR_NONE;
 }
@@ -244,11 +254,11 @@ mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
    if (ctx == NULL) {
        return MBED_ERROR_INVPARAM;
    }
-    if (newstate >= USB_DEVICE_STATE_INVALID) {
-        //log_printf("[USBCTRL] invalid state transition !\n");
+    if (newstate > USB_DEVICE_STATE_INVALID) {   //Cyril : avant, newstate >= USB_DEVICE_STATE_INVALID donc on avait jamais ctx->state = USB_DEVICE_STATE_INVALID
+        log_printf("[USBCTRL] invalid state transition !\n");
         return MBED_ERROR_INVPARAM;
     }
-    //log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
+    log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
     ctx->state = newstate;
 
     return MBED_ERROR_NONE;
@@ -274,9 +284,29 @@ mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
  *
  * \return the next state, or 0xff
  */
+
+/*@ 
+  @ requires is_valid_state(current_state);
+  @ requires is_valid_request_code(request);
+  @ assigns \nothing ;
+  @ ensures (\forall integer i; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != request)
+            ==> \result == 0xff ;
+  @ ensures (\result != 0xff) ==> \exists integer i; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == request
+            && \result == usb_automaton[current_state].req_trans[i].target_state ;
+*/
+
 uint8_t usbctrl_next_state(usb_device_state_t current_state,
                            usbctrl_request_code_t request)
 {
+    
+  /*@
+      @ loop invariant 0 <= i <= MAX_TRANSITION_STATE ;
+      @ loop invariant \valid_read(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
+      @ loop invariant (\forall integer prei ; 0 <= prei < i ==> usb_automaton[current_state].req_trans[prei].request != request) ;
+      @ loop assigns i ;
+      @ loop variant MAX_TRANSITION_STATE -i ;
+  */
+
     for (uint8_t i = 0; i < MAX_TRANSITION_STATE; ++i) {
         if (usb_automaton[current_state].req_trans[i].request == request) {
             return (usb_automaton[current_state].req_trans[i].target_state);
@@ -294,13 +324,41 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
  *
  * \return true if the transition request is allowed for this state, or false
  */
+
+/*@
+    @ requires \valid(ctx);
+    @ requires is_valid_state(current_state) ;
+    @ requires is_valid_transition(transition);
+    @ requires \valid_read(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
+    @ requires \separated(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx);
+
+    @ behavior true:
+    @   assumes (\exists integer i; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ;
+    @   assigns \nothing ;
+    @   ensures \result == \true ;
+
+    @ behavior false:
+    @   assumes (\forall integer i; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != transition) ;
+    @   assigns *ctx ;
+    @   ensures \result == \false  ;
+    @   ensures ctx->state == USB_DEVICE_STATE_INVALID  ;
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
+
 bool usbctrl_is_valid_transition(usb_device_state_t current_state,
                                  usb_device_trans_t transition,
                                  usbctrl_context_t *ctx)
 {
-    /*@
-        @ loop unroll MAX_TRANSITION_STATE;
-    */
+  /*@
+      @ loop invariant 0 <= i <= MAX_TRANSITION_STATE ;
+      @ loop invariant \valid_read(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
+      @ loop invariant (\forall integer prei ; 0 <= prei < i ==> usb_automaton[current_state].req_trans[prei].request != transition) ;
+      @ loop assigns i ;
+      @ loop variant MAX_TRANSITION_STATE -i ;
+  */
+
 
     for (uint8_t i = 0; i < MAX_TRANSITION_STATE; ++i) {
         if (usb_automaton[current_state].req_trans[i].request == transition) {
@@ -311,8 +369,10 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
      * Didn't find any request associated to current state. This is not a
      * valid transition. We should stall the request.
      */
-    log_printf("%s: invalid transition from state %d, request %d\n", __func__,
-           current_state, transition);
+    //log_printf("%s: invalid transition from state %d, request %d\n", __func__, current_state, transition);
+    
     usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
+    /*@ assert ctx->state ==  USB_DEVICE_STATE_INVALID; */  // Cyril : Probleme avec la définition de la fonction set_state : pour invalid, retour d'erreur de la fonction
+                                                            // car >= USB_DEVICE_STATE_INVALID : correction, mettre un > USB_DEVICE_STATE_INVALID dans usbctrl_set_state
     return false;
 }

@@ -222,8 +222,11 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep);
  * @return MBED_ERROR_NONE if setup is ok, or various possible other errors (INVSTATE
  * for invalid enpoint type, INVPARAM if dst is NULL or size invalid)
  */
-mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t ep);
+#if defined(__FRAMAC__)
 
+#else
+mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t ep); // Cyril : cette fonction est également définie dans usbotghs_fifos.h. Pourquoi 2 fois la définition?
+#endif/*!__FRAMAC__*/
 /*
  * Send a special zero-length packet on EP ep
  */
