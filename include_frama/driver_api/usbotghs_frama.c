@@ -90,7 +90,8 @@ static const char *devname = "usb-otg-hs";
 /* local context. Only one as there is one USB OTG device per SoC */
 #if defined(__FRAMAC__)
 static usbotghs_context_t usbotghs_ctx = { 0 };
-//@ ghost usbotghs_context_t * GHOST_usbotghs_ctx ;
+usbotghs_context_t * GHOST_usbotghs_ctx = NULL ;
+
 #else
 static volatile usbotghs_context_t usbotghs_ctx = { 0 };
 #endif/*!__FRAMAC__*/
@@ -369,6 +370,7 @@ mbed_error_t usbotghs_configure(usbotghs_dev_mode_t mode,
                                 usbotghs_ioep_handler_t ieph,
                                 usbotghs_ioep_handler_t oeph)
 {
+
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* First, reset the PHY device connected to the core through ULPI interface */
     log_printf("[USB HS] Mapping device\n");
@@ -1147,7 +1149,7 @@ mbed_error_t usbotghs_endpoint_stall_clear(uint8_t ep, usbotghs_ep_dir_t dir)
     @ behavior USBOTG_HS_EP_DIR_OUT:
     @   assumes &usbotghs_ctx != \null ;
     @   assumes dir == USBOTG_HS_EP_DIR_OUT ;
-    @   assigns GHOST_usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DAINTMSK ;
+    @   assigns usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DAINTMSK ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ behavior default:
