@@ -27,6 +27,7 @@
 #include "libc/types.h"
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"
+#include "driver_api/usbotghs_frama.h"
 
 /*********************************************************
  * FramaC

@@ -27,10 +27,10 @@
 #include "autoconf.h"
 #include "libc/interrupt.h"
 #include "libc/types.h"
-#include "../../../kernel/src/C/exported/syscalls.h"
-#include "../../../kernel/src/C/exported/devices.h"
-#include "../../../kernel/src/C/exported/dmas.h"
-#include "../../../kernel/src/C/exported/sleep.h"
+#include "libc/exported/syscalls.h"
+#include "libc/exported/devices.h"
+#include "libc/exported/dmas.h"
+#include "libc/exported/sleep.h"
 
 // FIXME - nothing to do here!
 #ifdef CONFIG_STM32F4

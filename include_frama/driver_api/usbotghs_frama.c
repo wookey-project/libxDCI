@@ -90,6 +90,7 @@ static const char *devname = "usb-otg-hs";
 /* local context. Only one as there is one USB OTG device per SoC */
 #if defined(__FRAMAC__)
 static usbotghs_context_t usbotghs_ctx = { 0 };
+//@ ghost usbotghs_context_t * GHOST_usbotghs_ctx ;
 #else
 static volatile usbotghs_context_t usbotghs_ctx = { 0 };
 #endif/*!__FRAMAC__*/
@@ -356,6 +357,7 @@ mbed_error_t usbotghs_declare(void)
  */
 //static mbed_error_t usbotghs_core_init;
 
+
 /*@
     @ requires is_valid_dev_mode(mode) ;
     @ assigns usbotghs_ctx ;
@@ -369,9 +371,9 @@ mbed_error_t usbotghs_configure(usbotghs_dev_mode_t mode,
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* First, reset the PHY device connected to the core through ULPI interface */
-    //log_printf("[USB HS] Mapping device\n");
+    log_printf("[USB HS] Mapping device\n");
     if (sys_cfg(CFG_DEV_MAP, usbotghs_ctx.dev_desc)) {
-        //log_printf("[USB HS] Unable to map USB device !!!\n");
+        log_printf("[USB HS] Unable to map USB device !!!\n");
         errcode = MBED_ERROR_NOMEM;
         goto err;
     }
@@ -1130,6 +1132,7 @@ mbed_error_t usbotghs_endpoint_stall_clear(uint8_t ep, usbotghs_ep_dir_t dir)
 
 
 /*@
+
     @ behavior bad_ctx:
     @   assumes &usbotghs_ctx == \null ;
     @   assigns \nothing ;
@@ -1144,7 +1147,7 @@ mbed_error_t usbotghs_endpoint_stall_clear(uint8_t ep, usbotghs_ep_dir_t dir)
     @ behavior USBOTG_HS_EP_DIR_OUT:
     @   assumes &usbotghs_ctx != \null ;
     @   assumes dir == USBOTG_HS_EP_DIR_OUT ;
-    @   assigns usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DAINTMSK ;
+    @   assigns GHOST_usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DAINTMSK ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ behavior default:

@@ -2,6 +2,8 @@
 #include "api/libusbctrl.h"
 #include "usbctrl_descriptors.h"
 #include "usbctrl.h"
+#include "driver_api/usbotghs_frama.h"
+
 
 #define MAX_DESC_STRING_SIZE 32 /* max unicode string size supported (to define properly) */
 /*
