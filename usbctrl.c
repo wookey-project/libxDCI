@@ -48,6 +48,7 @@ static  uint8_t num_ctx = 0;
 usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 }; 
 #define MAX_EPx_PKT_SIZE 512
 #define RAND_UINT_32 65535 
+
 #else
 static volatile uint8_t num_ctx = 0;
 volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
@@ -57,19 +58,19 @@ volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
     @ requires 0 <= dev_id < RAND_UINT_32 ;
     @
     @ behavior bad_ctxh:
-    @   assumes  !\valid(ctxh);
+    @   assumes  ctxh == \null;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @
     @ behavior bad_num_ctx:
     @   assumes num_ctx >= MAX_USB_CTRL_CTX ;
-    @ 	assumes \valid(ctxh) && \separated(ctxh,&ctx_list) ;
+    @ 	assumes ctxh != \null  ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_NOMEM ;
     @
     @ behavior bad_dev_id:
     @   assumes num_ctx < MAX_USB_CTRL_CTX ;
-    @ 	assumes \valid(ctxh) && \separated(ctxh,&ctx_list) ;
+    @ 	assumes ctxh != \null  ;
     @   assumes dev_id != USB_OTG_HS_ID && dev_id != USB_OTG_FS_ID ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_NOBACKEND ;
@@ -77,16 +78,15 @@ volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
     @ behavior ok:
     @   assumes (dev_id == USB_OTG_HS_ID || dev_id == USB_OTG_FS_ID) ;
     @	assumes num_ctx < MAX_USB_CTRL_CTX ;
-    @ 	assumes \valid(ctxh) && \separated(ctxh,&ctx_list) ;
+    @ 	assumes ctxh != \null ;
     @   assigns *ctxh ;
     @   assigns ctx_list[\old(num_ctx)] ;
     @   assigns num_ctx ;
-    @   ensures \result == MBED_ERROR_NONE ;
+    @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
     @   ensures *ctxh == \old(num_ctx) ;
     @   ensures num_ctx == \old(num_ctx) +1 ;
     @   ensures ctx_list[\old(num_ctx)].dev_id == dev_id ;
 
-    @
     @ complete behaviors;
     @ disjoint behaviors;
 */
@@ -110,18 +110,10 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
 
     switch (dev_id) {
         case USB_OTG_HS_ID:
-            #if defined(__FRAMAC__)
-        	errcode = usbotghs_declare();
-			#else
-        	errcode = usb_backend_drv_declare()   // Cyril : Frama-c semble avoir du mal avec l'alliasing...(les assigns ne passent pas)
-			#endif/*!__FRAMAC__*/
+        	errcode = usb_backend_drv_declare() ;  // Cyril : Frama-c semble avoir du mal avec l'alliasing...(les assigns ne passent pas)
             break;
         case USB_OTG_FS_ID:
-            #if defined(__FRAMAC__)
-        	errcode = usbotghs_declare();
-			#else
-        	errcode = usb_backend_drv_declare()   // Cyril : Frama-c semble avoir du mal avec l'alliasing...(les assigns ne passent pas)
-			#endif/*!__FRAMAC__*/
+        	errcode = usb_backend_drv_declare() ;  // Cyril : Frama-c semble avoir du mal avec l'alliasing...(les assigns ne passent pas)
             break;
         default:
             errcode = MBED_ERROR_NOBACKEND;
@@ -157,6 +149,9 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
     
 
     ctx->curr_cfg = 0;
+
+    /*@ assert *ctxh == num_ctx-1 ; */   // Cyril : ajout de ces 2 assert pour que les ensures soient prouvés par WP
+    /*@ assert ctx_list[num_ctx-1].dev_id == dev_id ; */
 
 err:
     return errcode;
@@ -751,24 +746,12 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
     }
 
     #if defined(__FRAMAC__)
-        usbctrl_context_t *ctx = &(ctx_list[ctxh]); 
-    
-    //log_printf("[USBCTRL] configuring backend driver\n");
-    if ((errcode = usbotghs_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
-        //log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
-        usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
-        goto end;
-    }
-    /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
-    if ((errcode = usbotghs_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
-        //printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
-        goto end;
-    }
-
+    usbctrl_context_t *ctx = &(ctx_list[ctxh]); 
     #else
-        volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
+     volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
+    #endif/*!__FRAMAC__*/
     
-    //log_printf("[USBCTRL] configuring backend driver\n");
+    log_printf("[USBCTRL] configuring backend driver\n");
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         //log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
         usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
@@ -779,7 +762,7 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
         //printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
         goto end;
     }
-    #endif/*!__FRAMAC__*/ 
+     
 
 end:
     return errcode;
@@ -817,14 +800,11 @@ err:
 /*
  * Support for Frama-C testing
  */
-int volatile Frama_C_entropy_source;
 
 //@ assigns Frama_C_entropy_source \from Frama_C_entropy_source;
 void Frama_C_update_entropy(void) {
   Frama_C_entropy_source = Frama_C_entropy_source;
 }
-
-//__fc_builtin.h
 
 int Frama_C_interval(int min, int max)
 {

@@ -42,7 +42,6 @@ mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
                                 ==> \result == MBED_ERROR_INVPARAM ;
     @ 
     @ ensures \exists integer i ; 0 <= i < MAX_USB_CTRL_CTX && ctx_list[i].dev_id == dev_id && 
-
 */
 
 // dans les ensures, je dois dire : si je suis dans tel état, je termine dans tel état à la fin de la fonction
@@ -76,7 +75,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
         goto err;
     }
 
-
     //log_printf("[USBCTRL] reset: execute transition from state %d\n", state);
     /* handling RESET event depending on current state */
     switch (state) {
@@ -87,11 +85,8 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
              * be reconfigure for EP0 here. */
             //log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
 
-            #if defined(__FRAMAC__)
-                errcode = usbotghs_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            #else
-                errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            #endif/*!__FRAMAC__*/
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+
 
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
@@ -168,8 +163,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             #if defined(__FRAMAC__)
            
             #else
-            /* assert rte: mem_access: \valid_read(reg); */  // Cyril : voici le message de Frama quand on finit par utiliser __INLINE uint32_t read_reg_value(volatile uint32_t * reg)
-            usb_backend_drv_set_address(0); // Cyril : cette fonction finit par appeler reg_value, qui ne passe pas avec eva pour un probleme de \valid(reg) : adresse registre en dur, dans mon cas adresse mémoire invalide
+            usb_backend_drv_set_address(0); 
             #endif/*!__FRAMAC__*/
             usbctrl_reset_received();
             break;

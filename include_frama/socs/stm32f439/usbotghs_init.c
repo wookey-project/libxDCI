@@ -111,6 +111,7 @@
  *    "Device Initialization" sequence.
  *
  */
+
 mbed_error_t usbotghs_initialize_core(usbotghs_dev_mode_t mode)
 {
     log_printf("[USB HS] initializing the core\n");
@@ -281,10 +282,6 @@ mbed_error_t usbotghs_initialize_device(void)
 
     /* set periodic (micro)frame interval */
 	set_reg(r_CORTEX_M_USBOTG_HS_DCFG, USBOTG_HS_DCFG_PFIVL_INTERVAL_80, USBOTG_HS_DCFG_PFIVL);
-
-
-
-
 
 #if CONFIG_USR_DEV_USBOTGHS_DMA
     log_printf("[USB HS] dev init: set DMA thresholds\n");

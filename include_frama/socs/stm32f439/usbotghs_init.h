@@ -49,9 +49,15 @@
  */
 
 /*@
-	@ assigns \result \from mode;
-	@ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_BUSY   ;
-@*/
+    predicate is_valid_dev_mode(usbotghs_dev_mode_t i) =
+        i == USBOTGHS_MODE_HOST || i == USBOTGHS_MODE_DEVICE ;
+*/
+
+/*@
+    @ requires is_valid_dev_mode(mode);
+    @ assigns \nothing  ;
+    @ ensures \result == MBED_ERROR_BUSY || \result == MBED_ERROR_NONE ;
+*/
 
 mbed_error_t usbotghs_initialize_core(usbotghs_dev_mode_t mode);
 
@@ -61,7 +67,7 @@ mbed_error_t usbotghs_initialize_core(usbotghs_dev_mode_t mode);
  */
 
 /*@
-	@ assigns \result \from \nothing;
+	@ assigns \nothing;
 	@ ensures \result == MBED_ERROR_NONE ;
 @*/
 
@@ -74,7 +80,7 @@ mbed_error_t usbotghs_initialize_device(void);
 
 /*@
 	@ assigns \nothing;
-	@ ensures \result == MBED_ERROR_NONE ;
+	@ ensures \result == MBED_ERROR_UNSUPORTED_CMD ;
 @*/
 
 mbed_error_t usbotghs_initialize_host(void);

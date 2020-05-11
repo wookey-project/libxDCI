@@ -29,6 +29,34 @@
 #include "api/libusbctrl.h"
 
 /*********************************************************
+ * FramaC
+ */
+#if defined(__FRAMAC__)
+
+extern volatile int Frama_C_entropy_source __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
+
+/*@ requires order: min <= max;
+    assigns \result \from min, max, Frama_C_entropy_source;
+    assigns Frama_C_entropy_source \from Frama_C_entropy_source;
+    ensures result_bounded: min <= \result <= max ;
+ */
+int Frama_C_interval(int min, int max);
+
+#define usb_backend_drv_declare usbotghs_declare
+#define usb_backend_drv_get_speed usbotghs_get_speed
+#define usb_backend_drv_stall usbotghs_endpoint_stall
+#define usb_backend_drv_send_data usbotghs_send_data
+#define usb_backend_drv_ack usbotghs_endpoint_clear_nak
+#define usb_backend_drv_set_address usbotghs_set_address
+#define usb_backend_drv_send_zlp usbotghs_send_zlp
+#define usb_backend_drv_configure_endpoint usbotghs_configure_endpoint
+#define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
+#define usb_backend_drv_get_ep_state usbotghs_get_ep_state
+#define usb_backend_drv_configure usbotghs_configure 
+
+#endif/*!__FRAMAC__*/
+
+/*********************************************************
  * General tooling
  */
 
@@ -71,7 +99,7 @@ typedef struct usbctrl_context {
     uint8_t                 state;          /*< USB state machine current state */
     uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
     bool                    ctrl_fifo_state; /*< RECV FIFO of control plane state */
-    volatile bool           ctrl_req_processing; /* a control level request is being processed */
+    bool           ctrl_req_processing; /* a control level request is being processed */
 } usbctrl_context_t;
 
 

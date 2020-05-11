@@ -106,6 +106,7 @@ frama-c-parsing:
 
 frama-c-eva:
 	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
+	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
 	            -warn-right-shift-negative \
@@ -130,6 +131,7 @@ frama-c-eva:
 
 frama-c:
 	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
+	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
 	            -warn-right-shift-negative \

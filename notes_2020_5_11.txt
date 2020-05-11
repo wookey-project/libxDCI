@@ -24,4 +24,18 @@ Problème découvert avec EVA dans la fonction is_valid_transition, ou le dernie
 - autre bug : usbctrl_std_req_handle_get_configuration, ctx->ctrl_req_processing = false; // Cyril : je n'arrive jamais là, donc je ne peux pas assigner req_processing (switch default, mais avec le test initial cas impossible)
 
 - usbctrl_std_req_handle_set_configuration : requested_configuration = pkt->wValue;  pkt->wValue est un uint16_t, alors que uint8_t requested_configuration (faire gaffe avec le reste...)
+
+- static mbed_error_t usbctrl_std_req_handle_get_descriptor: uint8_t buf[MAX_DESCRIPTOR_LEN] = 0;  buf doit être initialisé (bug eva)
+
+
+
+Problèmes:
+
+-set_reg_value : je n'arrive pas à prouver que : 
+        tmp = read_reg_value(reg);
+        /*@ assert \at(*reg,Pre) == tmp ; */   // cet assert est prouvé par wp, pas les deux autres
+        tmp &= ~mask;
+        /*@ assert tmp == (\at(*reg,Pre) & (~mask)) ; */
+        tmp |= (value << pos) & mask;
+        /*@ assert tmp == (tmp | ((value << pos) & mask) ) ; */
 						
