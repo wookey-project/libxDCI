@@ -27,13 +27,7 @@
 
 #include "autoconf.h"
 
-
-#if defined(__FRAMAC__)
 #include "libc/regutils.h"
-#else
-#include "libc/regutils.h"
-#endif/*!__FRAMAC__*/
-
 #include "libc/types.h"
 #include "libc/stdio.h"
 
@@ -282,13 +276,9 @@ void usbotghs_set_address(uint16_t addr);
 
 /* Map USB device. TODO */
 void usbotghs_bind(void);
-
 void usbotghs_unbind(void);
-
 usbotghs_ep_state_t usbotghs_get_ep_state(uint8_t epnum, usbotghs_ep_dir_t dir);
-
 uint32_t usbotghs_get_ep_mpsize(void);
-
 usbotghs_port_speed_t usbotghs_get_speed(void);
 
 
