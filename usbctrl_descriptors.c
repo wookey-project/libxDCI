@@ -182,6 +182,10 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             for (uint8_t i = 0; i < iface_num; ++i) {
                 if (ctx->cfg[curr_cfg].interfaces[i].class_desc_handler != NULL) {
                     uint32_t max_buf_size = MAX_DESCRIPTOR_LEN;
+                    if (handler_sanity_check((void*)ctx->cfg[curr_cfg].interfaces[i].class_desc_handler)) {
+                        sys_exit();
+                        goto err;
+                    }
                     errcode = ctx->cfg[curr_cfg].interfaces[i].class_desc_handler(i, buf, &max_buf_size, handler);
                     if (errcode != MBED_ERROR_NONE) {
                         log_printf("[LIBCTRL] failure while getting class desc: %d\n", errcode);
@@ -274,6 +278,11 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
                             }
                             uint32_t max_buf_size = *desc_size - curr_offset;
+
+                            if (handler_sanity_check((void*)ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler)) {
+                                sys_exit();
+                                goto err;
+                            }
                             errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &max_buf_size, handler);
                             if (errcode != MBED_ERROR_NONE) {
                                 goto err;

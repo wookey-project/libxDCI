@@ -863,6 +863,10 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
     if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {
         log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
     }
+    if (handler_sanity_check((void*)iface->rqst_handler)) {
+        sys_exit();
+        goto err;
+    }
     errcode = iface->rqst_handler(handler, pkt);
 err:
     return errcode;
@@ -933,6 +937,10 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                 uint32_t handler;
                 if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {
                     log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
+                }
+                if (handler_sanity_check((void*)ctx->cfg[curr_cfg].interfaces[i].rqst_handler)) {
+                    sys_exit();
+                    goto err;
                 }
                 if ((upper_stack_err = ctx->cfg[curr_cfg].interfaces[i].rqst_handler(handler, pkt)) == MBED_ERROR_NONE) {
                     /* upper class handler found, we can leave the loop */

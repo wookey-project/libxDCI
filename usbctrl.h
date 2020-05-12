@@ -26,6 +26,7 @@
 
 #include "libc/types.h"
 #include "libc/stdio.h"
+#include "libc/sanhandlers.h"
 #include "libusbctrl.h"
 
 /*********************************************************

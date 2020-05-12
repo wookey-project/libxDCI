@@ -210,6 +210,10 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
                     && ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_IN) {
                     log_printf("[LIBCTRL] found ep in iface %d, declared ep %d\n", iface, i);
                     if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
+                        if (handler_sanity_check((void*)ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler)) {
+                            sys_exit();
+                            goto err;
+                        }
                         log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
                         /* XXX: c'est ma FIFO ? oui, c'est pour moi. Non, c'est pour au dessus :-)*/
                         ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
