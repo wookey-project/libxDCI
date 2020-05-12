@@ -45,40 +45,6 @@ typedef enum {
 #endif/*!__FRAMAC__*/ 
 
 
-/*@ predicate is_valid_state(usb_device_state_t i) = 
-        i == USB_DEVICE_STATE_ATTACHED ||
-        i == USB_DEVICE_STATE_POWERED ||
-        i == USB_DEVICE_STATE_SUSPENDED_POWER ||
-        i == USB_DEVICE_STATE_SUSPENDED_DEFAULT ||
-        i == USB_DEVICE_STATE_SUSPENDED_ADDRESS ||
-        i == USB_DEVICE_STATE_SUSPENDED_CONFIGURED ||
-        i == USB_DEVICE_STATE_DEFAULT ||
-        i == USB_DEVICE_STATE_ADDRESS ||
-        i == USB_DEVICE_STATE_CONFIGURED ||
-        i == USB_DEVICE_STATE_INVALID ;
-*/
-
-/*@ predicate is_valid_error(mbed_error_t i) = 
-    i == MBED_ERROR_NONE ||
-    i == MBED_ERROR_NOMEM ||
-    i == MBED_ERROR_NOSTORAGE ||
-    i == MBED_ERROR_NOBACKEND ||
-    i == MBED_ERROR_INVCREDENCIALS ||
-    i == MBED_ERROR_UNSUPORTED_CMD ||
-    i == MBED_ERROR_INVSTATE ||
-    i == MBED_ERROR_NOTREADY ||
-    i == MBED_ERROR_BUSY ||
-    i == MBED_ERROR_DENIED ||
-    i == MBED_ERROR_UNKNOWN ||
-    i == MBED_ERROR_INVPARAM ||
-    i == MBED_ERROR_WRERROR ||
-    i == MBED_ERROR_RDERROR ||
-    i == MBED_ERROR_INITFAIL ||
-    i == MBED_ERROR_TOOBIG ||
-    i == MBED_ERROR_NOTFOUND  ;  
-
-*/
-
 /*@ 
     @ requires \valid_read(pkt);
     @ assigns \nothing ;
@@ -127,17 +93,6 @@ typedef enum {
     USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG  = 7,
     USB_REQ_DESCRIPTOR_INTERFACE_POWER  = 8,
 } usbctrl_req_descriptor_type_t;
-
-/*@ predicate is_valid_req_descriptor_type(usbctrl_req_descriptor_type_t i) = 
-        i == USB_REQ_DESCRIPTOR_DEVICE ||
-        i == USB_REQ_DESCRIPTOR_CONFIGURATION ||
-        i == USB_REQ_DESCRIPTOR_STRING ||
-        i == USB_REQ_DESCRIPTOR_INTERFACE ||
-        i == USB_REQ_DESCRIPTOR_ENDPOINT ||
-        i == USB_REQ_DESCRIPTOR_DEVICE_QUALIFIER ||
-        i == USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG ||
-        i == USB_REQ_DESCRIPTOR_INTERFACE_POWER ;
-*/
 
 /* @ 
     @ requires \valid_read(pkt);

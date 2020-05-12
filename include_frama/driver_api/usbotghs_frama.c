@@ -90,7 +90,7 @@ static const char *devname = "usb-otg-hs";
 /* local context. Only one as there is one USB OTG device per SoC */
 #if defined(__FRAMAC__)
 static usbotghs_context_t usbotghs_ctx = { 0 };
-usbotghs_context_t * GHOST_usbotghs_ctx = NULL ;
+//@ ghost usbotghs_context_t * GHOST_usbotghs_ctx = &usbotghs_ctx ;
 
 #else
 static volatile usbotghs_context_t usbotghs_ctx = { 0 };
@@ -126,7 +126,6 @@ usbotghs_context_t *usbotghs_get_context(void)
     i == MBED_ERROR_INITFAIL ||
     i == MBED_ERROR_TOOBIG ||
     i == MBED_ERROR_NOTFOUND  ;  
-
 */
 
 /*@ predicate is_valid_ep_dir(usbotghs_ep_dir_t i) =
@@ -474,18 +473,26 @@ uint32_t usbotghs_get_ep_mpsize(void)
 /*@
     @ requires \valid(src);
 
+    @ behavior bad_ctx:
+    @   assumes &usbotghs_ctx == \null ;
+    @   assigns \nothing ;
+    @   ensures \result == MBED_ERROR_INVSTATE ;
+
     @ behavior not_configured:
+    @	assumes &usbotghs_ctx != \null ;
     @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \false) ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
     @ behavior set_fifo_error:
+    @	assumes &usbotghs_ctx != \null ;   
     @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \true) ;
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck != 0)  ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVSTATE ;  //. Cyril invparam atteint dans usbotghs_set_xmit_fifo si non configuré, cas traité avant
     
     @ behavior epid_null:
+    @	assumes &usbotghs_ctx != \null ;
     @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \true) ;
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck == 0)  ;    
     @   assumes (ep_id == 0 && size > usbotghs_ctx.in_eps[ep_id].mpsize) ;
@@ -495,6 +502,7 @@ uint32_t usbotghs_get_ep_mpsize(void)
     @   ensures usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN ;
 
     @ behavior epid_not_null:
+    @	assumes &usbotghs_ctx != \null ;
     @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \true) ;
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck == 0)  ;    
     @   assumes !(ep_id == 0 && size > usbotghs_ctx.in_eps[ep_id].mpsize) ;
@@ -513,6 +521,14 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint32_t fifo_size = 0;
     usbotghs_context_t *ctx = usbotghs_get_context();
+
+    if (ctx == NULL) {
+        errcode = MBED_ERROR_INVSTATE;
+        goto err;
+    }
+
+    // cyril : ajout d'un test pour ctx null 
+
     usbotghs_ep_t *ep = NULL;
 
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
@@ -555,6 +571,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
      * bytes to transfer
      */
     packet_count = (size / ep->mpsize) + ((size % ep->mpsize) ? 1: 0);
+    // Cyril : ep->mpsize == 0 pose probleme
 
     log_printf("[USBOTG][HS] need to write %d pkt on ep %d, init_size: %d\n", packet_count, ep_id, size);
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE   // Cyril : je suis dans ce cas

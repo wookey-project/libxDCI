@@ -129,10 +129,10 @@ __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
     if (mask == 0xFFFFFFFF) {
         (*reg) = value;
     } else {
-        tmp = read_reg_value(reg);
-        /*@ assert \at(*reg,Pre) == tmp ; */
+        tmp = read_reg_value(reg);_
+        /*@ assert tmp == *reg ; */
         tmp &= ~mask;
-        /* @ assert tmp == (\at(*reg,Pre) & (~mask)) ; */
+        /* @ assert \at(*reg,Here) == \at(*reg,Pre) & (~mask) ; */ 
         tmp |= (value << pos) & mask;
         /* @ assert tmp == (tmp | ((value << pos) & mask) ) ; */
         write_reg_value(reg, tmp);

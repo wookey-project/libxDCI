@@ -648,6 +648,9 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].type = iface->eps[0].type ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].dir = iface->eps[0].dir ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].pkt_maxsize = iface->eps[0].pkt_maxsize ;
+       ctx->cfg[iface_config].interfaces[iface_num].eps[0].handler = iface->eps[0].handler ;
+       ctx->cfg[iface_config].interfaces[iface_num].rqst_handler = iface->rqst_handler ;
+       ctx->cfg[iface_config].interfaces[iface_num].class_desc_handler = iface->class_desc_handler ;
 
     #else
         memcpy((void*)&(ctx->cfg[iface_config].interfaces[iface_num]), (void*)iface, sizeof(usbctrl_interface_t));
@@ -849,13 +852,14 @@ void test_fcn_usbctrl(){
     uint16_t Value = Frama_C_interval(0,65535);
     uint16_t Index = Frama_C_interval(0,65535);
     uint16_t Length = Frama_C_interval(0,65535);
-    uint8_t RQST_handler = Frama_C_interval(0,16);
 
 	usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
 	usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-								  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .rqst_handler =  RQST_handler };
+								  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .rqst_handler = usbctrl_class_rqst_handler , .class_desc_handler = class_get_descriptor};
 	usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-	                              .eps[0].type = EP_type, .eps[0].dir = EP_dir, .rqst_handler =  RQST_handler };
+	                              .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                   .rqst_handler = usbctrl_class_rqst_handler , .class_desc_handler = class_get_descriptor};
 
     /*@ assert  \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1))); */ 
 	/*@ assert 0 <= num_ctx < MAX_USB_CTRL_CTX ; */

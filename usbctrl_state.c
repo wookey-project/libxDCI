@@ -174,31 +174,6 @@ static const struct {
  * USB CTRL State automaton getters and setters
  *********************************************/
 
-/*@ predicate is_valid_state(usb_device_state_t i) = 
-        i == USB_DEVICE_STATE_ATTACHED ||
-        i == USB_DEVICE_STATE_POWERED ||
-        i == USB_DEVICE_STATE_SUSPENDED_POWER ||
-        i == USB_DEVICE_STATE_SUSPENDED_DEFAULT ||
-        i == USB_DEVICE_STATE_SUSPENDED_ADDRESS ||
-        i == USB_DEVICE_STATE_SUSPENDED_CONFIGURED ||
-        i == USB_DEVICE_STATE_DEFAULT ||
-        i == USB_DEVICE_STATE_ADDRESS ||
-        i == USB_DEVICE_STATE_CONFIGURED ||
-        i == USB_DEVICE_STATE_INVALID ;
-*/
-
-/*@ predicate is_valid_transition(usb_device_trans_t i) = 
-        i == USB_DEVICE_TRANS_POWER_INTERRUPT ||
-        i == USB_DEVICE_TRANS_RESET ||
-        i == USB_DEVICE_TRANS_BUS_INACTIVE ||
-        i == USB_DEVICE_TRANS_BUS_ACTIVE ||
-        i == USB_DEVICE_TRANS_HUB_CONFIGURED ||
-        i == USB_DEVICE_TRANS_HUB_DECONFIGURED ||
-        i == USB_DEVICE_TRANS_HUB_RESET ||
-        i == USB_DEVICE_TRANS_ADDRESS_ASSIGNED ||
-        i == USB_DEVICE_TRANS_DEV_CONFIGURED ||
-        i == USB_DEVICE_TRANS_DEV_DECONFIGURED ;
-*/
 
 /*@
   @ assigns \nothing ;

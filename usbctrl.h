@@ -34,6 +34,27 @@
  */
 #if defined(__FRAMAC__)
 
+
+/*@ predicate is_valid_error(mbed_error_t i) = 
+    i == MBED_ERROR_NONE ||
+    i == MBED_ERROR_NOMEM ||
+    i == MBED_ERROR_NOSTORAGE ||
+    i == MBED_ERROR_NOBACKEND ||
+    i == MBED_ERROR_INVCREDENCIALS ||
+    i == MBED_ERROR_UNSUPORTED_CMD ||
+    i == MBED_ERROR_INVSTATE ||
+    i == MBED_ERROR_NOTREADY ||
+    i == MBED_ERROR_BUSY ||
+    i == MBED_ERROR_DENIED ||
+    i == MBED_ERROR_UNKNOWN ||
+    i == MBED_ERROR_INVPARAM ||
+    i == MBED_ERROR_WRERROR ||
+    i == MBED_ERROR_RDERROR ||
+    i == MBED_ERROR_INITFAIL ||
+    i == MBED_ERROR_TOOBIG ||
+    i == MBED_ERROR_NOTFOUND  ;  
+*/
+
 extern volatile int Frama_C_entropy_source __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
 
 /*@ requires order: min <= max;
@@ -54,6 +75,65 @@ int Frama_C_interval(int min, int max);
 #define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
 #define usb_backend_drv_get_ep_state usbotghs_get_ep_state
 #define usb_backend_drv_configure usbotghs_configure 
+
+/*@
+    @ requires \valid(packet);
+    @ assigns *packet;
+    @ ensures is_valid_error(\result);
+*/
+mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler __attribute__((unused)),
+                                       usbctrl_setup_pkt_t *packet)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    return errcode;
+}
+
+
+/*@
+    @ assigns *buf,*desc_size;
+    @ ensures is_valid_error(\result);
+*/
+mbed_error_t  class_get_descriptor(uint8_t             iface_id,
+                                        uint8_t            *buf,
+                                        uint32_t           *desc_size,
+                                        uint32_t            usbdci_handler __attribute__((unused)))
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+
+    /* sanitation */
+    if (buf == NULL || desc_size == NULL) {
+        log_printf("[USBHID] invalid param buffers\n");
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+
+    /* desc size is usbhid_descriptor_t size plus usbhid_content_descriptor_t size
+     * for each additional optional content descriptor (report descriptor is requested) */
+    uint32_t size = 0;
+    uint8_t i;
+    /* descriptor number is a per-interface information. We get back the iface based on the
+     * identifier passed by libxDCI */
+
+    if (*desc_size < size) {
+        log_printf("[USBHID] invalid param buffers\n");
+        errcode = MBED_ERROR_NOMEM;
+        goto err;
+    }
+
+    *desc_size = size;
+err:
+    return errcode;
+}
+
+/*@
+    @ assigns \nothing ;
+    @ ensures is_valid_error(\result);
+*/
+mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    return errcode;
+}
 
 #endif/*!__FRAMAC__*/
 

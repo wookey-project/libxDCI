@@ -87,9 +87,9 @@ $(APP_BUILD_DIR):
 # Frama-C
 #####################################################################
 
-SESSION:=result_frama/frama-c-rte-eva-wp-split.session
+SESSION:=result_frama/frama-c-rte-eva-wp-no-split.session
 JOBS:=$(shell nproc)
-TIMEOUT:=15
+TIMEOUT:=5
 
 # "-val-warn-undefined-pointer-comparison none" is to deal with the
 # checks (\pointer_comparable( - ,  - )) otherwise added by EVA before
@@ -130,7 +130,7 @@ frama-c-eva:
 			-save result_frama/frama-c-rte-eva.session
 
 frama-c:
-	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
+	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
@@ -148,6 +148,7 @@ frama-c:
 		    -eva-slevel 100 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
+		    -eva-bitwise-domain \
 		    -eva-auto-loop-unroll 10 \
 		    -eva-split-return auto \
 		    -eva-partition-history 2 \
