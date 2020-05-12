@@ -99,13 +99,13 @@ TIMEOUT:=15
 # See https://bts.frama-c.com/view.php?id=2206
 
 frama-c-parsing:
-	frama-c usbctrl*.c \
+	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
 		 -cpp-extra-args="-nostdinc -I include_frama" 
 
 frama-c-eva:
-	frama-c usbctrl*.c  -c11 -machdep x86_32 \
+	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
