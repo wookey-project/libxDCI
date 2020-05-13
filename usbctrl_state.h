@@ -46,7 +46,7 @@ typedef enum {
     USB_DEVICE_STATE_INVALID               /* Not defined in the USB standard. exists as an INVALID case. Should not be reached */
 } usb_device_state_t;
 
-/*@ predicate is_valid_state(usb_device_state_t i) = 
+/*@ predicate is_valid_state(usb_device_state_t i) =
         i == USB_DEVICE_STATE_ATTACHED ||
         i == USB_DEVICE_STATE_POWERED ||
         i == USB_DEVICE_STATE_SUSPENDED_POWER ||
@@ -76,7 +76,7 @@ typedef enum {
 } usb_device_trans_t;
 
 
-/*@ predicate is_valid_transition(usb_device_trans_t i) = 
+/*@ predicate is_valid_transition(usb_device_trans_t i) =
         i == USB_DEVICE_TRANS_POWER_INTERRUPT ||
         i == USB_DEVICE_TRANS_RESET ||
         i == USB_DEVICE_TRANS_BUS_INACTIVE ||
@@ -106,11 +106,7 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
 #else
 mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
                                __in usb_device_state_t newstate);
-#endif/*!__FRAMAC__*/ 
-
-
-mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
-                               __in usb_device_state_t newstate);
+#endif/*!__FRAMAC__*/
 
 
 uint8_t usbctrl_next_state(usb_device_state_t current_state,
