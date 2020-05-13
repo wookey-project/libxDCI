@@ -288,6 +288,10 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
     }
     volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
 
+
+    ADD_LOC_HANDLER(usbctrl_handle_inepevent)
+    ADD_LOC_HANDLER(usbctrl_handle_outepevent)
+
     log_printf("[USBCTRL] configuring backend driver\n");
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
