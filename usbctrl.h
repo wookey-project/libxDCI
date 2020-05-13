@@ -27,7 +27,9 @@
 #include "libc/types.h"
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"
+#if defined(__FRAMAC__)
 #include "driver_api/usbotghs_frama.h"
+#endif
 
 /*********************************************************
  * FramaC
@@ -35,7 +37,7 @@
 #if defined(__FRAMAC__)
 
 
-/*@ predicate is_valid_error(mbed_error_t i) = 
+/*@ predicate is_valid_error(mbed_error_t i) =
     i == MBED_ERROR_NONE ||
     i == MBED_ERROR_NOMEM ||
     i == MBED_ERROR_NOSTORAGE ||
@@ -52,7 +54,7 @@
     i == MBED_ERROR_RDERROR ||
     i == MBED_ERROR_INITFAIL ||
     i == MBED_ERROR_TOOBIG ||
-    i == MBED_ERROR_NOTFOUND  ;  
+    i == MBED_ERROR_NOTFOUND  ;
 */
 
 extern volatile int Frama_C_entropy_source __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
@@ -74,7 +76,7 @@ int Frama_C_interval(int min, int max);
 #define usb_backend_drv_configure_endpoint usbotghs_configure_endpoint
 #define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
 #define usb_backend_drv_get_ep_state usbotghs_get_ep_state
-#define usb_backend_drv_configure usbotghs_configure 
+#define usb_backend_drv_configure usbotghs_configure
 
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 
@@ -184,7 +186,7 @@ typedef struct usbctrl_context {
 } usbctrl_context_t;
 
 #if defined(__FRAMAC__)
-usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = { 0 }; 
+usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/
 
 /*
