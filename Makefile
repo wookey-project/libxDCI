@@ -89,7 +89,7 @@ $(APP_BUILD_DIR):
 
 SESSION:=result_frama/frama-c-rte-eva-wp-no-split.session
 JOBS:=$(shell nproc)
-TIMEOUT:=5
+TIMEOUT:=10
 
 # "-val-warn-undefined-pointer-comparison none" is to deal with the
 # checks (\pointer_comparable( - ,  - )) otherwise added by EVA before
@@ -119,13 +119,12 @@ frama-c-eva:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 10 \
-		    -eva-slevel 100 \
+		    -eva-auto-loop-unroll 20 \
+		    -eva-slevel 300 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
-		    -eva-auto-loop-unroll 10 \
 		    -eva-split-return auto \
-		    -eva-partition-history 2 \
+		    -eva-partition-history 6 \
 		    -eva-log a:frama-c-rte-eva.log \
 			-save result_frama/frama-c-rte-eva.session
 
@@ -144,20 +143,19 @@ frama-c:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 10 \
-		    -eva-slevel 100 \
+		    -eva-auto-loop-unroll 20 \
+		    -eva-slevel 300 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
 		    -eva-bitwise-domain \
-		    -eva-auto-loop-unroll 10 \
 		    -eva-split-return auto \
-		    -eva-partition-history 2 \
+		    -eva-partition-history 6 \
 		    -eva-log a:frama-c-rte-eva.log \
    		    -then \
    		    -wp \
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
-  			-wp-no-dynamic \
+  			-wp-dynamic \
   			-wp-prover alt-ergo,cvc4,z3 \
    			-wp-timeout $(TIMEOUT) -save $(SESSION)  \
    			-time calcium_wp-eva.txt

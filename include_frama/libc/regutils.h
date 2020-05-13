@@ -130,7 +130,7 @@ __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
         (*reg) = value;
     } else {
         tmp = read_reg_value(reg);
-        tmp &= ~mask;
+        tmp &= ~mask; 
         tmp |= (value << pos) & mask;
         write_reg_value(reg, tmp);
     }

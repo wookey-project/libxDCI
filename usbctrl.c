@@ -41,15 +41,14 @@
  *
  */
 
-#define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
+
 
 #if defined(__FRAMAC__)
 static  uint8_t num_ctx = 0;
-usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 }; 
 #define MAX_EPx_PKT_SIZE 512
 #define RAND_UINT_32 65535 
-
 #else
+#define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 static volatile uint8_t num_ctx = 0;
 volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/

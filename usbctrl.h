@@ -76,6 +76,8 @@ int Frama_C_interval(int min, int max);
 #define usb_backend_drv_get_ep_state usbotghs_get_ep_state
 #define usb_backend_drv_configure usbotghs_configure 
 
+#define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
+
 /*@
     @ requires \valid(packet);
     @ assigns *packet;
@@ -90,7 +92,7 @@ mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler __attribute__((
 
 
 /*@
-    @ assigns *buf,*desc_size;
+    @ assigns \nothing ;
     @ ensures is_valid_error(\result);
 */
 mbed_error_t  class_get_descriptor(uint8_t             iface_id,
@@ -119,8 +121,6 @@ mbed_error_t  class_get_descriptor(uint8_t             iface_id,
         errcode = MBED_ERROR_NOMEM;
         goto err;
     }
-
-    *desc_size = size;
 err:
     return errcode;
 }
@@ -183,8 +183,13 @@ typedef struct usbctrl_context {
     bool           ctrl_req_processing; /* a control level request is being processed */
 } usbctrl_context_t;
 
+#if defined(__FRAMAC__)
+usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = { 0 }; 
+#endif/*!__FRAMAC__*/
 
-
+/*
+ Cyril : déclaration de cette variable en globale dans ce fichier, et non dans usbctrl.c pour qu'elle soit connue dans les spec dans les autres fichiers (sinon ça marche pas)
+*/
 /*********************************************************
  * Core API
  */
