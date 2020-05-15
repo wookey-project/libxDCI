@@ -701,12 +701,12 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
            /* check that declared ep mpsize is compatible with backend driver */
            
 
-			#if defined(__FRAMAC__)
-           		drv_ep_mpsize = MAX_EPx_PKT_SIZE ; // Cyril : l'appel à usb_backend_get_ep_mpsize ou directement à usbotghs_get_ep_mpsize pose des problemes à wp pour le assign
-           										   //		  dans la spec de la fonction. Je ne sais pas pourquoi...
-            #else
-           		drv_ep_mpsize = usb_backend_get_ep_mpsize();;
-           	#endif/*!__FRAMAC__*/
+#if defined(__FRAMAC__)
+	   drv_ep_mpsize = MAX_EPx_PKT_SIZE ; // Cyril : l'appel à usb_backend_get_ep_mpsize ou directement à usbotghs_get_ep_mpsize pose des problemes à wp pour le assign
+	   //		  dans la spec de la fonction. Je ne sais pas pourquoi...
+#else
+	   drv_ep_mpsize = usb_backend_get_ep_mpsize();;
+#endif/*!__FRAMAC__*/
 
            if (ep->pkt_maxsize > drv_ep_mpsize) {
                //log_printf("truncating EP max packet size to backend driver EP max pktsize\n");
@@ -755,6 +755,8 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
     #endif/*!__FRAMAC__*/
     
     log_printf("[USBCTRL] configuring backend driver\n");
+    //PMO
+    /* @ assert usbotghs_ctx.in_eps[0].mpsize ==0 ;*/
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         //log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
         usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
@@ -768,6 +770,8 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
      
 
 end:
+    //PMO
+    /* @ assert usbotghs_ctx.in_eps[0].mpsize !=0;*/ 
     return errcode;
 }
 

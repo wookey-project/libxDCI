@@ -107,7 +107,8 @@ frama-c-parsing:
 frama-c-eva:
 	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
-	            -no-frama-c-stdlib \
+	            -no-frama-c-stdlib -unsafe-arrays \
+-warn-invalid-bool \
 	            -warn-left-shift-negative \
 	            -warn-right-shift-negative \
 	            -warn-signed-downcast \
@@ -133,16 +134,18 @@ frama-c:
 	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
+		    -unsafe-arrays \
+		    -warn-invalid-bool \
 	            -warn-left-shift-negative \
 	            -warn-right-shift-negative \
 	            -warn-signed-downcast \
 	            -warn-signed-overflow \
 	            -warn-unsigned-downcast \
 	            -warn-unsigned-overflow \
-				-kernel-msg-key pp \
-				-cpp-extra-args="-nostdinc -I include_frama" \
+		    -kernel-msg-key pp \
+		    -cpp-extra-args="-nostdinc -I include_frama" \
 		    -rte \
-		    -eva \
+		    -eva -wp-dynamic \
 		    -eva-warn-undefined-pointer-comparison none \
 		    -eva-auto-loop-unroll 10 \
 		    -eva-slevel 100 \
@@ -153,14 +156,14 @@ frama-c:
 		    -eva-split-return auto \
 		    -eva-partition-history 2 \
 		    -eva-log a:frama-c-rte-eva.log \
-   		    -then \
-   		    -wp \
-  			-wp-model "Typed+ref+int" \
-  			-wp-literals \
-  			-wp-no-dynamic \
-  			-wp-prover alt-ergo,cvc4,z3 \
-   			-wp-timeout $(TIMEOUT) -save $(SESSION)  \
-   			-time calcium_wp-eva.txt
+		    -then \
+		    -wp \
+		    -wp-model "Typed+ref+int" \
+		    -wp-literals \
+                    -wp-dynamic \
+                    -wp-prover alt-ergo,cvc4,z3 \
+                    -wp-timeout $(TIMEOUT) -save $(SESSION)  \
+		    -time calcium_wp-eva.txt
 
 #			-wp-steps 100000 \
 

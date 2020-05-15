@@ -93,10 +93,11 @@ mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler __attribute__((
     @ assigns *buf,*desc_size;
     @ ensures is_valid_error(\result);
 */
+//PMO retrait usbdci_handler __attribute__((unused) pour FC
 mbed_error_t  class_get_descriptor(uint8_t             iface_id,
                                         uint8_t            *buf,
                                         uint32_t           *desc_size,
-                                        uint32_t            usbdci_handler __attribute__((unused)))
+                                        uint32_t            usbdci_handler)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
 

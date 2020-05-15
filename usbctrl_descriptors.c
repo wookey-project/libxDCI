@@ -249,6 +249,8 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 if (ctx->cfg[curr_cfg].interfaces[i].class_desc_handler != NULL) {
                     uint32_t max_buf_size = MAX_DESCRIPTOR_LEN;
                     //errcode = MBED_ERROR_NONE ;
+		    /*@ assert ctx->cfg[curr_cfg].interfaces[i].class_desc_handler \in {&class_get_descriptor} ; */
+		    /*@ calls class_get_descriptor; */ 
                     errcode = ctx->cfg[curr_cfg].interfaces[i].class_desc_handler(i, buf, &max_buf_size, handler);
                     if (errcode != MBED_ERROR_NONE) {
                         log_printf("[LIBCTRL] failure while getting class desc: %d\n", errcode);
@@ -378,6 +380,8 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                             uint32_t max_buf_size = curr_offset ;  // Cyril : pour faire passer framaC sans erreur...
                             // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
                             // Cyril : probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset; */
+			    /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler \in {&class_get_descriptor} ; */
+			    /*@ calls class_get_descriptor; */
                             errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &max_buf_size, handler);
                             if (errcode != MBED_ERROR_NONE) {
                                 goto err;

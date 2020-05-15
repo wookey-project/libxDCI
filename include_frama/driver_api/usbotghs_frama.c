@@ -444,6 +444,8 @@ reset ? */
     usbotghs_ctx.speed = USBOTG_HS_SPEED_HS; /* default. In device mode, wait for enumeration */
 
 err:
+    //PMO
+    /*@ assert usbotghs_ctx.in_eps[0].mpsize!=0; @*/
     return errcode;
 }
 
@@ -480,7 +482,7 @@ uint32_t usbotghs_get_ep_mpsize(void)
 
     @ behavior not_configured:
     @	assumes &usbotghs_ctx != \null ;
-    @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \false) ;
+    @   assumes usbotghs_ctx.in_eps[ep_id].configured == \false ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
@@ -521,10 +523,10 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint32_t fifo_size = 0;
     usbotghs_context_t *ctx = usbotghs_get_context();
-
+    /*@ assert ctx==&usbotghs_ctx ; */ //PMO
     if (ctx == NULL) {
         errcode = MBED_ERROR_INVSTATE;
-        goto err;
+        goto err_init; // PMO pb avec ep si err
     }
 
     // cyril : ajout d'un test pour ctx null 
@@ -605,6 +607,9 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
     }
     ep->state = USBOTG_HS_EP_STATE_DATA_OUT_WIP;
 #endif
+    //PMO
+    /*@ assert ep->state==USBOTG_HS_EP_STATE_DATA_IN_WIP ; */
+    
     /* Fragmentation on EP0 case: we don't loop on the input FIFO to
      * synchronously transmit the data, we just write the first packet
      * into the FIFO, and we wait for IEPINT. The successive next
@@ -619,22 +624,23 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
        /*@
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DSTS);
-            @ loop assigns errcode;
+	    @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
+            @ loop assigns \nothing;
             @ loop variant (ep->mpsize / 4) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos);
-       */
+       */ //PMO loop assigns nothing sortie non standard 
 
-        while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (ep->mpsize / 4)) {
+       while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (ep->mpsize / 4)) {
             if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
                 log_printf("[USBOTG][HS] Suspended!\n");
                 errcode = MBED_ERROR_BUSY;
                 goto err;
             }
         }
-#if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE  // Cyril : je suis dans ce cas
-        ep->state = USBOTG_HS_EP_STATE_DATA_IN;  // Cyril : pourquoi cet état alors qu'avant on a ep->state = USBOTG_HS_EP_STATE_DATA_IN_WIP;
-#else
+       #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE  // Cyril : je suis dans ce cas
+        ep->state = USBOTG_HS_EP_STATE_DATA_IN;  // Cyril : pourquoi cet état alors qu'avant on a ep->state = USBOTG_HS_EP_STATE_DATA_IN_WIP; 
+       #else
         ep->state = USBOTG_HS_EP_STATE_DATA_OUT;
-#endif
+       #endif
         /* write data from SRC to FIFO */
         errcode = usbotghs_write_epx_fifo(ep->mpsize, ep);
         goto err;  // Cyril : probleme ici je suis en error none, je pense que je dois faire errocde =
@@ -654,20 +660,23 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
     //fifo_size = 1 ; // Cyril : ajout pour rentrer dans la boucle...
 
        /*@
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-            @ loop assigns errcode, *ep, residual_size, *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
+            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) ;
+	    @ loop invariant  (usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN_WIP) ;
+            @ loop assigns  residual_size, *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
             @ loop variant (residual_size - fifo_size);
        */
-
+    //PMO loop assigns pas errocde
     while (residual_size >= fifo_size) {
        
         /*@
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-            @ loop assigns errcode;
+            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) ;
+	    @ loop invariant  (usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN_WIP);
+            @ loop assigns \nothing;
             @ loop variant ((fifo_size / 4) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos)) ;
         */
+      // PMO idem assigns nothing
 
-       while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {
+      while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {
             if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
                 //log_printf("[USBOTG][HS] Suspended!\n");
                 errcode = MBED_ERROR_BUSY;
@@ -682,6 +691,8 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
             ep->state = USBOTG_HS_EP_STATE_DATA_OUT;
 #endif
         }
+	//PMO
+	/*@ assert ep->state==USBOTG_HS_EP_STATE_DATA_IN; */
         /* write data from SRC to FIFO */
         usbotghs_write_epx_fifo(fifo_size, ep);
         /* wait for XMIT data to be transfered (wait for iepint (or oepint in
@@ -696,11 +707,12 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
         /* wait while there is enough space in TxFIFO */
 
        /*@
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-            @ loop assigns errcode;
+            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));  
+	    @loop invariant  ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
+            @ loop assigns \nothing;
             @ loop variant ( ((residual_size / 4) + (residual_size & 3 ? 1 : 0)) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos)) ; 
        */        
-
+      //PMO pas assigns errcode
         while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV)  < ((residual_size / 4) + (residual_size & 3 ? 1 : 0))) {
             if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
                 //log_printf("[USBOTG][HS] Suspended!\n");
@@ -1243,7 +1255,8 @@ mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
             /*  USB active endpoint */
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep), USBOTG_HS_DOEPCTL_USBAEP_Msk);
 
-            /* FIXME Start data toggle */
+            /* FIXME Start
+ data toggle */
             if (type == USBOTG_HS_EP_TYPE_BULK || type == USBOTG_HS_EP_TYPE_INT) {
                 set_reg(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep), dtoggle, USBOTG_HS_DOEPCTL_SD0PID);
             }
