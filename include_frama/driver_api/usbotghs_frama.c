@@ -631,7 +631,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 	 @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
 	 @ loop invariant 0<=cpt<= CPT_HARD ;
 	 @ loop assigns \nothing ;
-	 @ loop variant CPT_HARD - cpt; ;
+	 @ loop variant CPT_HARD - cpt ;
        */
        //PMO ajout compteur matériel
        for (uint8_t cpt=0; cpt<CPT_HARD; cpt++)
@@ -678,7 +678,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 	@ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
 	@ loop invariant 0<=cpt<= CPT_HARD ;
 	@ loop assigns \nothing ;
-	@ loop variant CPT_HARD - cpt; ;
+	@ loop variant CPT_HARD - cpt ;
       */
       //PMO compteur hardware
       for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
@@ -718,7 +718,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 	@ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));  
 	@ loop invariant  ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
 	@ loop assigns \nothing ;
-	@ loop variant CPT_HARD - cpt; ;
+	@ loop variant CPT_HARD - cpt; 
       */
       //PMO compteur hardware
       for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
@@ -793,7 +793,7 @@ mbed_error_t usbotghs_send_zlp(uint8_t ep_id)
       @ loop invariant \valid(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
       @ loop invariant 0<=cpt<= CPT_HARD ;
       @ loop assigns \nothing ;
-      @ loop variant CPT_HARD - cpt; ;
+      @ loop variant CPT_HARD - cpt ;
     */
     //PMO compteur hardware
     for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
@@ -865,7 +865,7 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
 	    /*@
 	      @ loop invariant 0<=cpt<= CPT_HARD ;
 	      @ loop assigns \nothing ;
-	      @ loop variant CPT_HARD - cpt; ;
+	      @ loop variant CPT_HARD - cpt ;
 	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
@@ -896,7 +896,7 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
 	    /*@
 	      @ loop invariant 0<=cpt<= CPT_HARD ;
 	      @ loop assigns \nothing ;
-	      @ loop variant CPT_HARD - cpt; ;
+	      @ loop variant CPT_HARD - cpt ;
 	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
@@ -1123,7 +1123,7 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
 	    /*@
 	      @ loop invariant 0<=cpt<= CPT_HARD ;
 	      @ loop assigns \nothing ;
-	      @ loop variant CPT_HARD - cpt; ;
+	      @ loop variant CPT_HARD - cpt; 
 	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
@@ -1154,7 +1154,7 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
       	    /*@
 	      @ loop invariant 0<=cpt<= CPT_HARD ;
 	      @ loop assigns \nothing ;
-	      @ loop variant CPT_HARD - cpt; ;
+	      @ loop variant CPT_HARD - cpt; 
 	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
