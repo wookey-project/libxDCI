@@ -77,15 +77,19 @@ int Frama_C_interval(int min, int max);
 #define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
 #define usb_backend_drv_get_ep_state usbotghs_get_ep_state
 #define usb_backend_drv_configure usbotghs_configure
+#define usb_backend_get_ep_mpsize usbotghs_get_ep_mpsize
 
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
+
+//@ ghost uint8_t GHOST_num_ctx = 0 ;
 
 /*@
     @ requires \valid(packet);
     @ assigns *packet;
     @ ensures is_valid_error(\result);
 */
-mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler __attribute__((unused)),
+
+mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler,
                                        usbctrl_setup_pkt_t *packet)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -97,11 +101,10 @@ mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler __attribute__((
     @ assigns \nothing ;
     @ ensures is_valid_error(\result);
 */
-//PMO retrait usbdci_handler __attribute__((unused) pour FC
 mbed_error_t  class_get_descriptor(uint8_t             iface_id,
                                         uint8_t            *buf,
                                         uint32_t           *desc_size,
-                                        uint32_t            usbdci_handler)
+                                        uint32_t            usbdci_handler )
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
 

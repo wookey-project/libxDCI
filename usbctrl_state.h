@@ -89,6 +89,300 @@ typedef enum {
         i == USB_DEVICE_TRANS_DEV_DECONFIGURED ;
 */
 
+#if defined(__FRAMAC__)
+
+#define MAX_TRANSITION_STATE 10
+
+typedef struct usb_operation_code_transition {
+    uint8_t request;
+    uint8_t target_state;
+} usb_request_code_transition_t;
+
+
+static const struct {
+    usb_device_state_t state;
+    usb_request_code_transition_t   req_trans[MAX_TRANSITION_STATE];
+} usb_automaton[] = {
+    {USB_DEVICE_STATE_ATTACHED, {
+                 {USB_DEVICE_TRANS_HUB_CONFIGURED, USB_DEVICE_STATE_POWERED},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 }
+     },
+    {USB_DEVICE_STATE_POWERED, {
+                  {USB_DEVICE_TRANS_BUS_INACTIVE, USB_DEVICE_STATE_SUSPENDED_POWER},
+                  {USB_DEVICE_TRANS_HUB_RESET, USB_DEVICE_STATE_ATTACHED},
+                  {USB_DEVICE_TRANS_HUB_DECONFIGURED, USB_DEVICE_STATE_ATTACHED},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                 }
+     },
+    {USB_DEVICE_STATE_SUSPENDED_POWER, {
+                  {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_POWERED},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  }
+     },
+    {USB_DEVICE_STATE_SUSPENDED_DEFAULT, {
+                  {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_DEFAULT},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  }
+     },
+    {USB_DEVICE_STATE_SUSPENDED_ADDRESS, {
+                  {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_ADDRESS},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  }
+     },
+    {USB_DEVICE_STATE_SUSPENDED_CONFIGURED, {
+                  {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_CONFIGURED},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  }
+     },
+    {USB_DEVICE_STATE_DEFAULT, {
+                  {USB_DEVICE_TRANS_ADDRESS_ASSIGNED, USB_DEVICE_STATE_ADDRESS},
+                  {USB_DEVICE_TRANS_BUS_INACTIVE, USB_DEVICE_STATE_SUSPENDED_DEFAULT},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  },
+     },
+    {USB_DEVICE_STATE_ADDRESS, {
+                  {USB_DEVICE_TRANS_DEV_CONFIGURED, USB_DEVICE_STATE_CONFIGURED},
+                  {USB_DEVICE_TRANS_BUS_INACTIVE, USB_DEVICE_STATE_SUSPENDED_ADDRESS},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  },
+     },
+    {USB_DEVICE_STATE_CONFIGURED, {
+                  {USB_DEVICE_TRANS_DEV_DECONFIGURED, USB_DEVICE_STATE_ADDRESS},
+                  {USB_DEVICE_TRANS_BUS_INACTIVE, USB_DEVICE_STATE_SUSPENDED_CONFIGURED},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  },
+     },
+    {USB_DEVICE_STATE_INVALID, {
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  },
+     },
+
+};
+
+/*@ 
+    ghost const struct {
+    usb_device_state_t state;
+    usb_request_code_transition_t   req_trans[MAX_TRANSITION_STATE];
+} GHOST_usb_automaton[] = {
+    {USB_DEVICE_STATE_ATTACHED, {
+                 {USB_DEVICE_TRANS_HUB_CONFIGURED, USB_DEVICE_STATE_POWERED},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 {0xff, 0xff},
+                 }
+     },
+    {USB_DEVICE_STATE_POWERED, {
+                  {USB_DEVICE_TRANS_BUS_INACTIVE, USB_DEVICE_STATE_SUSPENDED_POWER},
+                  {USB_DEVICE_TRANS_HUB_RESET, USB_DEVICE_STATE_ATTACHED},
+                  {USB_DEVICE_TRANS_HUB_DECONFIGURED, USB_DEVICE_STATE_ATTACHED},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                 }
+     },
+    {USB_DEVICE_STATE_SUSPENDED_POWER, {
+                  {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_POWERED},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  }
+     },
+    {USB_DEVICE_STATE_SUSPENDED_DEFAULT, {
+                  {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_DEFAULT},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  }
+     },
+    {USB_DEVICE_STATE_SUSPENDED_ADDRESS, {
+                  {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_ADDRESS},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  }
+     },
+    {USB_DEVICE_STATE_SUSPENDED_CONFIGURED, {
+                  {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_CONFIGURED},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  }
+     },
+    {USB_DEVICE_STATE_DEFAULT, {
+                  {USB_DEVICE_TRANS_ADDRESS_ASSIGNED, USB_DEVICE_STATE_ADDRESS},
+                  {USB_DEVICE_TRANS_BUS_INACTIVE, USB_DEVICE_STATE_SUSPENDED_DEFAULT},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  },
+     },
+    {USB_DEVICE_STATE_ADDRESS, {
+                  {USB_DEVICE_TRANS_DEV_CONFIGURED, USB_DEVICE_STATE_CONFIGURED},
+                  {USB_DEVICE_TRANS_BUS_INACTIVE, USB_DEVICE_STATE_SUSPENDED_ADDRESS},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  },
+     },
+    {USB_DEVICE_STATE_CONFIGURED, {
+                  {USB_DEVICE_TRANS_DEV_DECONFIGURED, USB_DEVICE_STATE_ADDRESS},
+                  {USB_DEVICE_TRANS_BUS_INACTIVE, USB_DEVICE_STATE_SUSPENDED_CONFIGURED},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  },
+     },
+    {USB_DEVICE_STATE_INVALID, {
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  {0xff, 0xff},
+                  },
+     },
+
+};
+*/
+
+/*@
+  
+  @ predicate is_valid_request_transition(usb_device_state_t current_state,usb_device_trans_t transition) = 
+      (\exists integer i; 0 <= i < MAX_TRANSITION_STATE && GHOST_usb_automaton[current_state].req_trans[i].request == transition) ;
+*/
+
+#endif/*__FRAMAC__*/
+
 
 /*
  * Return the current state of the USB device

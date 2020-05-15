@@ -123,6 +123,7 @@ frama-c-eva:
 		    -eva-slevel 300 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
+  			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
 		    -eva-log a:frama-c-rte-eva.log \
@@ -147,21 +148,21 @@ frama-c:
 		    -eva-slevel 300 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
-		    -eva-bitwise-domain \
+  			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
 		    -eva-log a:frama-c-rte-eva.log \
-		    -then \
-		    -wp \
-		    -wp-model "Typed+ref+int" \
-		    -wp-literals \
-		    -wp-dynamic \
-		    -wp-prover alt-ergo,cvc4,z3 \
-		    -wp-timeout $(TIMEOUT) -save $(SESSION)  \
-		    -time calcium_wp-eva.txt
+   		    -then \
+   		    -wp \
+  			-wp-model "Typed+ref+int" \
+  			-wp-literals \
+  			-wp-prover alt-ergo,cvc4,z3 \
+   			-wp-timeout $(TIMEOUT) -save $(SESSION)  \
+   			-time calcium_wp-eva.txt
 
 #			-wp-steps 100000 \
 
+#-eva-bitwise-domain
 
 frama-c-gui:
 	frama-c-gui -load $(SESSION)

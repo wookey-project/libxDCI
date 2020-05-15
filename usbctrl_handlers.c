@@ -35,39 +35,68 @@ mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
     return errcode;
 }
 
-/*@
-    @ assigns *ctx_list ;  // en fait, je touche à un contexte global, déclaré dans un autre fichier...je ne sais pas comment le dire (ctx_list)
-    @ ensures \forall integer i ; 0 <= i < MAX_USB_CTRL_CTX ==> ctx_list[i].dev_id != dev_id 
-                                ==> \result == MBED_ERROR_INVPARAM ;
+
+
+/* @
+    @ assigns \nothing ;
+    @ ensures \result == MBED_ERROR_NONE ;
 */
 
-// dans les ensures, je dois dire : si je suis dans tel état, je termine dans tel état à la fin de la fonction
-// mais pour ça je dois faire référence à ctx->state, déclaré dans la fonction...donc je peux pas le mettre ici. 
-//  Je dois utiliser ctx_list, qui n'est pas connu par la fonction usbctrl_handle_reset
+mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    dev_id = dev_id;
+    return errcode;
+}
+
+/*@
+    @ behavior bad_ctx:
+    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
+    @   assigns \nothing ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior no_valid_transition:
+    @   assumes (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && !is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) ) ;
+    @   ensures \result == MBED_ERROR_INVSTATE ;
+    @   ensures ctx_list[0].state == USB_DEVICE_STATE_INVALID ;
+
+
+*/
 
 mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 {
+    
     mbed_error_t       errcode = MBED_ERROR_NONE;
     dev_id = dev_id;
     usbctrl_context_t *ctx = NULL;
-    //log_printf("[USBCTRL] Handling reset\n");
+    log_printf("[USBCTRL] Handling reset\n");
     /* TODO: support for multiple drivers in the same time.
-    T his requires a driver table with callbacks or a preprocessing mechanism
+    This requires a driver table with callbacks or a preprocessing mechanism
     to select the corresponding driver API. While the libctrl is not yet fully
     operational, we handle only usbotghs driver API */
     dev_id = dev_id;
 
-    //log_printf("[USBCTRL] reset: get context for dev_id %d\n", dev_id);
-    if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
-        //log_printf("[USBCTRL] reset: no ctx found!\n");
+    log_printf("[USBCTRL] reset: get context for dev_id %d\n", dev_id);
+    if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) { 
+        log_printf("[USBCTRL] reset: no ctx found!\n");
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
 
+    // Cyril : de ctx, je dois remonter à ctx_list[i], avec i inconnu... 0 <= i <= num_ctx
+
+    /*@ assert \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ; */
+    /*@ assert &ctx_list[0] == ctx ; */
+
     usb_device_state_t state = usbctrl_get_state(ctx);
+
+    /*@ assert ctx_list[0].state == state ;   */
+
     /* resetting directly depends on the current state */
-    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
-        //log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
+    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {       
+        log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
+        /*@ assert ctx_list[0].state ==  USB_DEVICE_STATE_INVALID; */
+        /* @ assert \at(ctx_list,Here) != \at(ctx_list,Pre) ; */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
@@ -80,7 +109,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
              * are handled at SetConfiguration & SetInterface time */
             /* as USB Reset action reinitialize the EP0 FIFOs (flush, purge and deconfigure) they must
              * be reconfigure for EP0 here. */
-            //log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
+            log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
 
             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
 
@@ -138,10 +167,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             /* control pipe recv FIFO is ready to be used */
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             ctx->address = 0;
-            #if defined(__FRAMAC__)
-            #else
             usb_backend_drv_set_address(0); 
-            #endif/*!__FRAMAC__*/
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             /* INFO: deconfigure any potential active EP of current config is automatically
@@ -156,12 +182,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             /* when configured, the upper layer must also be reset */
             ctx->address = 0;
-            
-            #if defined(__FRAMAC__)
-           
-            #else
             usb_backend_drv_set_address(0); 
-            #endif/*!__FRAMAC__*/
             usbctrl_reset_received();
             break;
         default:
@@ -183,22 +204,12 @@ err:
     return errcode;
 }
 
-/*@
-    @ assigns \nothing ;
-    @ ensures \result == MBED_ERROR_NONE ;
-*/
-
-mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-    dev_id = dev_id;
-    return errcode;
-}
 
 
 /*
  * IN EP event (data sent) for EP 0
  */
+
 mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -230,7 +241,23 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         ctx->ctrl_req_processing = false;
     } else {
         log_printf("[LIBCTRL] end of upper layer request\n");
+        
+        /*@
+            @ loop invariant 0 <= iface <= ctx->cfg[curr_cfg].interface_num ;
+            @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num - 1));
+            @ loop assigns iface, errcode ;
+            @ loop variant (ctx->cfg[curr_cfg].interface_num - iface);
+        */
+
         for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
+            
+        /*@
+            @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
+            @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num - 1));
+            @ loop assigns i, errcode ;
+            @ loop variant (ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number - i);
+        */            
+
             for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
                 /* here we check both ep id and direction and EP0 is a specific full duplex case */
                 if (   ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep
@@ -239,7 +266,9 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
                     if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
                         log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
                         /* XXX: c'est ma FIFO ? oui, c'est pour moi. Non, c'est pour au dessus :-)*/
-                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);  // Cyril : pointeur de fonction
+                            /*@ assert ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler ∈ {&handler_ep}; */
+                            /*@ calls handler_ep; */
+                        errcode = ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);  // Cyril : ajout de errcode = (comme pour class_desc_handler)
                     }
                     break;
                 }
@@ -255,6 +284,9 @@ err:
 /*
  * OUT EP event (data recv) for EP 0
  */
+
+
+
 mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -305,7 +337,23 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                 /* Well; nothing to do with size = 0 ? */
                 break;
             }
+            /*@
+                @ loop invariant 0 <= iface <= ctx->cfg[curr_cfg].interface_num ;
+                @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num-1));
+                @ loop assigns iface ;
+                @ loop variant (ctx->cfg[curr_cfg].interface_num -iface) ;
+            */
+
             for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
+            
+            /*@
+                @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
+                @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num-1));
+                @ loop assigns i ;
+                @ loop variant (ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number -i);
+            */
+
+
                 for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
                     /* here we check both ep id and direction and EP0 is a specific full duplex case */
                     if (   ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep

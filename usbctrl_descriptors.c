@@ -136,6 +136,7 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
 
 */
 
+
 mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                     __out uint8_t                   *buf,
                                     __out uint32_t                  *desc_size,
@@ -151,9 +152,9 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
     }
 
     #if defined(__FRAMAC__)
-    const char *USB_DEV_MANUFACTURER = "ANSSI";
-    const char *USB_DEV_PRODNAME = "wookey";
-    const char *USB_DEV_SERIAL = "123456789012345678901234" ;
+    const char *USB_DEV_MANUFACTURER = CONFIG_USB_DEV_MANUFACTURER;  
+    const char *USB_DEV_PRODNAME = CONFIG_USB_DEV_PRODNAME;  
+    const char *USB_DEV_SERIAL = CONFIG_USB_DEV_SERIAL;  
     #endif/*__FRAMAC__*/
 
 
@@ -350,20 +351,16 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 @ loop invariant 0 <= i <= iface_num ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num-1)));
                 @ loop invariant \separated(buf,ctx);
-                @ loop assigns i, errcode, class_desc_size  ;
+                @ loop assigns i, class_desc_size, errcode  ;
                 @ loop variant (iface_num -i);
             */
 
             for (uint8_t i = 0; i < iface_num; ++i) {
                 if (ctx->cfg[curr_cfg].interfaces[i].class_desc_handler != NULL) {
                     uint32_t max_buf_size = MAX_DESCRIPTOR_LEN;
-
-                    //errcode = MBED_ERROR_NONE ;
-		    /*@ assert ctx->cfg[curr_cfg].interfaces[i].class_desc_handler \in {&class_get_descriptor} ; */
-		    /*@ calls class_get_descriptor; */ 
+                    /*@ assert ctx->cfg[curr_cfg].interfaces[i].class_desc_handler ∈ {&class_get_descriptor}; */
+                    /*@ calls class_get_descriptor; */
                     errcode = ctx->cfg[curr_cfg].interfaces[i].class_desc_handler(i, buf, &max_buf_size, handler);
-                    
-                    // Cyril : le loop assigns ne passe pas après l'appel à cette fonction (pourtant wp arrive bien à savoir quelle fonction est appelée)
                     if (errcode != MBED_ERROR_NONE) {
                         log_printf("[LIBCTRL] failure while getting class desc: %d\n", errcode);
                         goto err;
@@ -391,7 +388,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 /* for endpoint, we must not declare CONTROL eps in interface descriptor */
                 uint8_t num_ep = 0;
                 
-                /* @
+                /*@
                     @ loop invariant 0 <= ep <= ctx->cfg[curr_cfg].interfaces[i].usb_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[i].eps + (0..(ctx->cfg[curr_cfg].interfaces[i].usb_ep_number -1))) ;
                     @ loop assigns num_ep, ep ;
@@ -440,9 +437,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              * To do this, we start at offset 0 after configuration descriptor for the first
              * interface, and at the end of each interface, we increment the offset of the size
              * of the complete interface descriptor, including EP. */
-            
-
-                                
+                                            
             /* @
                 @ loop invariant 0 <= iface_id <= iface_num ;
                 @ loop invariant 0 <= curr_offset <=  255 ; 
@@ -458,6 +453,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                     {
                         /* pointing to next field: interface descriptor */
                         usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)&(buf[curr_offset]);
+                        /* @ assert &buf[curr_offset] ==  cfg ; */
                         cfg->bLength = sizeof(usbctrl_interface_descriptor_t);
                         cfg->bDescriptorType = USB_DESC_INTERFACE;
                         cfg->bInterfaceNumber = iface_id;
@@ -495,12 +491,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                             //uint32_t max_buf_size = *desc_size - curr_offset; 
                             uint32_t max_buf_size = curr_offset ;  // Cyril : pour faire passer framaC sans erreur...
                             // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
-                            // Cyril : probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset; */
-			    /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler \in {&class_get_descriptor} ; */
-			    /*@ calls class_get_descriptor; */
+                            // Cyril : probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset; 
+
+                            /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler ∈ {&class_get_descriptor}; */
+                            /*@ calls class_get_descriptor; */
                             errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &max_buf_size, handler);
-                            //errcode = MBED_ERROR_NONE ;
-                            // Cyril pointeur de fonction commenté pour faire passer la boucle dans wp...
+
+
                             if (errcode != MBED_ERROR_NONE) {
                                 goto err;
                             }
@@ -526,8 +523,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 /* Control EP (EP0 usage) are not declared here */
                                 continue;
                             }
-                            usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)&(buf[curr_offset]);
-                            // Cyril : loop assigns ne passe pas après ce cast (normalement buf[curr_offset] est modifié...)
+                            usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)&(buf[curr_offset]); // modèle mémoire cast à tester, sinon assert
                             cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
                             cfg->bDescriptorType = USB_DESC_ENDPOINT;
                             cfg->bEndpointAddress = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].ep_num;
@@ -566,16 +562,19 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                     uint8_t i = 0;  // Cyril : on a déjà une boucle avec i déclaré, je pense qu'il faut nommer deux variables différentes (variable renommé en ep_number)
                                     /* get back the position of the first '1' bit */
                                     
+                                    uint8_t compteur_poll = 9;
                                     /* @
                                         @ loop invariant i >= 0 ;
                                         @ loop invariant poll >= 0 ;
-                                        @ loop assigns poll, i;
+                                        @ loop assigns poll, i, compteur_poll;
+                                        @ loop variant compteur_poll;
                                     */
-                                        
-                                    while (!(poll & 0x1)) {
-                                        /*@ assert !(poll & 0x1) ;  */
+                                      // Cyril : pour faire passer frama, on peut faire un compteur max de 9 (poll a 8 bits) pour faire un variant sur ce compteur...
+                                      // ou 9 -i en variant  
+                                    while (!(poll & 0x1) || compteur_poll > 0) {
                                         poll >>= 1;
                                         i++;
+                                        compteur_poll -- ;
                                     }
                                     /* binary shift left by 2, to handle (interval-1)*125us from a value in milisecond */
                                     i+=2;

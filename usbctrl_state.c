@@ -21,12 +21,18 @@
  * the transition handler has to handle this manually.
  */
 
-#define MAX_TRANSITION_STATE 10
+
+#if defined(__FRAMAC__)
+ // CYRIL : ce qu'il y a dans le #else est reporté dans le .h, dans un if defined(__FRAMAC__). Car les variables déclarées dans les .c sont ignorées par frama dans les autres .c...
+#else
 
 /*
  * Association between a request and a transition to a next state. This couple
  * depend on the current state and is use in the following structure
  */
+
+
+#define MAX_TRANSITION_STATE 10
 typedef struct usb_operation_code_transition {
     uint8_t request;
     uint8_t target_state;
@@ -170,6 +176,8 @@ static const struct {
 
 };
 
+#endif/*__FRAMAC__*/
+
 /**********************************************
  * USB CTRL State automaton getters and setters
  *********************************************/
@@ -304,16 +312,16 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
     @ requires \valid(ctx);
     @ requires is_valid_state(current_state) ;
     @ requires is_valid_transition(transition);
-    @ requires \valid_read(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
-    @ requires \separated(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx);
+    @ requires \valid_read(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
+    @ requires \separated(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx);
 
     @ behavior true:
-    @   assumes (\exists integer i; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ;
+    @   assumes is_valid_request_transition(current_state,transition) ;
     @   assigns \nothing ;
     @   ensures \result == \true ;
 
     @ behavior false:
-    @   assumes (\forall integer i; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != transition) ;
+    @   assumes !is_valid_request_transition(current_state,transition) ;
     @   assigns *ctx ;
     @   ensures \result == \false  ;
     @   ensures ctx->state == USB_DEVICE_STATE_INVALID  ;
@@ -328,8 +336,8 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
 {
   /*@
       @ loop invariant 0 <= i <= MAX_TRANSITION_STATE ;
-      @ loop invariant \valid_read(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
-      @ loop invariant (\forall integer prei ; 0 <= prei < i ==> usb_automaton[current_state].req_trans[prei].request != transition) ;
+      @ loop invariant \valid_read(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
+      @ loop invariant (\forall integer prei ; 0 <= prei < i ==> GHOST_usb_automaton[current_state].req_trans[prei].request != transition) ;
       @ loop assigns i ;
       @ loop variant MAX_TRANSITION_STATE -i ;
   */
@@ -344,10 +352,10 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
      * Didn't find any request associated to current state. This is not a
      * valid transition. We should stall the request.
      */
-    //log_printf("%s: invalid transition from state %d, request %d\n", __func__, current_state, transition);
+    log_printf("%s: invalid transition from state %d, request %d\n", __func__, current_state, transition);
     
     usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
-    /*@ assert ctx->state ==  USB_DEVICE_STATE_INVALID; */  // Cyril : Probleme avec la définition de la fonction set_state : pour invalid, retour d'erreur de la fonction
-                                                            // car >= USB_DEVICE_STATE_INVALID : correction, mettre un > USB_DEVICE_STATE_INVALID dans usbctrl_set_state
+    /*@ assert ctx->state ==  USB_DEVICE_STATE_INVALID; */ 
+    
     return false;
 }

@@ -121,6 +121,9 @@ typedef struct {
     usbotghs_ep_t       out_eps[USBOTGHS_MAX_OUT_EP];      /* list of HW supported OUT EPs */
     usbotghs_speed_t    speed;        /* device enumerated speed, default HS */
 } usbotghs_context_t;
+
+//@ ghost usbotghs_context_t GHOST_usbotghs_ctx ;
+
 #else
 typedef struct {
     device_t            dev;             /* associated device_t structure */
