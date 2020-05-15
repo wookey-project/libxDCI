@@ -472,7 +472,7 @@ uint32_t usbotghs_get_ep_mpsize(void)
  * We must wait data sent IT to be sure that content is effectively transmitted
  */
 
-/*@
+/* @
     @ requires \valid(src);
 
     @ behavior bad_ctx:
@@ -538,11 +538,12 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 #else
       ep = &ctx->out_eps[ep_id];
 #endif
-    if (!ep->configured) {
+    if (!ep->configured || !ep->mpsize) {   // Cyril : ajout de || !ep->mpsize (sinon div par 0 plus tard...)
         log_printf("[USBOTG][HS] ep %d not configured\n", ep->id);
         errcode = MBED_ERROR_INVSTATE;
         goto err_init;
     }
+
     fifo_size = USBOTG_HS_TX_CORE_FIFO_SZ;
     /* configure EP FIFO internal informations */
     if ((errcode = usbotghs_set_xmit_fifo(src, size, ep_id)) != MBED_ERROR_NONE) {
@@ -621,7 +622,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
        log_printf("[USBOTG][HS] fragment: initiate the first fragment to send (MPSize) on EP0\n");
         /* wait for enough space in TxFIFO */
 
-       /*@
+       /* @
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DSTS);
 	    @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
@@ -659,18 +660,16 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 
     //fifo_size = 1 ; // Cyril : ajout pour rentrer dans la boucle...
 
-       /*@
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) ;
-	    @ loop invariant  (usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN_WIP) ;
-            @ loop assigns  residual_size, *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
+       /* @
+            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
+            @ loop assigns  *ep, residual_size, *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
             @ loop variant (residual_size - fifo_size);
        */
     //PMO loop assigns pas errocde
     while (residual_size >= fifo_size) {
        
-        /*@
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) ;
-	    @ loop invariant  (usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN_WIP);
+        /* @
+            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
             @ loop assigns \nothing;
             @ loop variant ((fifo_size / 4) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos)) ;
         */
@@ -705,6 +704,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
     /* Now, if there is residual size shorter than FIFO size, just send it */
     if (residual_size > 0) {
         /* wait while there is enough space in TxFIFO */
+
 
        /*@
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));  
@@ -752,7 +752,7 @@ err_init:
  * Send a Zero-length packet into EP 'ep'
  */
 
-/*@
+/* @
     @ requires \valid(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) && \valid(r_CORTEX_M_USBOTG_HS_DSTS) &&  
         \valid(r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id)) && \valid(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id)) ;
     @ assigns *r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id) ;

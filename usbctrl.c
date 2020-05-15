@@ -22,14 +22,18 @@
  *
  */
 
+#if defined(__FRAMAC__)
 #include "driver_api/usbotghs_frama.h"
+#include "socs/stm32f439/usbotghs_fifos.h"
+#include "socs/stm32f439/devlist.h"
+#else
+#include "generated/devlist.h"
+#endif
 #include "api/libusbctrl.h"
 #include "autoconf.h"
 #include "libc/types.h"
 #include "libc/string.h"
 #include "usbctrl_state.h"
-#include "socs/stm32f439/devlist.h"
-#include "socs/stm32f439/usbotghs_fifos.h"
 #include "usbctrl_handlers.h"
 #include "usbctrl.h"
 
@@ -41,15 +45,14 @@
  *
  */
 
-#define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
+
 
 #if defined(__FRAMAC__)
 static  uint8_t num_ctx = 0;
-usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 }; 
 #define MAX_EPx_PKT_SIZE 512
-#define RAND_UINT_32 65535 
-
+#define RAND_UINT_32 65535
 #else
+#define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 static volatile uint8_t num_ctx = 0;
 volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/
@@ -125,15 +128,15 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
     *ctxh = num_ctx;
 
     #if defined(__FRAMAC__)
-        usbctrl_context_t *ctx = &(ctx_list[num_ctx]); 
+        usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
     #else
         volatile usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
-    #endif/*!__FRAMAC__*/ 
+    #endif/*!__FRAMAC__*/
 
     num_ctx++;  // Cyril : je pense qu'il faut ajouter un test ici si on depasse le nombre max de contexte pour ne pas avoir de débordement de tableau
     /* initialize context */
     ctx->num_cfg = 1;
-    
+
 
     /*@
         @ loop invariant 0 <= i <= CONFIG_USBCTRL_MAX_CFG;
@@ -146,7 +149,7 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
         ctx->cfg[i].interface_num = 0;
         ctx->cfg[i].first_free_epid = 1;
     }
-    
+
 
     ctx->curr_cfg = 0;
 
@@ -192,10 +195,10 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
     }
 
     #if defined(__FRAMAC__)
-        usbctrl_context_t *ctx = &(ctx_list[ctxh]); 
+        usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #else
         volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    #endif/*!__FRAMAC__*/ 
+    #endif/*!__FRAMAC__*/
 
 
     //printf("[USBCTRL] initializing automaton\n");
@@ -205,8 +208,8 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
 */
 
     #if defined(__FRAMAC__)
-        
-        //memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t)); 
+
+        //memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
         /*
             initialisation des struct interface à la main, car frama-c a quelques difficultés avec memset (avec void *)
         */
@@ -214,7 +217,7 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
         /*@
             @ loop invariant 0 <= i <= MAX_INTERFACES_PER_DEVICE ;
             @ loop invariant \valid(ctx->cfg[ctx->curr_cfg].interfaces + (0..(MAX_INTERFACES_PER_DEVICE-1))) ;
-            @ loop assigns i, ctx->cfg[ctx->curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)] ; 
+            @ loop assigns i, ctx->cfg[ctx->curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)] ;
             @ loop variant (MAX_INTERFACES_PER_DEVICE - i) ;
         */
 
@@ -232,15 +235,15 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
         }
 
     #else
-        memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t)); 
-    #endif/*!__FRAMAC__*/ 
+        memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
+    #endif/*!__FRAMAC__*/
 
-    
+
     /* receive FIFO is not set in the driver. Wait for USB reset */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_NOSTORAGE;
     /* initialize with POWERED. We wait for the first reset event */
 
-    errcode = usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED); // ajout du errcode = 
+    errcode = usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED); // ajout du errcode =
     /*@ assert ctx->state == USB_DEVICE_STATE_POWERED ; */
     /*@ assert ctx_list[ctxh].state == USB_DEVICE_STATE_POWERED ; */
 
@@ -256,24 +259,24 @@ end:
     return errcode;
 }
 
-/*@   
+/*@
     @ behavior bad_pointer :
     @	assumes (ctx == \null || handler == \null) ;
     @	assigns \nothing ;
     @	ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior not_found :
-    @	assumes ctx != \null && handler != \null ; 
-    @	assumes \forall integer i ; 0 <= i < num_ctx ==> &(ctx_list[i]) != ctx ;	
-    @	assigns \nothing ;    // Cyril : même si handler n'est pas modifié dans ce cas, je suppose que comme il y a loop assigns *handler, 
+    @	assumes ctx != \null && handler != \null ;
+    @	assumes \forall integer i ; 0 <= i < num_ctx ==> &(ctx_list[i]) != ctx ;
+    @	assigns \nothing ;    // Cyril : même si handler n'est pas modifié dans ce cas, je suppose que comme il y a loop assigns *handler,
     							// wp considère qu'il peut bouger dès qu'on rentre dans la boucle
     @	ensures \result == MBED_ERROR_NOTFOUND ;
 
 	@ behavior found :
-    @	assumes ctx != \null && handler != \null ; 
+    @	assumes ctx != \null && handler != \null ;
     @	assumes \exists integer i ; 0 <= i < num_ctx && &(ctx_list[i]) == ctx ;
     @ 	assigns *handler ;
-    @ 	ensures \result == MBED_ERROR_NONE  ;  // Cyril :ajout de || \result == MBED_ERROR_NOTFOUND 
+    @ 	ensures \result == MBED_ERROR_NONE  ;  // Cyril :ajout de || \result == MBED_ERROR_NOTFOUND
     										   //  sinon ça ne passe pas avec wp, pourtant dans ce cas, il n'y a pas d'erreur...
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -300,7 +303,7 @@ mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
         @ loop variant (num_ctx - i);
 */
 
-    for (uint8_t i = 0; i < num_ctx; ++i) {  
+    for (uint8_t i = 0; i < num_ctx; ++i) {
         if (&(ctx_list[i]) == ctx) {
             *handler = i;
             /*@ assert errcode == MBED_ERROR_NONE ; */
@@ -313,24 +316,24 @@ end:
     return errcode;
 }
 
-/*@   
+/*@
     @ behavior bad_pointer :
     @	assumes ctx == \null ;
     @	assigns \nothing ;
     @	ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior not_found :
-    @	assumes ctx != \null ; 
-    @	assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != device_id ;	
-    @	assigns \nothing ;    // Cyril : même si ctx n'est pas modifié dans ce cas, je suppose que comme il y a loop assigns *ctx, 
+    @	assumes ctx != \null ;
+    @	assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != device_id ;
+    @	assigns \nothing ;    // Cyril : même si ctx n'est pas modifié dans ce cas, je suppose que comme il y a loop assigns *ctx,
     							// wp considère qu'il peut bouger dès qu'on rentre dans la boucle
     @	ensures \result == MBED_ERROR_NOTFOUND ;
 
 	@ behavior found :
-    @	assumes ctx != \null ; 
+    @	assumes ctx != \null ;
     @	assumes \exists integer i ; 0 <= i < num_ctx && ctx_list[i].dev_id == device_id ;
     @ 	assigns *ctx ;
-    @ 	ensures \result == MBED_ERROR_NONE ;  // Cyril :ajout de || \result == MBED_ERROR_NOTFOUND 
+    @ 	ensures \result == MBED_ERROR_NONE ;  // Cyril :ajout de || \result == MBED_ERROR_NOTFOUND
     										  //  sinon ça ne passe pas avec wp, pourtant dans ce cas, il n'y a pas d'erreur...
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -373,7 +376,7 @@ end:
 }
 
 /*@
-    @ requires 0 <= ep <= 255 ;    
+    @ requires 0 <= ep <= 255 ;
     @ assigns \nothing ;
 
     @ behavior bad_ctx:
@@ -388,7 +391,7 @@ end:
     @ behavior EP_not_found:
     @   assumes ctx != \null ;
     @   assumes ep != EP0 ;
-    @   assumes !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number && 
+    @   assumes !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
     			ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) ;
     @   ensures \result == \false;
 
@@ -397,9 +400,9 @@ end:
     @   assumes ep != EP0 ;
     @   assumes (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
     				 ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep);
-    @   ensures \result == \true ;   // Cyril : là encore, wp n'y arrive que si j'ajoute || \result == \false, comme pour les 
+    @   ensures \result == \true ;   // Cyril : là encore, wp n'y arrive que si j'ajoute || \result == \false, comme pour les
     													  // fonctions get_context et get_handler
- 
+
     @ complete behaviors;
     @ disjoint behaviors;
 */
@@ -422,7 +425,7 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
         @ loop invariant 0 <= i <= ctx->cfg[ctx->curr_cfg].interface_num ;
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
-        @ loop invariant (\forall integer prei; 0<=prei<i ==>(\forall integer jj; 
+        @ loop invariant (\forall integer prei; 0<=prei<i ==>(\forall integer jj;
         	0 <= jj < ctx->cfg[ctx->curr_cfg].interfaces[prei].usb_ep_number ==>  ctx->cfg[ctx->curr_cfg].interfaces[prei].eps[jj].ep_num != ep));
         @ loop assigns i, j ;
         @ loop variant (ctx->cfg[ctx->curr_cfg].interface_num - i);
@@ -430,7 +433,7 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
 
 
     for (i = 0; i < ctx->cfg[ctx->curr_cfg].interface_num; ++i) {
-        
+
 /*@
         @ loop invariant 0 <= j <= ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number ;
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
@@ -451,7 +454,7 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
 
 
 /*@
-    @ requires 0 <= iface <= 255 ;    
+    @ requires 0 <= iface <= 255 ;
     @ assigns \nothing ;
 
 	@ behavior bad_ctx:
@@ -487,7 +490,7 @@ bool usbctrl_is_interface_exists(usbctrl_context_t *ctx, uint8_t iface)
 }
 
 /*@
-    @ requires 0 <= iface <= 255 ;    
+    @ requires 0 <= iface <= 255 ;
     @ assigns \nothing ;
 
 	@ behavior bad_ctx:
@@ -526,7 +529,7 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
  */
 
 /*@
-	@ requires 0 <= ctxh ; 
+	@ requires 0 <= ctxh ;
 
     @ behavior bad_ctxh :
     @   assumes ctxh >= num_ctx ;
@@ -537,23 +540,23 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
     @   assumes iface == \null ;
     @	assumes ctxh < num_ctx ;
     @   assigns \nothing ;
-    @   ensures \result == MBED_ERROR_INVPARAM ; 
+    @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior too_many_interfaces :
     @   assumes ctxh < num_ctx ;
     @   assumes iface != \null ;
     @   assumes ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE ;
     @   assigns \nothing ;
-    @   ensures \result == MBED_ERROR_NOMEM ;   
+    @   ensures \result == MBED_ERROR_NOMEM ;
 
     @ behavior too_many_config :
     @   assumes ctxh < num_ctx ;
     @   assumes iface != \null;
     @   assumes !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) ;
-    @   assumes (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) ; 
+    @   assumes (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) ;
     @   assumes ctx_list[ctxh].num_cfg >= (MAX_USB_CTRL_CTX-1) ;
     @   assigns \nothing ;
-    @   ensures \result == MBED_ERROR_NOMEM ;   
+    @   ensures \result == MBED_ERROR_NOMEM ;
 
     @ behavior ok :
     @   assumes ctxh < num_ctx ;
@@ -589,10 +592,10 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     }
 
     #if defined(__FRAMAC__)
-        usbctrl_context_t *ctx = &(ctx_list[ctxh]);      
+        usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #else
         volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    #endif/*!__FRAMAC__*/ 
+    #endif/*!__FRAMAC__*/
 
     /* check space */
     if (ctx->cfg[ctx->curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) {   // Cyril : modif par rapport à avant ==
@@ -600,7 +603,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
         goto err;
     }
 
-    if (iface->dedicated == true && ctx->cfg[ctx->curr_cfg].interface_num != 0) { 
+    if (iface->dedicated == true && ctx->cfg[ctx->curr_cfg].interface_num != 0) {
             /*
                 Cyril : ajout d'un test sur le nombre de config max :
                 check space
@@ -612,11 +615,11 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
 
         ctx->num_cfg++;
         iface_config = ctx->num_cfg;
-        ctx->cfg[iface_config].first_free_epid = 1;   
-    } else {                                          
+        ctx->cfg[iface_config].first_free_epid = 1;
+    } else {
         iface_config = ctx->curr_cfg;
     }
-    
+
 
     /*
     Cyril : code mort selon moi : soit iface_config = ctx->num_cfg +1 , qui est < MAX_USB_CTRL_CTX d'après le test précédent
@@ -634,7 +637,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     /* let's register */
    //log_printf("declaring new interface class %x, %d EPs in Cfg %d/%d\n", iface->usb_class, iface->usb_ep_number, iface_config, iface_num);
    /* 1) make a copy of interface. The interface identifier is its cell number  */
-   
+
     #if defined(__FRAMAC__)
         //memcpy((void*)&(ctx->cfg[iface_config].interfaces[iface_num]), (void*)iface, sizeof(usbctrl_interface_t));
 
@@ -642,9 +645,9 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
         en attendant de définir correctement memcpy avec frama-c, je copie manuellement la struct iface dans ctx->cfg[iface_config].interfaces[iface_num]
         les paramètres copiés sont ceux définis dans la struct iface dans le main... (donc c'est un exemple pour passer le code à frama-c)
     */
-       ctx->cfg[iface_config].interfaces[iface_num].usb_class = iface->usb_class ; 
-       ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number = iface->usb_ep_number ; 
-       ctx->cfg[iface_config].interfaces[iface_num].dedicated = iface->dedicated ; 
+       ctx->cfg[iface_config].interfaces[iface_num].usb_class = iface->usb_class ;
+       ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number = iface->usb_ep_number ;
+       ctx->cfg[iface_config].interfaces[iface_num].dedicated = iface->dedicated ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].type = iface->eps[0].type ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].dir = iface->eps[0].dir ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].pkt_maxsize = iface->eps[0].pkt_maxsize ;
@@ -695,11 +698,11 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
             ep->ep_num = ctx->cfg[iface_config].first_free_epid;
             iface->eps[i].ep_num = ep->ep_num;
            //printf("declare EP (not control) id %d\n", ep->ep_num);
-           ctx->cfg[iface_config].first_free_epid++;          
+           ctx->cfg[iface_config].first_free_epid++;
 
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
            /* check that declared ep mpsize is compatible with backend driver */
-           
+
 
 #if defined(__FRAMAC__)
 	   drv_ep_mpsize = MAX_EPx_PKT_SIZE ; // Cyril : l'appel à usb_backend_get_ep_mpsize ou directement à usbotghs_get_ep_mpsize pose des problemes à wp pour le assign
@@ -734,7 +737,7 @@ err:
 
 	@ behavior error_configure:
 	@	assumes ctxh < num_ctx ;
-	@	assumes 
+	@	assumes
 
 
 */
@@ -749,11 +752,11 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
     }
 
     #if defined(__FRAMAC__)
-    usbctrl_context_t *ctx = &(ctx_list[ctxh]); 
+    usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #else
      volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #endif/*!__FRAMAC__*/
-    
+
     log_printf("[USBCTRL] configuring backend driver\n");
     //PMO
     /* @ assert usbotghs_ctx.in_eps[0].mpsize ==0 ;*/
@@ -767,7 +770,7 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
         //printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
         goto end;
     }
-     
+
 
 end:
     //PMO
@@ -827,7 +830,7 @@ int Frama_C_interval(int min, int max)
 
 /*
 
- test_fcn_usbctrl : test des fonctons définies dans usbctrl.c avec leurs paramètres 
+ test_fcn_usbctrl : test des fonctons définies dans usbctrl.c avec leurs paramètres
  					correctement définis (pas de débordement de tableaux, pointeurs valides...)
 
 */
@@ -850,7 +853,7 @@ void test_fcn_usbctrl(){
     def d'une nouvelle interface pour test de la fonction usbctrl_declare_interface
     Déclaration d'une structure usb_rqst_handler_t utilisée dans les interfaces, qui nécessite aussi une structure usbctrl_setup_pkt_t
 */
-    
+
     uint8_t RequestType = Frama_C_interval(0,255);
     uint8_t Request = Frama_C_interval(0,255);
     uint16_t Value = Frama_C_interval(0,65535);
@@ -865,7 +868,7 @@ void test_fcn_usbctrl(){
 	                              .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
                                    .rqst_handler = usbctrl_class_rqst_handler , .class_desc_handler = class_get_descriptor};
 
-    /*@ assert  \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1))); */ 
+    /*@ assert  \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1))); */
 	/*@ assert 0 <= num_ctx < MAX_USB_CTRL_CTX ; */
 
     usbctrl_declare(dev_id, &ctxh);
@@ -894,11 +897,11 @@ void test_fcn_usbctrl(){
 
 */
 
-    usbctrl_handle_reset(dev_id);  // attention, fonction modifiée pour commenter l'appel aux fonctions touchant aux registres...   
+    usbctrl_handle_reset(dev_id);  // attention, fonction modifiée pour commenter l'appel aux fonctions touchant aux registres...
     usbctrl_handle_inepevent(dev_id, size, ep);
     usbctrl_handle_outepevent(dev_id, size, ep);  // voir comment l'appeler, je dois être dans certains états je pense    												// USB_BACKEND_DRV_EP_STATE_SETUP ou USB_BACKEND_DRV_EP_STATE_DATA_OUT
     usbctrl_handle_requests(&pkt, dev_id) ;
-    
+
 }
 
 /*
@@ -914,8 +917,8 @@ void test_fcn_usbctrl_erreur(){
 	uint8_t iface = Frama_C_interval(0,MAX_INTERFACES_PER_DEVICE-1);
 	uint8_t ep = Frama_C_interval(0,255);
 	uint32_t ctxh ;
-	
-	/* 
+
+	/*
 		usbctrl_declare : cas d'erreur - pointeur ctxh null
 									   - num_ctx >= 2
 						deux appels à la fonction pour tester ces cas d'erreur
@@ -928,8 +931,8 @@ void test_fcn_usbctrl_erreur(){
 	num_ctx = 2;
 	usbctrl_declare(dev_id, &ctxh);
 
-	/* 
-		usbctrl_declare : cas d'erreur : ctxh >= num_ctx 
+	/*
+		usbctrl_declare : cas d'erreur : ctxh >= num_ctx
 	*/
 
 	ctxh = 1 ;
@@ -937,17 +940,17 @@ void test_fcn_usbctrl_erreur(){
 	usbctrl_initialize(ctxh);
 
 	/*
-		usbctrl_declare_interface : cas d'erreur - ctxh >= num_ctx 
-												 - pointeur iface == null 
+		usbctrl_declare_interface : cas d'erreur - ctxh >= num_ctx
+												 - pointeur iface == null
 												 - interface_num >= MAX_INTERFACES_PER_DEVICE
 												 - pkt_maxsize > usbotghs_get_ep_mpsize()
-		Dans le cas nominal, avec le test sur 2 interfaces, num_cfg >= MAX_USB_CTRL_CTX-1 donc une partie du code n'est pas atteinte. Cas traité ci-dessous, quand on rajoute 
+		Dans le cas nominal, avec le test sur 2 interfaces, num_cfg >= MAX_USB_CTRL_CTX-1 donc une partie du code n'est pas atteinte. Cas traité ci-dessous, quand on rajoute
 		une interface de contrôle
 	*/
 
 	ctxh = 1 ;
 	num_ctx = 0 ;
-	usbctrl_interface_t *iface_1 = NULL ; 
+	usbctrl_interface_t *iface_1 = NULL ;
 	usbctrl_declare_interface(ctxh, iface_1) ;
 
 	ctxh = 0 ;
@@ -988,7 +991,7 @@ void test_fcn_usbctrl_erreur(){
 	usbctrl_get_handler(bad_ctx, &handler);
 
 	uint32_t *bad_handler = NULL ;
-	usbctrl_get_handler((usbctrl_context_t *)&(ctx_list[ctxh]), bad_handler);	
+	usbctrl_get_handler((usbctrl_context_t *)&(ctx_list[ctxh]), bad_handler);
 
 	/*
 		usbctrl_get_context, usbctrl_is_endpoint_exists &&  usbctrl_is_interface_exists  : cas d'erreur - pointeur ctx null
@@ -1002,10 +1005,10 @@ void test_fcn_usbctrl_erreur(){
 
 int main(void)
 {
-    
+
     test_fcn_usbctrl() ;
     test_fcn_usbctrl_erreur() ;
 
-        
+
 }
 #endif/*!__FRAMAC__*/

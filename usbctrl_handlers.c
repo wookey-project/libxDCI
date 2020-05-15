@@ -35,13 +35,10 @@ mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
     return errcode;
 }
 
-/* @
-    @ assigns \nothing ;  // en fait, je touche à un contexte global, déclaré dans un autre fichier...je ne sais pas comment le dire (ctx_list)
-
+/*@
+    @ assigns *ctx_list ;  // en fait, je touche à un contexte global, déclaré dans un autre fichier...je ne sais pas comment le dire (ctx_list)
     @ ensures \forall integer i ; 0 <= i < MAX_USB_CTRL_CTX ==> ctx_list[i].dev_id != dev_id 
                                 ==> \result == MBED_ERROR_INVPARAM ;
-    @ 
-    @ ensures \exists integer i ; 0 <= i < MAX_USB_CTRL_CTX && ctx_list[i].dev_id == dev_id && 
 */
 
 // dans les ensures, je dois dire : si je suis dans tel état, je termine dans tel état à la fin de la fonction
@@ -182,12 +179,14 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
      * after sanitation, should not fail */
     usbctrl_set_state(ctx, usbctrl_next_state(state, USB_DEVICE_TRANS_RESET));
 
-    /*@ assert ctx->state == USB_DEVICE_STATE_DEFAULT ; */   // c'est un cas particulier, l'état initial est powered, après le reset le device est en défaut
-    /* @ assert ctx_list[0].state == USB_DEVICE_STATE_DEFAULT ; */
-
 err:
     return errcode;
 }
+
+/*@
+    @ assigns \nothing ;
+    @ ensures \result == MBED_ERROR_NONE ;
+*/
 
 mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 {
@@ -240,7 +239,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
                     if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
                         log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
                         /* XXX: c'est ma FIFO ? oui, c'est pour moi. Non, c'est pour au dessus :-)*/
-                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
+                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);  // Cyril : pointeur de fonction
                     }
                     break;
                 }
