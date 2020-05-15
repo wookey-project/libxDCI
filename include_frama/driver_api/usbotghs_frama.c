@@ -55,6 +55,9 @@
 
 #define USBOTG_HS_DEBUG 0
 
+//PMO COMPTEUR HARD
+#define CPT_HARD 100
+
 /******************************************************************
  * Utilities
  */
@@ -630,13 +633,17 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
             @ loop variant (ep->mpsize / 4) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos);
        */ //PMO loop assigns nothing sortie non standard 
 
-       while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (ep->mpsize / 4)) {
-            if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
-                log_printf("[USBOTG][HS] Suspended!\n");
-                errcode = MBED_ERROR_BUSY;
-                goto err;
-            }
-        }
+       //PMO ajout compteur matériel
+       for (uint8_t cpt=0; cpt<CPT_HARD; cpt++)
+	 {
+	   if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (ep->mpsize / 4)) {
+	     if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
+	       log_printf("[USBOTG][HS] Suspended!\n");
+	       errcode = MBED_ERROR_BUSY;
+	       goto err;
+	     }
+	   }
+	 }
        #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE  // Cyril : je suis dans ce cas
         ep->state = USBOTG_HS_EP_STATE_DATA_IN;  // Cyril : pourquoi cet état alors qu'avant on a ep->state = USBOTG_HS_EP_STATE_DATA_IN_WIP; 
        #else
@@ -674,14 +681,16 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
             @ loop variant ((fifo_size / 4) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos)) ;
         */
       // PMO idem assigns nothing
-
-      while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {
-            if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
-                //log_printf("[USBOTG][HS] Suspended!\n");
-                errcode = MBED_ERROR_BUSY;
-                goto err;
-            }
-        }
+      //PMO compteur hardware
+      for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {
+	  if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
+	    //log_printf("[USBOTG][HS] Suspended!\n");
+	    errcode = MBED_ERROR_BUSY;
+	    goto err;
+	  }
+	}
+      }
         if (residual_size == fifo_size) {
             /* last block, no more WIP */
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
@@ -713,13 +722,17 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
             @ loop variant ( ((residual_size / 4) + (residual_size & 3 ? 1 : 0)) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos)) ; 
        */        
       //PMO pas assigns errcode
-        while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV)  < ((residual_size / 4) + (residual_size & 3 ? 1 : 0))) {
+
+      //PMO compteur hardware
+      for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV)  < ((residual_size / 4) + (residual_size & 3 ? 1 : 0))) {
             if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
                 //log_printf("[USBOTG][HS] Suspended!\n");
                 errcode = MBED_ERROR_BUSY;
                 goto err;
             }
         }
+      }
         /* last block, no more WIP */
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
         ep->state = USBOTG_HS_EP_STATE_DATA_IN;
@@ -785,16 +798,18 @@ mbed_error_t usbotghs_send_zlp(uint8_t ep_id)
         @ loop variant (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos) ;
     */
 
-    while (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) <
-            USBOTG_HS_TX_CORE_FIFO_SZ / 4) {
-        // Are we suspended? 
-        if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
-            log_printf("[USBOTG][HS] Suspended!\n");
-            errcode = MBED_ERROR_BUSY;
-            goto err;
+    //PMO compteur hardware
+    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+     if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) <
+	     USBOTG_HS_TX_CORE_FIFO_SZ / 4) {
+	// Are we suspended? 
+	if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
+	  log_printf("[USBOTG][HS] Suspended!\n");
+	  errcode = MBED_ERROR_BUSY;
+	  goto err;
         }
+      }
     }
-
     log_printf("[USBOTG][HS] Sending ZLP on ep %d\n", ep_id);
     /* device mode ONLY */
     /* EP is now in DATA_OUT state */
@@ -848,14 +863,18 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
                 errcode = MBED_ERROR_INVSTATE;
                 goto err;
             }
+	    
             /* wait for end of current transmission */
-            while (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
+	    //PMO compteur hardware
+	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-                    //log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
-                    errcode = MBED_ERROR_BUSY;
-                    goto err;
+		  //log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
+		  errcode = MBED_ERROR_BUSY;
+		  goto err;
                 }
-            }
+	      }
+	    }
 
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_SNAK_Msk);
             if (ep_id == 0) {
@@ -872,13 +891,16 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
                 goto err;
             }
             /* wait for end of current transmission */
-            while (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
+	    //PMO compteur hardware
+	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	      while (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-                    //log_printf("[USBOTG][HS] HANG! DOEPCTL:EPENA\n");
-                    errcode = MBED_ERROR_BUSY;
-                    goto err;
+		  //log_printf("[USBOTG][HS] HANG! DOEPCTL:EPENA\n");
+		  errcode = MBED_ERROR_BUSY;
+		  goto err;
                 }
-            }
+	      }
+	    }
 
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DIEPCTL_SNAK_Msk);
             break;
@@ -1096,16 +1118,18 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
             @ loop assigns count, errcode ;
             @ loop variant (((*r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id)) & USBOTG_HS_DIEPCTL_EPENA_Msk) >> USBOTG_HS_DIEPCTL_EPENA_Pos) ;
         */
-
-            while (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
+	    //PMO compteur hardware
+	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-                    log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
-                    errcode = MBED_ERROR_BUSY;
-                    goto err;
+		  log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
+		  errcode = MBED_ERROR_BUSY;
+		  goto err;
                 }
-
+		
                 continue; //FIXME TIMEOUT
-            }
+	      }
+	    }
             
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPDIS_Msk);
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_STALL_Msk);
@@ -1125,13 +1149,16 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
             @ loop assigns count, errcode ;
             @ loop variant (((*r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id)) & USBOTG_HS_DOEPCTL_EPENA_Msk) >> USBOTG_HS_DOEPCTL_EPENA_Pos) ;
         */
-            while (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
+	    //PMO compteur hardware
+	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
                     log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
                     errcode = MBED_ERROR_BUSY;
                     goto err;
                 }
-            }
+	      }
+	    }
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPDIS_Msk);
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_STALL_Msk);
             break;
