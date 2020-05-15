@@ -624,15 +624,15 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
     if (ep_id == 0 && size > ep->mpsize) {
        log_printf("[USBOTG][HS] fragment: initiate the first fragment to send (MPSize) on EP0\n");
         /* wait for enough space in TxFIFO */
-
-       /* @
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DSTS);
-	    @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
-            @ loop assigns \nothing;
-            @ loop variant (ep->mpsize / 4) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos);
-       */ //PMO loop assigns nothing sortie non standard 
-
+       //PMO loop assigns nothing sortie non standard 
+       /*@
+	 @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
+	 @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DSTS);
+	 @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
+	 @ loop invariant 0<=cpt<= CPT_HARD ;
+	 @ loop assigns \nothing ;
+	 @ loop variant CPT_HARD - cpt; ;
+       */
        //PMO ajout compteur matériel
        for (uint8_t cpt=0; cpt<CPT_HARD; cpt++)
 	 {
@@ -669,18 +669,17 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 
        /* @
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-            @ loop assigns  *ep, residual_size, *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
+            @ loop assigns   residual_size, *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
             @ loop variant (residual_size - fifo_size);
        */
     //PMO loop assigns pas errocde
     while (residual_size >= fifo_size) {
-       
-        /* @
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-            @ loop assigns \nothing;
-            @ loop variant ((fifo_size / 4) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos)) ;
-        */
-      // PMO idem assigns nothing
+      /*@
+	@ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
+	@ loop invariant 0<=cpt<= CPT_HARD ;
+	@ loop assigns \nothing ;
+	@ loop variant CPT_HARD - cpt; ;
+      */
       //PMO compteur hardware
       for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
 	if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {
@@ -714,15 +713,13 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
     if (residual_size > 0) {
         /* wait while there is enough space in TxFIFO */
 
-
-       /*@
-            @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));  
-	    @loop invariant  ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
-            @ loop assigns \nothing;
-            @ loop variant ( ((residual_size / 4) + (residual_size & 3 ? 1 : 0)) - (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos)) ; 
-       */        
-      //PMO pas assigns errcode
-
+      /*@
+	@ loop invariant 0<=cpt<= CPT_HARD ;
+	@ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));  
+	@ loop invariant  ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
+	@ loop assigns \nothing ;
+	@ loop variant CPT_HARD - cpt; ;
+      */
       //PMO compteur hardware
       for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
 	if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV)  < ((residual_size / 4) + (residual_size & 3 ? 1 : 0))) {
@@ -793,11 +790,11 @@ mbed_error_t usbotghs_send_zlp(uint8_t ep_id)
      */
 
     /*@
-        @ loop invariant \valid(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-        @ loop assigns *r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), errcode, *r_CORTEX_M_USBOTG_HS_DSTS ;
-        @ loop variant (((*r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id)) & USBOTG_HS_DTXFSTS_INEPTFSAV_Msk) >> USBOTG_HS_DTXFSTS_INEPTFSAV_Pos) ;
+      @ loop invariant \valid(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
+      @ loop invariant 0<=cpt<= CPT_HARD ;
+      @ loop assigns \nothing ;
+      @ loop variant CPT_HARD - cpt; ;
     */
-
     //PMO compteur hardware
     for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
      if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) <
@@ -865,6 +862,11 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
             }
 	    
             /* wait for end of current transmission */
+	    /*@
+	      @ loop invariant 0<=cpt<= CPT_HARD ;
+	      @ loop assigns \nothing ;
+	      @ loop variant CPT_HARD - cpt; ;
+	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
 	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
@@ -891,6 +893,11 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
                 goto err;
             }
             /* wait for end of current transmission */
+	    /*@
+	      @ loop invariant 0<=cpt<= CPT_HARD ;
+	      @ loop assigns \nothing ;
+	      @ loop variant CPT_HARD - cpt; ;
+	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
 	      while (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
@@ -1113,11 +1120,11 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
             }
             /* wait for end of current transmission */
 
-        /*@
-            @ loop invariant count <= USBOTGHS_REG_CHECK_TIMEOUT ;
-            @ loop assigns count, errcode ;
-            @ loop variant (((*r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id)) & USBOTG_HS_DIEPCTL_EPENA_Msk) >> USBOTG_HS_DIEPCTL_EPENA_Pos) ;
-        */
+	    /*@
+	      @ loop invariant 0<=cpt<= CPT_HARD ;
+	      @ loop assigns \nothing ;
+	      @ loop variant CPT_HARD - cpt; ;
+	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
 	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
@@ -1144,11 +1151,11 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
                 goto err;
             }
             /* wait for end of current transmission */
-        /*@
-            @ loop invariant count <= USBOTGHS_REG_CHECK_TIMEOUT ;
-            @ loop assigns count, errcode ;
-            @ loop variant (((*r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id)) & USBOTG_HS_DOEPCTL_EPENA_Msk) >> USBOTG_HS_DOEPCTL_EPENA_Pos) ;
-        */
+      	    /*@
+	      @ loop invariant 0<=cpt<= CPT_HARD ;
+	      @ loop assigns \nothing ;
+	      @ loop variant CPT_HARD - cpt; ;
+	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
 	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
