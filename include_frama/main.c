@@ -33,6 +33,7 @@ uint32_t usbxdci_handler;
  * Trigger: called when the USB control plane has received a USB RESET while in configured
  * state. Here, we must clear the SCSI state and stop parsing cmd.
  */
+
 void usbctrl_reset_received(void) {
     reset_requested = true;
 

@@ -39,6 +39,11 @@
 #include "socs/stm32f439/ulpi.h"
 #include "socs/stm32f439/libusbotghs.h"
 
+#if defined(__FRAMAC__)
+#include "usbctrl.h"   // pour avoir la fonction Frama_C_interval
+#endif/*!__FRAMAC__*/
+
+
 
 #define ZERO_LENGTH_PACKET 0
 #define OUT_NAK		0x01
@@ -109,60 +114,27 @@ usbotghs_context_t *usbotghs_get_context(void)
 }
 
 
-/*@ predicate is_valid_error(mbed_error_t i) = 
-    i == MBED_ERROR_NONE ||
-    i == MBED_ERROR_NOMEM ||
-    i == MBED_ERROR_NOSTORAGE ||
-    i == MBED_ERROR_NOBACKEND ||
-    i == MBED_ERROR_INVCREDENCIALS ||
-    i == MBED_ERROR_UNSUPORTED_CMD ||
-    i == MBED_ERROR_INVSTATE ||
-    i == MBED_ERROR_NOTREADY ||
-    i == MBED_ERROR_BUSY ||
-    i == MBED_ERROR_DENIED ||
-    i == MBED_ERROR_UNKNOWN ||
-    i == MBED_ERROR_INVPARAM ||
-    i == MBED_ERROR_WRERROR ||
-    i == MBED_ERROR_RDERROR ||
-    i == MBED_ERROR_INITFAIL ||
-    i == MBED_ERROR_TOOBIG ||
-    i == MBED_ERROR_NOTFOUND  ;  
-*/
-
-/*@ predicate is_valid_ep_dir(usbotghs_ep_dir_t i) =
-    i == USBOTG_HS_EP_DIR_IN || i == USBOTG_HS_EP_DIR_OUT;
-*/
-
-
-#if defined(__FRAMAC__)
-
 /*@
-    @ assigns \nothing  ;
-    @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
-*/
-
-mbed_error_t usbotghs_declare(void)
-{   return MBED_ERROR_NONE ; }
-
-#else
-
-/*@
-    @ assigns usbotghs_ctx, GHOST_usbotghs_ctx  ;
+    @ assigns usbotghs_ctx ;
     @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
 */
 
 mbed_error_t usbotghs_declare(void)
 {
     e_syscall_ret ret = 0;
+    log_printf("[USBOTG][HS] Declaring device\n");
 
     #if defined(__FRAMAC__)
+
+    //usbotghs_ctx.dev = 0 ;
+    //usbotghs_ctx.dev.name = devname ;
+
     #else
-    log_printf("[USBOTG][HS] Declaring device\n");
+
     memset((void*)&(usbotghs_ctx.dev), 0, sizeof(device_t));
     memcpy((void*)usbotghs_ctx.dev.name, devname, strlen(devname));
     #endif/*!__FRAMAC__*/
 
-    //@ ghost GHOST_usbotghs_ctx = &usbotghs_ctx ;
 
     usbotghs_ctx.dev.address = USB_OTG_HS_BASE;
     usbotghs_ctx.dev.size = 0x4000;
@@ -313,13 +285,8 @@ mbed_error_t usbotghs_declare(void)
 #endif/*!__FRAMAC__*/
 
 
-    //@ ghost GHOST_usbotghs_ctx = usbotghs_ctx ;
-
     return MBED_ERROR_NONE;
 }
-
-#endif/*!__FRAMAC__*/
-
 
 /*
  * This function initialize the USB OTG HS Core.
@@ -1331,11 +1298,11 @@ mbed_error_t usbotghs_deconfigure_endpoint(uint8_t ep)
     }
 
     clear_reg_bits(r_CORTEX_M_USBOTG_HS_GINTMSK, USBOTG_HS_GINTMSK_NPTXFEM_Msk | USBOTG_HS_GINTMSK_RXFLVLM_Msk);
-    if (ctx->in_eps[ep].configured == true) {
+    if (ctx->in_eps[ep].configured == true) {  // Cyril : potentiel bug (avec EVA) : aucun test sur ep, donc ça peut dépasser la taille du tableau
         clear_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep),
                 USBOTG_HS_DIEPCTL_EPENA_Msk);
     }
-    if (ctx->out_eps[ep].configured == true) {
+    if (ctx->out_eps[ep].configured == true) {  // Cyril : potentiel bug (avec EVA) : aucun test sur ep, donc ça peut dépasser la taille du tableau
         clear_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep),
                 USBOTG_HS_DOEPCTL_EPENA_Msk);
     }
@@ -1579,6 +1546,14 @@ usbotghs_port_speed_t usbotghs_get_speed(void)
  * at a time by a given ELF binary (i.e. an application), as symbols are resolved
  * at link time.
  */
+
+/*
+
+    Cyril : pour parser le code avec Frama, je commente les backend (ils ne sont pas utilisés dans le cadre de l'analyse avec Frama)
+
+*/
+#if defined(__FRAMAC__)
+#else
 mbed_error_t usb_backend_drv_configure(usb_backend_drv_mode_t mode,
                                        usb_backend_drv_ioep_handler_t ieph,
                                        usb_backend_drv_ioep_handler_t oeph)
@@ -1621,6 +1596,7 @@ mbed_error_t usb_backend_drv_endpoint_enable(uint8_t ep_id, usb_backend_drv_ep_d
 uint32_t usb_backend_get_ep_mpsize(void) __attribute__ ((alias("usbotghs_get_ep_mpsize")));
 usb_backend_drv_port_speed_t usb_backend_drv_get_speed(void) __attribute__ ((alias("usbotghs_get_speed")));
 
+#endif/*!__FRAMAC__*/
 
 /************************************************************************
 ajout de fonctions provenant du driver, avec leurs spécifications lorsque nécessaires
@@ -1701,6 +1677,7 @@ mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid)
         ep = &(ctx->in_eps[epid]);
 #endif
    //  ep->configured = true ; // CYRIL : ajout car je ne sais pas où se fait la configuration en réalité (pour EVA)
+        // Cyril : question pour philippe, probleme si ep->configured pas initialisé (rte_mem_access)
     if (!ep->configured) {
         errcode = MBED_ERROR_INVPARAM;
         goto err;
@@ -1732,7 +1709,7 @@ mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid)
 
     if (epid > 0) {
         /* configure EP for receiving size amount of data */
-        uint32_t pktcount = size / ep->mpsize + (size & (ep->mpsize - 1) ? 1: 0);
+        uint32_t pktcount = size / ep->mpsize + (size & (ep->mpsize - 1) ? 1: 0);  // Cyril : EVA decompose cette expression ternaire, mais bcp de pb avec ep->mpsize
         set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), pktcount, USBOTG_HS_DOEPTSIZ_PKTCNT_Msk(epid), USBOTG_HS_DOEPTSIZ_PKTCNT_Pos(epid));
         set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), size, USBOTG_HS_DOEPTSIZ_XFRSIZ_Msk(epid), USBOTG_HS_DOEPTSIZ_XFRSIZ_Pos(ep));
     } else {
@@ -1943,5 +1920,100 @@ mbed_error_t usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep)
 err:
     return errcode;
 }
+
+/*
+    fonction utilisée dans le cadre de l'analyse EVA, pour appeler toutes les fonctions du driver
+    objectif : maximiser le taux de couverture du driver (pour le moment, pas de recherche de parcourir les erreurs)
+
+*/
+
+void test_fcn_driver_eva(){
+
+    uint8_t ep_id = Frama_C_interval(0,255);
+    uint8_t ep = Frama_C_interval(0,255);
+    uint8_t ep_num = Frama_C_interval(0,255);
+    uint8_t dir8 = Frama_C_interval(0,255);
+    uint8_t dst = Frama_C_interval(0,255);
+    uint32_t size = Frama_C_interval(0,65535);  // Cyril : voir comment mettre sur 32 bits
+    uint8_t fifo = Frama_C_interval(0,255);
+    uint32_t fifo_idx = Frama_C_interval(0,65535); // Cyril : voir comment mettre sur 32 bits
+    uint32_t fifo_size = Frama_C_interval(0,65535); // Cyril : voir comment mettre sur 32 bits
+
+    usbotghs_ep_dir_t dir = Frama_C_interval(0,1);
+    usbotghs_ep_type_t type = Frama_C_interval(0,3);
+    usbotghs_ep_state_t state = Frama_C_interval(0,9) ;
+
+    //memset(usbotghs_ctx.out_eps[0],0,sizeof(usbotghs_ep_t)) ;
+
+
+    usbotghs_ctx.out_eps[0].id = 0 ;
+    usbotghs_ctx.out_eps[0].configured = false;
+    usbotghs_ctx.out_eps[0].mpsize = 0 ;
+    usbotghs_ctx.out_eps[0].type = 0;
+    usbotghs_ctx.out_eps[0].state = 0;
+    usbotghs_ctx.out_eps[0].handler = 0;
+    usbotghs_ctx.out_eps[0].dir = 0;
+    usbotghs_ctx.out_eps[0].fifo = NULL;
+    usbotghs_ctx.out_eps[0].fifo_idx = 0 ;
+    usbotghs_ctx.out_eps[0].fifo_size = 0 ;
+    usbotghs_ctx.in_eps[0].fifo_lck = false;
+    usbotghs_ctx.speed = 0;   
+
+    usbotghs_ctx.out_eps[0].id = ep_id ;
+    usbotghs_ctx.out_eps[0].configured = true;
+    usbotghs_ctx.out_eps[0].mpsize = size ;
+    usbotghs_ctx.out_eps[0].type = type;
+    usbotghs_ctx.out_eps[0].state = state;
+    //usbotghs_ctx.out_eps[0].handler = oeph;
+    usbotghs_ctx.out_eps[0].dir = dir;
+    usbotghs_ctx.out_eps[0].fifo = &fifo;
+    usbotghs_ctx.out_eps[0].fifo_idx = fifo_idx ;
+    usbotghs_ctx.out_eps[0].fifo_size = fifo_size ;
+    usbotghs_ctx.in_eps[0].fifo_lck = false;
+    usbotghs_ctx.speed = USBOTG_HS_SPEED_HS;
+
+
+    /*usbotghs_declare(void) ;
+    usbotghs_configure(usbotghs_dev_mode_t mode, usbotghs_ioep_handler_t ieph,usbotghs_ioep_handler_t oeph) ;
+    mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
+                                         usbotghs_ep_type_t      type,
+                                         usbotghs_ep_dir_t       dir,
+                                         usbotghs_epx_mpsize_t   mpsize,
+                                         usbotghs_ep_toggle_t    dtoggle,
+                                         usbotghs_ioep_handler_t handler) ;
+    usbotghs_get_ep_mpsize(void) ;
+    usbotghs_port_speed_t usbotghs_get_speed(void) ;
+    mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id) ;
+    mbed_error_t usbotghs_send_zlp(uint8_t ep_id);
+    mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid);
+    mbed_error_t usbotghs_set_xmit_fifo(uint8_t *src, uint32_t size, uint8_t epid);
+    void usbotghs_set_address(uint16_t addr);
+    mbed_error_t usbotghs_ulpi_reset(void);
+    static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, uint8_t ep);
+    mbed_error_t usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep) ;
+    mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir) ;
+    mbed_error_t usbotghs_endpoint_clear_nak(uint8_t ep_id, usbotghs_ep_dir_t dir) ;  */
+
+    //usbotghs_wait_for_xmit_complete(usbotghs_ep_t *ep) ;
+    usbotghs_global_stall() ;
+    usbotghs_endpoint_set_nak(ep_id, dir) ;
+    usbotghs_endpoint_clear_nak(ep_id, dir) ;
+    usbotghs_global_stall_clear();
+    usbotghs_endpoint_stall_clear(ep, dir);
+    usbotghs_deconfigure_endpoint(ep);
+    usbotghs_activate_endpoint(dir8,dir);
+    usbotghs_deactivate_endpoint( ep,dir);
+    usbotghs_enpoint_nak( ep);
+    usbotghs_enpoint_nak_clear( ep);
+    usbotghs_endpoint_disable( ep_id,     dir);
+    usbotghs_endpoint_enable( ep_id,     dir);
+    usbotghs_get_ep_state( ep_num,  dir);
+    //usbotghs_set_recv_fifo(&dst, size, ep_id) ;
+    usbotghs_endpoint_stall(ep_id, dir) ;
+    //usbotghs_send_data(&dst, size, ep_id) ;
+    usbotghs_endpoint_stall(ep_id, dir) ;
+
+}
+
 
 #endif/*!__FRAMAC__*/

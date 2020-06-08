@@ -125,6 +125,7 @@ typedef struct {
 //@ ghost usbotghs_context_t GHOST_usbotghs_ctx ;
 
 #else
+
 typedef struct {
     device_t            dev;             /* associated device_t structure */
     int                 dev_desc;        /* device descriptor */
@@ -136,10 +137,19 @@ typedef struct {
     usbotghs_ep_t       out_eps[USBOTGHS_MAX_OUT_EP];      /* list of HW supported OUT EPs */
     volatile usbotghs_speed_t    speed;        /* device enumerated speed, default HS */
 } usbotghs_context_t;
+
+
 #endif/*!__FRAMAC__*/
 
 
 usbotghs_context_t *usbotghs_get_context(void);
+
+#if defined(__FRAMAC__)
+
+void test_fcn_driver_eva(void) ;
+
+#endif/*!__FRAMAC__*/
+
 
 /*
  * Declaring the device against EwoK

@@ -84,6 +84,11 @@
  * From now on, the upper layer EPs are set and ready to use */
 void usbctrl_configuration_set(void);
 
+/*
+  definition de la fonction usbctrl_reset_requested 
+  definie dans un fichier main.c qui n'appartient pas à libxDCI
+*/
+
 #if defined(__FRAMAC__)
     bool reset_requested = false;
     

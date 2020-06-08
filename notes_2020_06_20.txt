@@ -1,0 +1,73 @@
+commande pour parser rapidement le fichier de log EVA :
+grep 'rte,unsigned_downcast' frama-c-rte-eva.log | grep -v 'got final status valid' & grep "'rte,index_bound' got status unknown" frama-c-rte-eva.log & grep 'rte,mem_access' frama-c-rte-eva.log | grep -v 'got final status valid'
+
+
+- Création d'un seul fichier .c concaténant tous les fichiers .c de la lib xDCI
+- Modification du makefile avec ajout de 3 règles (ajout -concat aux 3 autres règles) pour juste prendre en entrée le fichier unique et le driver
+- Modification du point d'entrée avec EVA pour analyser toutes les fonctions de la libxDCI et toutes les fonctions du driver (ajout d'une fonction test_eva dans usbotghs_frama.c) (avec le maximum de couverture pour ces fonctions)
+
+Résulats obtenus avec EVA : il reste 3 RTE sur la libxDCI
+
+	- usbctrl_handle_class_requests : iface_idx = (((pkt->wIndex) & 0xff) - 1);  
+			rte unsigned downcast unknow pour EVA
+			iface_idx doit valoir 0 ou 1 normallement ? pkt->wIndex uint16_t, 0xff = 255
+            faux positif avec EVA si Index > 0 ... (la comparaison avec 0x255 va forcement >= 1 ...) j'ai choisi de faire varier pkt->WIndex de 0 à 65535 (pas de raison pour ne pas considérer 0, mais c'est le cas qui pose pb pour iface_idx : 0 - 1 < 0)
+
+
+    - usbctrl_get_descriptor:
+            uint8_t compteur_poll = 9;
+            while (!(poll & 0x1) || compteur_poll > 0) {
+            poll >>= 1;
+            i++;
+            compteur_poll -- ;  // cyril : faux positif avec EVA, qui n'arrive pas à vérifier que compteur_poll >= 0 (ça passe avec wp)
+
+    - usbctrl_handle_requests :
+    		 ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;   // Cyril : probleme ici, on peut y arriver avec ctx non défini (donc accès mémoire invalide)
+    		 bug dejà signalé, j'attends de voir avec Philippe quoi faire
+
+Les autres bugs ont été corrigés (déjà signalés auparavant, voir // Cyril pour les voir)
+
+Pour la libxDCI, quasiment 100% de taux de couverture suaf : certains case default dans les switch, impossible à atteindre car test avant le switch qui éliminent les case default
+
+dès cas d'erreur qui nécessitent ctx null par exemple, mais comme la fonction nécessite valid(ctx), je ne sais pas si je peux faire ctx == null pour ces fonctions
+
+dans std_req_handle_get_descriptor : bcp de tests if (maxlength == 0) qui ne peuvent pas être vrais, car dès le début de la fonction le cas maxlength == 0 est éliminé
+question à poser : à quoi servent ces tests du coup?
+
+Pour les fonctions du driver : ajout de la fonction test_fcn_driver_eva pour appeler les fonctions du driver et les analyser avec EVA (toutes les fonctions ne sont pas appelées avec la libxDCI, mais je pense que c'est mieux de vérifier l'absence de RTE sur le driver (ou en tout cas un bon niveau de confiance sur l'absence de RTE))
+
+RTE découverts :
+
+	- usbotghs_deconfigure_endpoint : if (ctx->in_eps[ep].configured  == true)et (ctx->out_eps[ep].configured == true)
+	il n'y a pas de tests sur ep, donc risque de dépassement de tableau  /*@ assert rte: index_bound: ep < 3; */ et  /*@ assert rte: index_bound: ep < 8; */
+
+
+	 - usbotghs_send_data et usbotghs_set_recv_fifo : taux de couverture faible, donc tentative d'augmenter le taux de couverture de ces fonctions en les appelant dans test_fcn_driver_eva
+	 problème : pour améliorer le taux de couverture, j'ai du spécifier usbotghs_ctx.out_eps[0] avec des framaC interval
+	 et j'ai des problèmes de précisions avec le message suivant : (pour ep->mpsize) 
+	 ep->mpsize -> {{ garbled mix of &{usbctrl_handle_outepevent; handler_ep; ctx_list}
+		(origin: Misaligned) }}
+	donc dès que ep->mpsize est utilisé dans ces fonctions, EVA n'arrive plus à vérifier grand chose...
+
+	    /*@ assert rte: signed_overflow: -2147483648 ≤ (int)ep->mpsize - 1; */
+    /*@ assert rte: unsigned_downcast: (int)ep->mpsize - 1 ≤ 4294967295; */
+    /*@ assert rte: unsigned_downcast: 0 ≤ (int)ep->mpsize - 1; */
+    /*@ assert Eva: signed_overflow: (int)ep->mpsize - 1 ≤ 2147483647; */
+    /*@ assert rte: division_by_zero: (unsigned int)ep->mpsize ≢ 0; */
+    (pour set_recv_fifo par exemple)
+    uint32_t pktcount = size / ep->mpsize + (size & (ep->mpsize - 1) ? 1: 0);
+
+
+    - autre problème dans set_recv_fifo :
+
+      ep = & ctx->out_eps[epid];
+  	/*@ assert rte: mem_access: \valid_read(&ep->configured); */  non validé par EVA, là aussi {{ garbled mix of &{usbctrl_handle_outepevent; handler_ep; ctx_list}
+		(origin: Misaligned) }}
+  	if (! ep->configured) {
+    errcode = MBED_ERROR_INVPARAM;
+    goto err;
+  	}
+
+
+ si j'enleve l'appel à set_recv_fifo et send_data dans la fonction test_fcn_driver_eva, il ne reste que le probleme de usbotghs_deconfigure_endpoint
+ mais la couverture des fonctions usbotghs_send_data et usbotghs_set_recv_fifo est faible

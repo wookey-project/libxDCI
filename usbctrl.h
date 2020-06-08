@@ -57,6 +57,10 @@
     i == MBED_ERROR_NOTFOUND  ;
 */
 
+/*@ predicate is_valid_ep_dir(usbotghs_ep_dir_t i) =
+    i == USBOTG_HS_EP_DIR_IN || i == USBOTG_HS_EP_DIR_OUT;
+*/
+
 extern volatile int Frama_C_entropy_source __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
 
 /*@ requires order: min <= max;
@@ -96,6 +100,11 @@ mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler,
     return errcode;
 }
 
+/*
+
+    introduction de deux fonctions définies seulement pour passer FramaC sur les pointeurs de fonctions 
+
+*/
 
 /*@
     @ assigns \nothing ;

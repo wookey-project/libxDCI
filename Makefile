@@ -99,13 +99,44 @@ TIMEOUT:=10
 # See https://bts.frama-c.com/view.php?id=2206
 
 frama-c-parsing:
-	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c \
+	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c include_frama/driver_api/usbotghs_frama.c \
+		 -c11 -machdep x86_32 \
+		 -no-frama-c-stdlib \
+		 -cpp-extra-args="-nostdinc -I include_frama" 
+
+frama-c-parsing-concat:
+	frama-c usbctrl_frama.c include_frama/driver_api/usbotghs_frama.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
 		 -cpp-extra-args="-nostdinc -I include_frama" 
 
 frama-c-eva:
-	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
+	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
+	            -absolute-valid-range 0x40040000-0x40080000 \
+	            -no-frama-c-stdlib \
+	            -warn-left-shift-negative \
+	            -warn-right-shift-negative \
+	            -warn-signed-downcast \
+	            -warn-signed-overflow \
+	            -warn-unsigned-downcast \
+	            -warn-unsigned-overflow \
+				-kernel-msg-key pp \
+				-cpp-extra-args="-nostdinc -I include_frama" \
+		    -rte \
+		    -eva \
+		    -eva-warn-undefined-pointer-comparison none \
+		    -eva-auto-loop-unroll 20 \
+		    -eva-slevel 300 \
+		    -eva-symbolic-locations-domain \
+		    -eva-equality-domain  \
+  			-wp-dynamic \
+		    -eva-split-return auto \
+		    -eva-partition-history 6 \
+		    -eva-log a:frama-c-rte-eva.log \
+			-save result_frama/frama-c-rte-eva.session
+
+frama-c-eva-concat:
+	frama-c usbctrl_frama.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
@@ -130,7 +161,7 @@ frama-c-eva:
 			-save result_frama/frama-c-rte-eva.session
 
 frama-c:
-	frama-c usbctrl*.c include_frama/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
+	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c include_frama/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
@@ -159,6 +190,38 @@ frama-c:
   			-wp-prover alt-ergo,cvc4,z3 \
    			-wp-timeout $(TIMEOUT) -save $(SESSION)  \
    			-time calcium_wp-eva.txt
+
+frama-c-concat:
+	frama-c usbctrl_frama.c include_frama/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
+	            -absolute-valid-range 0x40040000-0x40080000 \
+	            -no-frama-c-stdlib \
+	            -warn-left-shift-negative \
+	            -warn-right-shift-negative \
+	            -warn-signed-downcast \
+	            -warn-signed-overflow \
+	            -warn-unsigned-downcast \
+	            -warn-unsigned-overflow \
+				-kernel-msg-key pp \
+				-cpp-extra-args="-nostdinc -I include_frama" \
+		    -rte \
+		    -eva \
+		    -eva-warn-undefined-pointer-comparison none \
+		    -eva-auto-loop-unroll 20 \
+		    -eva-slevel 300 \
+		    -eva-symbolic-locations-domain \
+		    -eva-equality-domain  \
+  			-wp-dynamic \
+		    -eva-split-return auto \
+		    -eva-partition-history 6 \
+		    -eva-log a:frama-c-rte-eva.log \
+   		    -then \
+   		    -wp \
+  			-wp-model "Typed+ref+int" \
+  			-wp-literals \
+  			-wp-prover alt-ergo,cvc4,z3 \
+   			-wp-timeout $(TIMEOUT) -save $(SESSION)  \
+   			-time calcium_wp-eva.txt
+
 
 #			-wp-steps 100000 \
 
