@@ -89,7 +89,7 @@ $(APP_BUILD_DIR):
 
 SESSION:=result_frama/frama-c-rte-eva-wp-no-split.session
 JOBS:=$(shell nproc)
-TIMEOUT:=10
+TIMEOUT:=30
 
 # "-val-warn-undefined-pointer-comparison none" is to deal with the
 # checks (\pointer_comparable( - ,  - )) otherwise added by EVA before

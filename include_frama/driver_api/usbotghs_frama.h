@@ -122,7 +122,7 @@ typedef struct {
     usbotghs_speed_t    speed;        /* device enumerated speed, default HS */
 } usbotghs_context_t;
 
-//@ ghost usbotghs_context_t GHOST_usbotghs_ctx ;
+//@ ghost usbotghs_context_t *GHOST_usbotghs_ctx ;
 
 #else
 

@@ -89,7 +89,7 @@ int Frama_C_interval(int min, int max);
 
 /*@
     @ requires \valid(packet);
-    @ assigns *packet;
+    @ assigns \nothing ;
     @ ensures is_valid_error(\result);
 */
 

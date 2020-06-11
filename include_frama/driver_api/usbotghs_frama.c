@@ -98,6 +98,7 @@ static const char *devname = "usb-otg-hs";
 /* local context. Only one as there is one USB OTG device per SoC */
 #if defined(__FRAMAC__)
 static usbotghs_context_t usbotghs_ctx = { 0 };
+
 #else
 static volatile usbotghs_context_t usbotghs_ctx = { 0 };
 #endif/*!__FRAMAC__*/
@@ -114,8 +115,9 @@ usbotghs_context_t *usbotghs_get_context(void)
 }
 
 
+
 /*@
-    @ assigns usbotghs_ctx ;
+    @ assigns GHOST_usbotghs_ctx, usbotghs_ctx ;  // Cyril : si usbotghs_ctx seul, ça marche pas. Si GHOST_usbotghs_ctx seul, ça marche pas non plus. Pourtant 
     @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
 */
 
@@ -123,6 +125,8 @@ mbed_error_t usbotghs_declare(void)
 {
     e_syscall_ret ret = 0;
     log_printf("[USBOTG][HS] Declaring device\n");
+
+    //@ ghost GHOST_usbotghs_ctx = &usbotghs_ctx ;
 
     #if defined(__FRAMAC__)
 
@@ -135,6 +139,7 @@ mbed_error_t usbotghs_declare(void)
     memcpy((void*)usbotghs_ctx.dev.name, devname, strlen(devname));
     #endif/*!__FRAMAC__*/
 
+    
 
     usbotghs_ctx.dev.address = USB_OTG_HS_BASE;
     usbotghs_ctx.dev.size = 0x4000;
@@ -189,7 +194,7 @@ mbed_error_t usbotghs_declare(void)
 				 USBOTG_HS_GINTMSK_RXFLVLM_Msk;
     usbotghs_ctx.dev.irqs[0].posthook.action[3].and.mode = 1; /* binary inversion */
 
-
+    /*@ assert GHOST_usbotghs_ctx->dev.address == USB_OTG_HS_BASE ; */
 
     /* Now let's configure the GPIOs */
     usbotghs_ctx.dev.gpio_num = 13;
@@ -214,10 +219,12 @@ mbed_error_t usbotghs_declare(void)
     usbotghs_ctx.dev.gpios[1].speed        = GPIO_PIN_VERY_HIGH_SPEED;
     usbotghs_ctx.dev.gpios[1].afr          = GPIO_AF_OTG_HS;
 
+    /*@ assert GHOST_usbotghs_ctx == &usbotghs_ctx ; */
+
     /*@
         @ loop invariant 0 <= i <= (USB_HS_ULPI_D7+1) ;
         @ loop invariant \valid(usbotghs_ctx.dev.gpios + (0..(USB_HS_ULPI_D7))) ;
-        @ loop assigns usbotghs_ctx, i ;
+        @ loop assigns *GHOST_usbotghs_ctx, i ;
         @ loop variant ((USB_HS_ULPI_D7+1) - i) ; 
     */
 
@@ -233,6 +240,9 @@ mbed_error_t usbotghs_declare(void)
         usbotghs_ctx.dev.gpios[i].type         = GPIO_PIN_OTYPER_PP;
         usbotghs_ctx.dev.gpios[i].speed        = GPIO_PIN_VERY_HIGH_SPEED;
         usbotghs_ctx.dev.gpios[i].afr          = GPIO_AF_OTG_HS;
+
+        /*@ assert GHOST_usbotghs_ctx == &usbotghs_ctx ; */
+
     }
 
     /* ULPI_STP */
@@ -333,7 +343,7 @@ mbed_error_t usbotghs_declare(void)
 
 /*@
     @ requires is_valid_dev_mode(mode) ;
-    @ assigns usbotghs_ctx, GHOST_usbotghs_ctx ;
+    @ assigns usbotghs_ctx ;
     @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INITFAIL
             || \result == MBED_ERROR_BUSY || \result == MBED_ERROR_UNSUPORTED_CMD || \result == MBED_ERROR_NOMEM ;
 */
@@ -343,7 +353,7 @@ mbed_error_t usbotghs_configure(usbotghs_dev_mode_t mode,
                                 usbotghs_ioep_handler_t oeph)
 {
 
-    //@ ghost GHOST_usbotghs_ctx = usbotghs_ctx ;
+    // @ ghost GHOST_usbotghs_ctx = &usbotghs_ctx ;
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* First, reset the PHY device connected to the core through ULPI interface */
     log_printf("[USB HS] Mapping device\n");
@@ -364,7 +374,7 @@ mbed_error_t usbotghs_configure(usbotghs_dev_mode_t mode,
     /* host/device mode */
     switch (mode) {
         case USBOTGHS_MODE_HOST: {
-            //log_printf("[USB HS][HOST] initialize in Host mode\n");
+            log_printf("[USB HS][HOST] initialize in Host mode\n");
             if ((errcode = usbotghs_initialize_host()) != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -372,7 +382,7 @@ mbed_error_t usbotghs_configure(usbotghs_dev_mode_t mode,
             break;
         }
         case USBOTGHS_MODE_DEVICE: {
-            //log_printf("[USB HS][DEVICE] initialize in Device mode\n");
+            log_printf("[USB HS][DEVICE] initialize in Device mode\n");
             if ((errcode = usbotghs_initialize_device()) != MBED_ERROR_NONE) {
                 goto err;
             }
@@ -392,7 +402,15 @@ XXX: shouldn't it be false, without FIFO as RXFLVL should not be received before
 reset ? */
     usbotghs_ctx.in_eps[0].mpsize = USBOTG_HS_EPx_MPSIZE_64BYTES;
     usbotghs_ctx.in_eps[0].type = USBOTG_HS_EP_TYPE_CONTROL;
+
+    #if defined(__FRAMAC__)
+    //usbotghs_ctx.in_eps[0].state = Frama_C_interval(0,9);  // Cyril : test : permet de parcourir plus de cas possible (notamment dans usbctrl_handle_outepevents)
+    // cyril : bon le frama_C_interval n'est pas une bonne idée...assigns ne passe plus et send_data non plus
     usbotghs_ctx.in_eps[0].state = USBOTG_HS_EP_STATE_IDLE;
+    #else
+    usbotghs_ctx.in_eps[0].state = USBOTG_HS_EP_STATE_IDLE;
+    #endif/*!__FRAMAC__*/
+    
     usbotghs_ctx.in_eps[0].handler = ieph;
     usbotghs_ctx.in_eps[0].fifo = NULL; /* not yet configured */
     usbotghs_ctx.in_eps[0].fifo_idx = 0; /* not yet configured */
@@ -407,7 +425,14 @@ reset ? */
     usbotghs_ctx.out_eps[0].configured = true; /* wait for reset */
     usbotghs_ctx.out_eps[0].mpsize = USBOTG_HS_EPx_MPSIZE_64BYTES;
     usbotghs_ctx.out_eps[0].type = USBOTG_HS_EP_TYPE_CONTROL;
+
+    #if defined(__FRAMAC__)
+    //usbotghs_ctx.out_eps[0].state = Frama_C_interval(0,9);  // Cyril : test : permet de parcourir plus de cas possible (notamment dans usbctrl_handle_outepevents)
     usbotghs_ctx.out_eps[0].state = USBOTG_HS_EP_STATE_IDLE;
+    #else
+    usbotghs_ctx.out_eps[0].state = USBOTG_HS_EP_STATE_IDLE;
+    #endif/*!__FRAMAC__*/
+    
     usbotghs_ctx.out_eps[0].handler = oeph;
     usbotghs_ctx.out_eps[0].dir = USBOTG_HS_EP_DIR_OUT;
     usbotghs_ctx.out_eps[0].fifo = 0; /* not yet configured */
@@ -416,8 +441,6 @@ reset ? */
     usbotghs_ctx.in_eps[0].fifo_lck = false;
 
     usbotghs_ctx.speed = USBOTG_HS_SPEED_HS; /* default. In device mode, wait for enumeration */
-
-    //@ ghost GHOST_usbotghs_ctx = usbotghs_ctx ;
 
 err:
     return errcode;
@@ -446,7 +469,7 @@ uint32_t usbotghs_get_ep_mpsize(void)
  * We must wait data sent IT to be sure that content is effectively transmitted
  */
 
-/* @
+/*@
     @ requires \valid(src);
 
     @ behavior bad_ctx:
@@ -456,39 +479,36 @@ uint32_t usbotghs_get_ep_mpsize(void)
 
     @ behavior not_configured:
     @	assumes &usbotghs_ctx != \null ;
-    @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \false) ;
+    @   assumes ((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false)); // Cyril : il faut tenir compte de la variable CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE...
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
-    @ behavior set_fifo_error:
+    @ behavior set_fifo_error:  
     @	assumes &usbotghs_ctx != \null ;   
-    @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \true) ;
-    @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck != 0)  ;
-    @   assigns \nothing ;
+    @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false));
+    @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck != 0)  ; 
+    @   ensures \old(usbotghs_ctx) ≡ usbotghs_ctx;
     @   ensures \result == MBED_ERROR_INVSTATE ;  //. Cyril invparam atteint dans usbotghs_set_xmit_fifo si non configuré, cas traité avant
     
-    @ behavior epid_null:
+    @ behavior fifo_no_error:
     @	assumes &usbotghs_ctx != \null ;
-    @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \true) ;
+    @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false));
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck == 0)  ;    
-    @   assumes (ep_id == 0 && size > usbotghs_ctx.in_eps[ep_id].mpsize) ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id), usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), *r_CORTEX_M_USBOTG_HS_GINTMSK,
-             *USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id), usbotghs_ctx.in_eps[ep_id].fifo[usbotghs_ctx.in_eps[ep_id].fifo_idx] ;
     @   ensures \result == MBED_ERROR_BUSY || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
-    @   ensures usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN ;
-
-    @ behavior epid_not_null:
-    @	assumes &usbotghs_ctx != \null ;
-    @   assumes (usbotghs_ctx.in_eps[ep_id].configured == \true) ;
-    @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck == 0)  ;    
-    @   assumes !(ep_id == 0 && size > usbotghs_ctx.in_eps[ep_id].mpsize) ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id), usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id), 
-            usbotghs_ctx.in_eps[ep_id].fifo[usbotghs_ctx.in_eps[ep_id].fifo_idx] ;
-    @   ensures    \result == MBED_ERROR_BUSY || \result == MBED_ERROR_NONE ;
+    @   ensures (usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN || usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN_WIP
+                    || usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_IDLE)  ;
 
     @ complete behaviors ;
     @ disjoint behaviors ;
 
+*/
+
+/*   
+        spec pas très précise, je ne sais pas s'il faut différentier les comportements en fonction de get_reg, de ep_id etc...
+        il manque aussi les assigns, qui ne passe pas dès que j'utilise usbotghs_set_xmit_fifo ou usbotghs_write_epx_fifo
+     assigns \nothing ;
+     assigns *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id), usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id), usbotghs_ctx.in_eps[ep_id].fifo[usbotghs_ctx.in_eps[ep_id].fifo_idx] ;
+     assigns *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id), usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id), usbotghs_ctx.in_eps[ep_id].fifo[usbotghs_ctx.in_eps[ep_id].fifo_idx] ;
 */
 
 mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
@@ -518,12 +538,23 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
         goto err_init;
     }
 
-    fifo_size = USBOTG_HS_TX_CORE_FIFO_SZ;
+     fifo_size = USBOTG_HS_TX_CORE_FIFO_SZ;
+    // cyril : test pour eva
+    //    fifo_size = 10 ;
+    
+    // usbotghs_ctx.in_eps[ep_id].fifo_lck = 1 ;
+
     /* configure EP FIFO internal informations */
-    if ((errcode = usbotghs_set_xmit_fifo(src, size, ep_id)) != MBED_ERROR_NONE) {
+    if ((errcode = usbotghs_set_xmit_fifo(src, size, ep_id)) != MBED_ERROR_NONE) {  // Cyril : l'appel à usbotghs_set_xmit_fifo semble géner assigns pour wp...
+       /*@ assert usbotghs_ctx.in_eps[ep_id].fifo_lck != 0 ;  */
+        /* @ assert \at(usbotghs_ctx, Here) ==  \at(usbotghs_ctx, Pre) ; */   // Cyril : j'essaye de guider WP, mais ça ne marche pas...
        log_printf("[USBOTG][HS] failed to set EP%d TxFIFO!\n", ep_id);
         goto err_init;
     }
+
+    /*@ assert usbotghs_ctx.in_eps[ep_id].fifo_lck == 0 ;  */
+    /* @ assert \at(usbotghs_ctx, Here) !=  \at(usbotghs_ctx, Pre) ; */  // WP n'arrive pas à le prouver, alors qu'il y a assigns usbotghs_ctx dans ce cas dans usbotghs_set_xmit_fifo
+
     /*
      * Here, we have to split the src content, taking into account the
      * current EP mpsize, and schedule transmission into the Core TxFIFO.
@@ -548,7 +579,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
      * bytes to transfer
      */
     packet_count = (size / ep->mpsize) + ((size % ep->mpsize) ? 1: 0);
-    // Cyril : ep->mpsize == 0 pose probleme
+    // Cyril : ep->mpsize == 0 pose probleme, ajout du test if (!ep->configured || !ep->mpsize)
 
     log_printf("[USBOTG][HS] need to write %d pkt on ep %d, init_size: %d\n", packet_count, ep_id, size);
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE   // Cyril : je suis dans ce cas
@@ -565,6 +596,9 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
         set_reg_value(r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id),ep->mpsize,USBOTG_HS_DIEPTSIZ_XFRSIZ_Msk(ep_id), USBOTG_HS_DIEPTSIZ_XFRSIZ_Pos(ep_id));
     }
     ep->state = USBOTG_HS_EP_STATE_DATA_IN_WIP;
+    /*@ assert ctx->in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN_WIP ; */
+    /*@ assert usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN_WIP ; */
+
     /* 2. Enable endpoint for transmission. */
     set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id),USBOTG_HS_DIEPCTL_CNAK_Msk | USBOTG_HS_DIEPCTL_EPENA_Msk);
 
@@ -581,6 +615,9 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
         set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(ep_id),ep->mpsize,USBOTG_HS_DOEPTSIZ_XFRSIZ_Msk(ep_id),USBOTG_HS_DOEPTSIZ_XFRSIZ_Pos(ep_id));
     }
     ep->state = USBOTG_HS_EP_STATE_DATA_OUT_WIP;
+
+    /*@ assert ctx->out_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_OUT_WIP ; */
+    /*@ assert usbotghs_ctx.out_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_OUT_WIP ; */
 #endif
     //PMO
     /*@ assert ep->state==USBOTG_HS_EP_STATE_DATA_IN_WIP ; */
@@ -596,21 +633,22 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
        log_printf("[USBOTG][HS] fragment: initiate the first fragment to send (MPSize) on EP0\n");
         /* wait for enough space in TxFIFO */
 
-       //PMO loop assigns nothing sortie non standard 
+       //PMO loop assigns cpt sortie non standard 
        /*@
-	 @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-	 @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DSTS);
-	 @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
-	 @ loop invariant 0<=cpt<= CPT_HARD ;
-	 @ loop assigns \nothing ;
-	 @ loop variant CPT_HARD - cpt ;
+	           @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
+	           @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DSTS);
+	           @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
+	           @ loop invariant 0<=cpt<= CPT_HARD ;
+	           @ loop assigns cpt ;
+	           @ loop variant CPT_HARD - cpt ;
        */
        //PMO ajout compteur matériel
        for (uint8_t cpt=0; cpt<CPT_HARD; cpt++)
 	 {
 	   if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (ep->mpsize / 4)) {
-	     if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
-	       log_printf("[USBOTG][HS] Suspended!\n");
+	     if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){ // !((mask == 0x00) || (pos > 31)) : condition pour avoir get_reg return != 0
+	       log_printf("[USBOTG][HS] Suspended!\n");                        // get_reg_value(REG, BITS##_Msk, BITS##_Pos)
+                                                                            // return (uint32_t) (((*reg) & mask) >> pos);
 	       errcode = MBED_ERROR_BUSY;
 	       goto err;
 	     }
@@ -618,13 +656,17 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 	 }
 
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE  // Cyril : je suis dans ce cas
-        ep->state = USBOTG_HS_EP_STATE_DATA_IN;  // Cyril : pourquoi cet état alors qu'avant on a ep->state = USBOTG_HS_EP_STATE_DATA_IN_WIP;
+        ep->state = USBOTG_HS_EP_STATE_DATA_IN;  
+    /*@ assert ctx->in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN ; */
+    /*@ assert usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN ; */       
 #else
         ep->state = USBOTG_HS_EP_STATE_DATA_OUT;
+    /*@ assert ctx->out_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_OUT ; */
+    /*@ assert usbotghs_ctx.out_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_OUT ; */ 
 #endif
         /* write data from SRC to FIFO */
-        errcode = usbotghs_write_epx_fifo(ep->mpsize, ep);
-        goto err;  // Cyril : probleme ici je suis en error none, je pense que je dois faire errocde =
+        errcode = usbotghs_write_epx_fifo(ep->mpsize, ep); 
+        goto err;  // Cyril : ajout du errocde =
     }
 
     /*
@@ -638,41 +680,52 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
      * First, we push FIFO size multiple into the FIFO
      */
 
-      /* @
+/*  spec de usbotghs_write_epx_fifo(ep->mpsize, ep)
+            usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep)
+     assigns *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
+*/
+
+      /*@
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-            @ loop assigns   residual_size, *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
+            @ loop assigns  residual_size, *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id) ;
             @ loop variant (residual_size - fifo_size);
        */
-    //PMO loop assigns pas errocde
+    //PMO loop assigns pas errcode
     while (residual_size >= fifo_size) {
       /*@
 	@ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
 	@ loop invariant 0<=cpt<= CPT_HARD ;
-	@ loop assigns \nothing ;
+	@ loop assigns cpt ;
 	@ loop variant CPT_HARD - cpt ;
       */
       //PMO compteur hardware
       for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
-	if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {
-	  if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
-	    //log_printf("[USBOTG][HS] Suspended!\n");
-	    errcode = MBED_ERROR_BUSY;
-	    goto err;
-	  }
-	}
-      }
+	       if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {  // Cyril : est-ce que c'est utile de différentier les comportements en fonction de get_reg?
+	           if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){                                  // de manière générale, que veut on prouver avec send data?
+	               log_printf("[USBOTG][HS] Suspended!\n");
+	               errcode = MBED_ERROR_BUSY;
+	               goto err;
+	           }
+	       }
+        }
+
         if (residual_size == fifo_size) {
             /* last block, no more WIP */
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
             ep->state = USBOTG_HS_EP_STATE_DATA_IN;   // Cyril : on est dans ce cas
+    /*@ assert ctx->in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN ; */
+    /*@ assert usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN ; */  
 #else
             ep->state = USBOTG_HS_EP_STATE_DATA_OUT;
+    /*@ assert ctx->out_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_OUT ; */
+    /*@ assert usbotghs_ctx.out_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_OUT ; */  
 #endif
         }
-	//PMO
-	/*@ assert ep->state==USBOTG_HS_EP_STATE_DATA_IN; */
+
         /* write data from SRC to FIFO */
-        usbotghs_write_epx_fifo(fifo_size, ep);
+        usbotghs_write_epx_fifo(fifo_size, ep); // Cyril : ça bloque le loop assigns du while
+        /*@ assert \at(r_CORTEX_M_USBOTG_HS_GINTMSK,LoopEntry) != \at(r_CORTEX_M_USBOTG_HS_GINTMSK,LoopCurrent) ;   */
+
         /* wait for XMIT data to be transfered (wait for iepint (or oepint in
          * host mode) to set the EP in correct state */
 
@@ -688,7 +741,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 	@ loop invariant 0<=cpt<= CPT_HARD ;
 	@ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));  
 	@ loop invariant  ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
-	@ loop assigns \nothing ;
+	@ loop assigns cpt ;
 	@ loop variant CPT_HARD - cpt; 
       */
       //PMO compteur hardware
@@ -763,7 +816,7 @@ mbed_error_t usbotghs_send_zlp(uint8_t ep_id)
     /*@
       @ loop invariant \valid(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
       @ loop invariant 0<=cpt<= CPT_HARD ;
-      @ loop assigns \nothing ;
+      @ loop assigns cpt ;
       @ loop variant CPT_HARD - cpt ;
     */
     //PMO compteur hardware
@@ -835,17 +888,17 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
             /* wait for end of current transmission */
 	    /*@
 	      @ loop invariant 0<=cpt<= CPT_HARD ;
-	      @ loop assigns \nothing ;
+	      @ loop assigns cpt, count ;
 	      @ loop variant CPT_HARD - cpt ;
 	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
 	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-		  //log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
-		  errcode = MBED_ERROR_BUSY;
-		  goto err;
-                }
+		          log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
+		          errcode = MBED_ERROR_BUSY;
+		          goto err;
+            }
 	      }
 	    }
 
@@ -866,18 +919,18 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
             /* wait for end of current transmission */
 	    /*@
 	      @ loop invariant 0<=cpt<= CPT_HARD ;
-	      @ loop assigns \nothing ;
+	      @ loop assigns cpt, count ;
 	      @ loop variant CPT_HARD - cpt ;
 	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
-	      while (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
+	      //while (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {  // Cyril : voir avec Philippe comment faire un compteur pour ce while
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-		  //log_printf("[USBOTG][HS] HANG! DOEPCTL:EPENA\n");
-		  errcode = MBED_ERROR_BUSY;
-		  goto err;
+		              log_printf("[USBOTG][HS] HANG! DOEPCTL:EPENA\n");
+		              errcode = MBED_ERROR_BUSY;
+		              goto err;
                 }
-	      }
+	      //}
 	    }
 
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DIEPCTL_SNAK_Msk);
@@ -991,6 +1044,8 @@ mbed_error_t usbotghs_endpoint_clear_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     usbotghs_context_t *ctx = usbotghs_get_context();
+    /*@ assert ctx == &usbotghs_ctx ; */
+
     //uint32_t count = 0;
     /* sanitize */
     if (ctx == NULL) {
@@ -1032,10 +1087,12 @@ mbed_error_t usbotghs_endpoint_clear_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
                 goto err;
             }
             if (ctx->out_eps[ep_id].configured == false) {
+                /*@ assert usbotghs_ctx.out_eps[ep_id].configured == \false ; */
                 log_printf("[USBOTG][HS] invalid OUT EP %d: not configured\n", ep_id);
                 errcode = MBED_ERROR_INVSTATE;
                 goto err;
             }
+            /*@ assert usbotghs_ctx.out_eps[ep_id].configured == \true ; */
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_CNAK_Msk);
             break;
         default:
@@ -1093,16 +1150,16 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
 
 	    /*@
 	      @ loop invariant 0<=cpt<= CPT_HARD ;
-	      @ loop assigns \nothing ;
+	      @ loop assigns count, cpt ;
 	      @ loop variant CPT_HARD - cpt; 
 	    */
 	    //PMO compteur hardware
 	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
 	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-		  log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
-		  errcode = MBED_ERROR_BUSY;
-		  goto err;
+		              log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
+		              errcode = MBED_ERROR_BUSY;
+		              goto err;
                 }
 		
                 continue; //FIXME TIMEOUT
@@ -1124,7 +1181,7 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
             /* wait for end of current transmission */
       	/*@
 	      @ loop invariant 0<=cpt<= CPT_HARD ;
-	      @ loop assigns \nothing ;
+	      @ loop assigns count, cpt ;
 	      @ loop variant CPT_HARD - cpt; 
 	    */
 	    //PMO compteur hardware
@@ -1214,8 +1271,8 @@ mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
 
     switch (dir) {
         case USBOTG_HS_EP_DIR_IN:
+            //@ ghost GHOST_usbotghs_ctx = &usbotghs_ctx ;
             log_printf("[USBOTGHS] enable EP %d: dir IN, mpsize %d, type %x\n", ep, mpsize, type);
-            //@ ghost GHOST_usbotghs_ctx = usbotghs_ctx ;
             ctx->in_eps[ep].id = ep;
             ctx->in_eps[ep].dir = dir;
             ctx->in_eps[ep].configured = true;
@@ -1245,7 +1302,7 @@ mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
             break;
         case USBOTG_HS_EP_DIR_OUT:
             log_printf("[USBOTGHS] enable EP %d: dir OUT, mpsize %d, type %x\n", ep, mpsize, type);
-            //@ ghost GHOST_usbotghs_ctx = usbotghs_ctx ;
+            //@ ghost GHOST_usbotghs_ctx = &usbotghs_ctx ;
             ctx->out_eps[ep].id = ep;
             ctx->out_eps[ep].dir = dir;
             ctx->out_eps[ep].configured = true;
@@ -1278,6 +1335,8 @@ mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
             break;
     }
 err:
+    //@ assert GHOST_usbotghs_ctx == &usbotghs_ctx ;
+
     return errcode;
 }
 
@@ -1463,6 +1522,7 @@ err:
     return errcode;
 
 }
+
 /*@
     @ requires \valid(r_CORTEX_M_USBOTG_HS_DCFG);
     @ assigns *r_CORTEX_M_USBOTG_HS_DCFG ;
@@ -1506,6 +1566,7 @@ void usbotghs_set_address(uint16_t addr)
     @ disjoint behaviors ;
 */
 
+
 usbotghs_ep_state_t usbotghs_get_ep_state(uint8_t epnum, usbotghs_ep_dir_t dir)
 {
     if (dir == USBOTG_HS_EP_DIR_IN && epnum >= USBOTGHS_MAX_IN_EP) {
@@ -1516,9 +1577,11 @@ usbotghs_ep_state_t usbotghs_get_ep_state(uint8_t epnum, usbotghs_ep_dir_t dir)
     }
     switch (dir) {
         case USBOTG_HS_EP_DIR_IN:
+            /* @ assert GHOST_usbotghs_ctx->in_eps[epnum].state == usbotghs_ctx.in_eps[epnum].state ; */
             return usbotghs_ctx.in_eps[epnum].state;
             break;
         case USBOTG_HS_EP_DIR_OUT:
+            /* @ assert GHOST_usbotghs_ctx->out_eps[epnum].state == usbotghs_ctx.in_eps[epnum].state ; */
             return usbotghs_ctx.out_eps[epnum].state;
             break;
         default:
@@ -1696,7 +1759,7 @@ mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid)
     }
 #endif
     /* set RAM FIFO for current EP. */
-    //@ ghost GHOST_usbotghs_ctx = usbotghs_ctx ;
+    //@ ghost GHOST_usbotghs_ctx = &usbotghs_ctx ;
     ep->fifo = dst;
     ep->fifo_idx = 0;
     ep->fifo_size = size;
@@ -1746,6 +1809,7 @@ err:
     @   assumes (usbotghs_ctx.in_eps[epid].fifo_lck != 0)  ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
+    @   ensures \old(usbotghs_ctx) == usbotghs_ctx;
 
     @ behavior fifo_null:
     @   assumes (usbotghs_ctx.in_eps[epid].configured == \true) ;
@@ -1833,7 +1897,7 @@ static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, 
     */
 
     for (uint32_t i = 0; i < size_4bytes; i++, src += 4){
-        write_reg_value(USBOTG_HS_DEVICE_FIFO(ep), *(const uint32_t *)src);
+        write_reg_value(USBOTG_HS_DEVICE_FIFO(ep), *(const uint32_t *)src);  // Cyril : attention au cast pour frama (mais bon la spec passe)
     }
 
     switch (size & 3) {
@@ -1934,10 +1998,12 @@ void test_fcn_driver_eva(){
     uint8_t ep_num = Frama_C_interval(0,255);
     uint8_t dir8 = Frama_C_interval(0,255);
     uint8_t dst = Frama_C_interval(0,255);
-    uint32_t size = Frama_C_interval(0,65535);  // Cyril : voir comment mettre sur 32 bits
+    uint32_t size = Frama_C_interval(0,1024);  // Cyril : voir comment mettre sur 32 bits
     uint8_t fifo = Frama_C_interval(0,255);
     uint32_t fifo_idx = Frama_C_interval(0,65535); // Cyril : voir comment mettre sur 32 bits
     uint32_t fifo_size = Frama_C_interval(0,65535); // Cyril : voir comment mettre sur 32 bits
+
+    uint8_t src = 1 ;
 
     usbotghs_ep_dir_t dir = Frama_C_interval(0,1);
     usbotghs_ep_type_t type = Frama_C_interval(0,3);
@@ -1946,7 +2012,7 @@ void test_fcn_driver_eva(){
     //memset(usbotghs_ctx.out_eps[0],0,sizeof(usbotghs_ep_t)) ;
 
 
-    usbotghs_ctx.out_eps[0].id = 0 ;
+    /*usbotghs_ctx.out_eps[0].id = 0 ;
     usbotghs_ctx.out_eps[0].configured = false;
     usbotghs_ctx.out_eps[0].mpsize = 0 ;
     usbotghs_ctx.out_eps[0].type = 0;
@@ -1971,7 +2037,7 @@ void test_fcn_driver_eva(){
     usbotghs_ctx.out_eps[0].fifo_size = fifo_size ;
     usbotghs_ctx.in_eps[0].fifo_lck = false;
     usbotghs_ctx.speed = USBOTG_HS_SPEED_HS;
-
+*/
 
     /*usbotghs_declare(void) ;
     usbotghs_configure(usbotghs_dev_mode_t mode, usbotghs_ioep_handler_t ieph,usbotghs_ioep_handler_t oeph) ;
@@ -1997,7 +2063,6 @@ void test_fcn_driver_eva(){
     //usbotghs_wait_for_xmit_complete(usbotghs_ep_t *ep) ;
     usbotghs_global_stall() ;
     usbotghs_endpoint_set_nak(ep_id, dir) ;
-    usbotghs_endpoint_clear_nak(ep_id, dir) ;
     usbotghs_global_stall_clear();
     usbotghs_endpoint_stall_clear(ep, dir);
     usbotghs_deconfigure_endpoint(ep);
@@ -2007,11 +2072,11 @@ void test_fcn_driver_eva(){
     usbotghs_enpoint_nak_clear( ep);
     usbotghs_endpoint_disable( ep_id,     dir);
     usbotghs_endpoint_enable( ep_id,     dir);
-    usbotghs_get_ep_state( ep_num,  dir);
+    //usbotghs_get_ep_state( ep_num,  dir);
     //usbotghs_set_recv_fifo(&dst, size, ep_id) ;
     usbotghs_endpoint_stall(ep_id, dir) ;
-    //usbotghs_send_data(&dst, size, ep_id) ;
-    usbotghs_endpoint_stall(ep_id, dir) ;
+    //usbotghs_send_data(&src, size, 0) ;
+    //usbotghs_send_data(&src, size, 1) ;
 
 }
 

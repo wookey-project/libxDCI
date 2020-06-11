@@ -58,16 +58,99 @@ RTE découverts :
     uint32_t pktcount = size / ep->mpsize + (size & (ep->mpsize - 1) ? 1: 0);
 
 
-    - autre problème dans set_recv_fifo :
-
-      ep = & ctx->out_eps[epid];
-  	/*@ assert rte: mem_access: \valid_read(&ep->configured); */  non validé par EVA, là aussi {{ garbled mix of &{usbctrl_handle_outepevent; handler_ep; ctx_list}
-		(origin: Misaligned) }}
-  	if (! ep->configured) {
-    errcode = MBED_ERROR_INVPARAM;
-    goto err;
-  	}
+- pour set_recv_fifo: appelé notamment par start device, à voir si je peux jouer sur ça pour parcourir plus de cas dans set_recv_fifo
 
 
  si j'enleve l'appel à set_recv_fifo et send_data dans la fonction test_fcn_driver_eva, il ne reste que le probleme de usbotghs_deconfigure_endpoint
  mais la couverture des fonctions usbotghs_send_data et usbotghs_set_recv_fifo est faible
+
+
+ Résultat WP : 
+
+ - pour le driver : 
+
+ send_data continue à poser des pb pour les assigns. C'est la dernière fonction que je ne parviens par à spécifier correctement (parmi les fonctions appelées par la lib USB)
+
+ - set_adress : depend set_reg, il manque le cas avec un mask != 0xffffff, je n'arrive pas à la prouver dans set_reg_value...
+
+
+
+ - pour la lib USB
+
+ - modification des spec de usbctrl_get_state (le ensures is_valid_state n'était pas nécessaire, et du coup 3 fonctions ne passaient pas 
+ (is_valid_class_request et les deux autres pareil)) : maintenant tout est ok
+
+ - usbctrl_declare : assigns ne passe pas car la fonction appelle usbotghs_declare qui assign usbotghs_ctx qui est static (à voir comment arranger ça avec un ghost)
+
+ - usbctrl_declare_interface : l'appel à la fonction usb_backend_get_ep_mpsize, donc à usbotghs_get_ep_mpsize, dans la boucle fait que le assigns ne passe pas...(pour behavior_ok). Test fait en supprimant l'appel à cette fonction, tout est validé avec WP.
+Même ave un separated (mais separated et assigns \nothing, je sais pas trop quoi mettre), ça ne passe pas
+
+ - usbctrl_get_descriptor : 
+
+    1 problemes pour finir de spécifier la fonction:  cast du type : usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;  
+                            desc->bLength = sizeof(usbctrl_device_descriptor_t);
+            wp est perdu, assigns *buf ne passe pas (en même temps, buf est de type uin8_t *...)
+    un bug :   uint32_t max_buf_size = *desc_size - curr_offset
+                *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
+                probleme pour EVA  assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset;
+    pour le compteur poll, eva n'arrive pas à prouver qu'il reste >= 0
+    les loop assigns ne passent pas également (pb de cast tjrs)
+
+    La spécification sans les assign passe
+
+
+
+usbctrl_std_req_handle_get_status : ok sans les assigns (voir si separated aide)
+
+
+
+
+usbctrl_std_req_handle_set_address : spec ok, ajout de \separated important pour que ça passe !!
+
+
+
+usbctrl_std_req_handle_get_configuration : les assigns ne passent pas car pas de spec definitive dans send_data
+											voir pour ajout de \separated quand des appels aux fonctions du driver sont faits
+											sinon la spec est ok (completed / disjoint)
+
+
+
+usbctrl_std_req_handle_set_configuration : spec à travailler, sans les assigns d'abord
+		pour correctement spécifier la boucle, je dois gerer GHOST_usbotghs_ctx (usbotghs_ctx est une variable static) (appel à usb_backend_drv_configure_endpoint dans la boucle)
+		autre pb :  requested_configuration = pkt->wValue;  //Cyril : Problème ici: pkt->wValue est un uint16_t, alors que requested_configuration est un uint8_t  (pb EVA)
+
+
+usbctrl_handle_requests : le comportement unknown ne passe pas (ensure non prouvé), le disjoint non plus, je ne comprends pas pq. Ajout d'assert dans toute la fonction pour aider wp, ils sont prouvés, mais ça ne suffit pas (timeout 2min pour essayer de prouver un ensure et le disjoint). Ok pour complete behaviors
+pas encore mis les assigns
+
+
+usbctrl_std_req_handle_get_descriptor : spec à travailler, mais comme elle dépend de send_data, je ne peux pas spécificer les assign. Très nombreux appels aux fonctions du driver, donc voir pour ajouter des \separated un peu partout
+Cyril : buf doit être initialisé (bug eva)
+meme sans les assigns, completed ne passe pas encore, ainsi que 2 comportements
+
+usbctrl_std_req_handle_set_descriptor : ok (meme avec les assigns)
+
+usbctrl_std_req_handle_set_feature : ok (meme avec les assigns)
+
+
+usbctrl_std_req_handle_set_interface :  ok (meme avec les assigns)
+
+usbctrl_std_req_handle_synch_frame : ok (meme avec les assigns)
+
+
+usbctrl_handle_std_requests : spec à travailleur, quasiment la dernière à spec car elle fait appel à presque toutes les autres fonctions handle
+
+usbctrl_handle_class_requests : la spec est correcte, reste un pb sur iface_idx à régler (la spec ne passe pas si le pb n'est pas réglé)
+
+usbctrl_handle_reset : spec à travailler, 
+
+
+usbctrl_handle_inepevent : spec validée, malgré l'appel à get_context (marche car fichier unique...)
+à revoir si je re sépare les fichiers (pb du num_ctx static)
+
+
+usbctrl_handle_outepevent : fonction compliquée à spécifier
+probleme, je dois faire référence à usbotghs_ctx.in_eps[epnum].state pour les différents comportements. Mais usbotghs_ctx est une variable static pour usbotghs...
+tentative avec GHOST_usbotghs_ctx->out_eps[ep].state, ça ne marche pas
+comment parcourir la fonction avec plusieurs états?  le driver est dans l'état IDLE, je ne sais pas comment le forcer à changer d'état (tentative avec framac interval, mais bcp d'effets indésirables sur d'autres fonctions... + pb de garbled mix)
+
