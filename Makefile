@@ -26,14 +26,15 @@ CFLAGS := $(LIBS_CFLAGS)
 # libtoken needs libecc
 CFLAGS += $(EXTERNAL_CFLAGS) $(LIBSIGN_CFLAGS)
 CFLAGS += -Iapi
-CFLAGS += -MMD -MP -O3
+CFLAGS += -MMD -MP -O2
 
 #############################################################
 # About library sources
 #############################################################
 
 SRC_DIR = .
-SRC = $(wildcard $(SRC_DIR)/*.c)
+ALLSRC = $(wildcard $(SRC_DIR)/*.c)
+SRC = $(filter-out $(SRC_DIR)/usbctrl_frama.c,$(ALLSRC))
 OBJ = $(patsubst %.c,$(APP_BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
 

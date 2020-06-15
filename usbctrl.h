@@ -27,6 +27,7 @@
 #include "libc/types.h"
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"
+#include "libc/sanhandlers.h"
 #if defined(__FRAMAC__)
 #include "driver_api/usbotghs_frama.h"
 #endif
@@ -101,7 +102,7 @@ mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler,
 
 /*
 
-    introduction de deux fonctions définies seulement pour passer FramaC sur les pointeurs de fonctions 
+    introduction de deux fonctions définies seulement pour passer FramaC sur les pointeurs de fonctions
 
 */
 
