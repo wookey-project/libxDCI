@@ -226,6 +226,7 @@ frama-c-concat:
 #			-wp-steps 100000 \
 
 #-eva-bitwise-domain
+#-eva-slevel-function usbctrl_declare_interface:300000 \
 
 frama-c-gui:
 	frama-c-gui -load $(SESSION)
