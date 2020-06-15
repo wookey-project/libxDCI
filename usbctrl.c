@@ -607,7 +607,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                 Cyril : ajout d'un test sur le nombre de config max :
                 check space
             */
-        if(ctx->num_cfg >= MAX_USB_CTRL_CTX-1){
+        if(ctx->num_cfg >= CONFIG_USBCTRL_FW_MAX_CFG){
             errcode = MBED_ERROR_NOMEM;
             goto err;
         }
@@ -634,7 +634,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     uint8_t iface_num = ctx->cfg[iface_config].interface_num;
 
     /* let's register */
-   //log_printf("declaring new interface class %x, %d EPs in Cfg %d/%d\n", iface->usb_class, iface->usb_ep_number, iface_config, iface_num);
+   log_printf("declaring new interface class %x, %d EPs in Cfg %d/%d\n", iface->usb_class, iface->usb_ep_number, iface_config, iface_num);
    /* 1) make a copy of interface. The interface identifier is its cell number  */
 
     #if defined(__FRAMAC__)
@@ -757,7 +757,7 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
     //PMO
     /* @ assert usbotghs_ctx.in_eps[0].mpsize ==0 ;*/
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
-        //log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
+        log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
         usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
         goto end;
     }
