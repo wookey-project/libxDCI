@@ -7,7 +7,87 @@ config USR_LIB_USBCTRL
 
 if USR_LIB_USBCTRL
 
-menu "libusbctrl specific options"
+menu "libxDCI specific options"
+
+config USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
+  bool "Make Firmware and DFU mode features differenciated"
+  default n
+  ---help---
+  libxDCI allows to handle some variations between FW and DFU mode, making DFU and FW
+  libxDCI footprint, performances, debug levels dedicated to each mode.
+  This simplifies the stack debugging, reducies the needed storage content to the one
+  requested in the given mode, and make USB informations (product name, device name and
+  so on) being mode-specific.
+
+
+if USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
+# differenciate FW/DFU build case
+
+menu "Firmware-mode specific configuration"
+
+config USR_LIB_USBCTRL_FW_DEBUG
+  bool "Activate debuggging for Firmware-mode USB Control interaction"
+  default n
+  ---help---
+  Activate various debugging for usb control interaction.
+  This option is efficient only if KERNEL_SERIAL is activated.
+
+config USBCTRL_FW_MAX_CFG
+  int "Max number of independent configurations in Firmware mode"
+  default 1
+  ---help---
+  This define the maximum number of USB alternative configurations. Each
+  configuration hold one or more interface(s), each handling a list of
+  endpoint and an associated USB class.
+
+config USBCTRL_FW_MAX_CTX
+  int "Max number of concurrent contexts supported in firmware mode"
+  default 2
+  ---help---
+  This define the maximum number of USB context (meaning USB physical interfaces)
+  that the libusbctrl can handle in the same time.
+  Depending on the hardware (and software) design, it can be 1, 2 or in some rare
+  time more.
+
+
+
+endmenu
+
+menu "DFU-mode specific configuration"
+
+config USR_LIB_USBCTRL_DFU_DEBUG
+  bool "Activate debuggging for DFU-mode USB Control interaction"
+  default n
+  ---help---
+  Activate various debugging for usb control interaction.
+  This option is efficient only if KERNEL_SERIAL is activated.
+
+
+
+config USBCTRL_DFU_MAX_CFG
+  int "Max number of independent configurations in DFU mode"
+  default 1
+  ---help---
+  This define the maximum number of USB alternative configurations. Each
+  configuration hold one or more interface(s), each handling a list of
+  endpoint and an associated USB class.
+
+
+config USBCTRL_DFU_MAX_CTX
+  int "Max number of concurrent contexts supported in DFU mode"
+  default 2
+  ---help---
+  This define the maximum number of USB context (meaning USB physical interfaces)
+  that the libusbctrl can handle in the same time.
+  Depending on the hardware (and software) design, it can be 1, 2 or in some rare
+  time more.
+
+endmenu
+
+endif
+
+if !USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
+# unified FW/DFU build case
 
 config USR_LIB_USBCTRL_DEBUG
   bool "Activate debuggging for USB Control interaction"
@@ -35,6 +115,8 @@ config USBCTRL_MAX_CTX
   that the libusbctrl can handle in the same time.
   Depending on the hardware (and software) design, it can be 1, 2 or in some rare
   time more.
+
+endif
 
 config USBCTRL_EP0_FIFO_SIZE
    int "USB control pipe default reception FIFO size (in bytes)"

@@ -32,6 +32,26 @@
 #include "driver_api/usbotghs_frama.h"
 #endif
 
+/*
+ * Here, we handle the case of differenciated FW/DFU mode.
+ * Is set (and only if set) we redefine unified macro value from the currently being
+ * compiled mode. If not, nothing is to be done here.
+ */
+#if defined(CONFIG_USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD)
+/* in that case, unified DEBUG, MAX_CFG and MAX_CTX are not defined, let's define them
+ * here. To differenciate DFU from FW mode, -DMODE_DFU is passed for DFU profile
+ * compilation units */
+# if defined(MODE_DFU)
+#  define CONFIG_USBCTRL_MAX_CFG        CONFIG_USBCTRL_DFU_MAX_CFG
+#  define CONFIG_USBCTRL_MAX_CTX        CONFIG_USBCTRL_DFU_MAX_CTX
+#  define CONFIG_USR_LIB_USBCTRL_DEBUG  CONFIG_USR_LIB_USBCTRL_DFU_DEBUG
+# else
+#  define CONFIG_USBCTRL_MAX_CFG        CONFIG_USBCTRL_FW_MAX_CFG
+#  define CONFIG_USBCTRL_MAX_CTX        CONFIG_USBCTRL_FW_MAX_CTX
+#  define CONFIG_USR_LIB_USBCTRL_DEBUG  CONFIG_USR_LIB_USBCTRL_FW_DEBUG
+# endif
+#endif
+
 /*********************************************************
  * FramaC
  */

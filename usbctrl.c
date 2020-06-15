@@ -607,7 +607,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                 Cyril : ajout d'un test sur le nombre de config max :
                 check space
             */
-        if(ctx->num_cfg >= MAX_USB_CTRL_CTX-1){
+        if(ctx->num_cfg >= CONFIG_USBCTRL_FW_MAX_CFG){
             errcode = MBED_ERROR_NOMEM;
             goto err;
         }

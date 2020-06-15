@@ -35,8 +35,22 @@ CFLAGS += -MMD -MP -O2
 SRC_DIR = .
 ALLSRC = $(wildcard $(SRC_DIR)/*.c)
 SRC = $(filter-out $(SRC_DIR)/usbctrl_frama.c,$(ALLSRC))
+
+# two build types: separated FW and DFU featureset, or single global featureset.
+# This build type is controlled by USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD flag.
+# In case of separated build, all objects, deps and libary files are written
+# in dfu/ and fw/ subdirectories, and the current makefile build two independent
+# libraries, with a differenciate additional cflag to detect DFU build: -DMODE_DFU
+ifeq (y,$(CONFIG_USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD))
+OBJ_FW = $(patsubst %.c,$(APP_BUILD_DIR)/fw/%.o,$(SRC))
+OBJ_DFU = $(patsubst %.c,$(APP_BUILD_DIR)/dfu/%.o,$(SRC))
+DEP_FW = $(OBJ_FW:.o=.d)
+DEP_DFU = $(OBJ_DFU:.o=.d)
+else
 OBJ = $(patsubst %.c,$(APP_BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
+endif
+
 
 OUT_DIRS = $(dir $(OBJ))
 
@@ -54,7 +68,11 @@ TODEL_DISTCLEAN += $(APP_BUILD_DIR)
 
 default: all
 
+ifeq (y,$(CONFIG_USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD))
+all: $(APP_BUILD_DIR)  $(APP_BUILD_DIR)/dfu $(APP_BUILD_DIR)/fw lib
+else
 all: $(APP_BUILD_DIR) lib
+endif
 
 doc:
 
@@ -65,24 +83,75 @@ show:
 	@echo "C sources files:"
 	@echo "\tSRC_DIR\t\t=> " $(SRC_DIR)
 	@echo "\tSRC\t\t=> " $(SRC)
+ifeq (y,$(CONFIG_USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD))
+	@echo "\tOBJ_FW\t\t=> " $(OBJ_FW)
+	@echo "\tOBJ_DFU\t\t=> " $(OBJ_DFU)
+else
 	@echo "\tOBJ\t\t=> " $(OBJ)
+endif
 	@echo
 
+ifeq (y,$(CONFIG_USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD))
+lib: $(APP_BUILD_DIR)/dfu/$(LIB_FULL_NAME) $(APP_BUILD_DIR)/fw/$(LIB_FULL_NAME)
+else
 lib: $(APP_BUILD_DIR)/$(LIB_FULL_NAME)
-
-$(APP_BUILD_DIR)/%.o: %.c
-	$(call if_changed,cc_o_c)
-
-# lib
-$(APP_BUILD_DIR)/$(LIB_FULL_NAME): $(OBJ)
-	$(call if_changed,mklib)
-	$(call if_changed,ranlib)
+endif
 
 $(APP_BUILD_DIR):
 	$(call cmd,mkdir)
 
+
+ifeq (y,$(CONFIG_USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD))
+# differenciated build
+
+# make supplementary dirs
+$(APP_BUILD_DIR)/fw:
+	$(call cmd,mkdir)
+
+$(APP_BUILD_DIR)/dfu:
+	$(call cmd,mkdir)
+
+# fw build
+$(APP_BUILD_DIR)/fw/%.o: %.c
+	$(call if_changed,cc_o_c)
+
+# fw ranlib
+$(APP_BUILD_DIR)/fw/$(LIB_FULL_NAME): $(OBJ_FW)
+	$(call if_changed,mklib)
+	$(call if_changed,ranlib)
+
+
+# dfu build
+$(APP_BUILD_DIR)/dfu/%.o: CFLAGS += -DMODE_DFU
+$(APP_BUILD_DIR)/dfu/%.o: %.c
+	$(call if_changed,cc_o_c)
+
+# dfu ranlib
+$(APP_BUILD_DIR)/dfu/$(LIB_FULL_NAME): $(OBJ_DFU)
+	$(call if_changed,mklib)
+	$(call if_changed,ranlib)
+
+
+# deps files
+-include $(DEP_FW)
+-include $(DEP_DFU)
+
+else
+# undifferenciated FW/DFU build
+
+# build
+$(APP_BUILD_DIR)/%.o: %.c
+	$(call if_changed,cc_o_c)
+
+# ranlib
+$(APP_BUILD_DIR)/$(LIB_FULL_NAME): $(OBJ)
+	$(call if_changed,mklib)
+	$(call if_changed,ranlib)
+
+# deps files
 -include $(DEP)
 
+endif
 
 #####################################################################
 # Frama-C

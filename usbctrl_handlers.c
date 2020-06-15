@@ -65,7 +65,7 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 
 mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 {
-    
+
     mbed_error_t       errcode = MBED_ERROR_NONE;
     dev_id = dev_id;
     usbctrl_context_t *ctx = NULL;
@@ -77,7 +77,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     dev_id = dev_id;
 
     log_printf("[USBCTRL] reset: get context for dev_id %d\n", dev_id);
-    if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) { 
+    if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] reset: no ctx found!\n");
         errcode = MBED_ERROR_INVPARAM;
         goto err;
@@ -93,7 +93,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     /*@ assert ctx_list[0].state == state ;   */
 
     /* resetting directly depends on the current state */
-    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {       
+    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
         log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
         /*@ assert ctx_list[0].state ==  USB_DEVICE_STATE_INVALID; */
         /* @ assert \at(ctx_list,Here) != \at(ctx_list,Pre) ; */
@@ -167,7 +167,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             /* control pipe recv FIFO is ready to be used */
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             ctx->address = 0;
-            usb_backend_drv_set_address(0); 
+            usb_backend_drv_set_address(0);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             /* INFO: deconfigure any potential active EP of current config is automatically
@@ -182,7 +182,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             /* when configured, the upper layer must also be reset */
             ctx->address = 0;
-            usb_backend_drv_set_address(0); 
+            usb_backend_drv_set_address(0);
             usbctrl_reset_received();
             break;
         default:
@@ -241,7 +241,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         ctx->ctrl_req_processing = false;
     } else {
         log_printf("[LIBCTRL] end of upper layer request\n");
-        
+
         /*@
             @ loop invariant 0 <= iface <= ctx->cfg[curr_cfg].interface_num ;
             @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num - 1));
@@ -250,13 +250,13 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         */
 
         for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
-            
+
         /*@
             @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
             @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num - 1));
             @ loop assigns i, errcode ;
             @ loop variant (ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number - i);
-        */            
+        */
 
             for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
                 /* here we check both ep id and direction and EP0 is a specific full duplex case */
@@ -348,7 +348,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
             */
 
             for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
-            
+
             /*@
                 @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num-1));
@@ -393,6 +393,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
             //usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);
+            break;
         }
         default:
             log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",
