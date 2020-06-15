@@ -9,6 +9,14 @@ if USR_LIB_USBCTRL
 
 menu "libxDCI specific options"
 
+config USR_LIB_USBCTRL_DEV_VENDORID
+  hex "USB Vendor Identifier"
+  default 0xDEAD
+  ---help---
+  Device vendor identifier (VID value of [VID:PID] pair)
+
+
+
 config USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
   bool "Make Firmware and DFU mode features differenciated"
   default n
@@ -47,8 +55,17 @@ config USBCTRL_FW_MAX_CTX
   This define the maximum number of USB context (meaning USB physical interfaces)
   that the libusbctrl can handle in the same time.
   Depending on the hardware (and software) design, it can be 1, 2 or in some rare
-  time more.
+  time more.config USB_FW_DEV_VENDORID
+  hex "USB Vendor Identifier"
+  default 0xDEAD
+  ---help---
+  Device vendor identifier (VID value of [VID:PID] pair)
 
+config USR_LIB_USBCTRL_FW_DEV_PRODUCTID
+  hex "USB Product Identifier"
+  default 0xCAFE
+  ---help---
+  Device  product identifier (PID value of [VID:PID] pair)
 
 
 endmenu
@@ -81,6 +98,14 @@ config USBCTRL_DFU_MAX_CTX
   that the libusbctrl can handle in the same time.
   Depending on the hardware (and software) design, it can be 1, 2 or in some rare
   time more.
+
+config USR_LIB_USBCTRL_DFU_DEV_PRODUCTID
+  hex "USB Product Identifier"
+  default 0xCAFE
+  ---help---
+  Device  product identifier (PID value of [VID:PID] pair)
+
+
 
 endmenu
 
@@ -149,18 +174,6 @@ config USB_DEV_REVISION
   default "0001"
   ---help---
   Device current revision
-
-config USB_DEV_VENDORID
-  hex "USB Vendor Identifier"
-  default 0xDEAD
-  ---help---
-  Device vendor identifier (VID value of [VID:PID] pair)
-
-config USB_DEV_PRODUCTID
-  hex "USB Product Identifier"
-  default 0xCAFE
-  ---help---
-  Device  product identifier (PID value of [VID:PID] pair)
 
 # automatically built blocks
 # index of prodname in sent descriptor table

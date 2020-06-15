@@ -169,8 +169,8 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             desc->bDeviceSubClass = 0;
             desc->bDeviceProtocol = 0;
             desc->bMaxPacketSize = 64; /* on EP0 */
-            desc->idVendor = CONFIG_USB_DEV_VENDORID;
-            desc->idProduct = CONFIG_USB_DEV_PRODUCTID;
+            desc->idVendor = CONFIG_USR_LIB_USBCTRL_DEV_VENDORID;
+            desc->idProduct = CONFIG_USR_LIB_USBCTRL_DEV_PRODUCTID;
             desc->bcdDevice = 0x000;
             desc->iManufacturer = CONFIG_USB_DEV_MANUFACTURER_INDEX;
             desc->iProduct = CONFIG_USB_DEV_PRODNAME_INDEX;
