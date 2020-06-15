@@ -27,9 +27,11 @@
 #include "libc/types.h"
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"
-#include "libc/sanhandlers.h"
+
 #if defined(__FRAMAC__)
 #include "driver_api/usbotghs_frama.h"
+#else
+#include "libc/sanhandlers.h"
 #endif
 
 /*
