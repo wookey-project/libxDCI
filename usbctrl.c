@@ -131,7 +131,7 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
         volatile usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
     #endif/*!__FRAMAC__*/
 
-    num_ctx++;  
+    num_ctx++;
     //@ ghost GHOST_num_ctx = num_ctx ;
 
 
@@ -269,14 +269,14 @@ end:
     @ behavior not_found :
     @	assumes ctx != \null && handler != \null ;
     @	assumes \forall integer i ; 0 <= i < num_ctx ==> &(ctx_list[i]) != ctx ;
-    @	assigns \nothing ;   
+    @	assigns \nothing ;
     @	ensures \result == MBED_ERROR_NOTFOUND ;
 
 	@ behavior found :
     @	assumes ctx != \null && handler != \null ;
     @	assumes \exists integer i ; 0 <= i < num_ctx && &(ctx_list[i]) == ctx ;
     @ 	assigns *handler ;
-    @ 	ensures \result == MBED_ERROR_NONE  ;  
+    @ 	ensures \result == MBED_ERROR_NONE  ;
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -327,14 +327,14 @@ end:
     @ behavior not_found :
     @	assumes ctx != \null ;
     @	assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != device_id ;
-    @	assigns \nothing ;    
+    @	assigns \nothing ;
     @	ensures \result == MBED_ERROR_NOTFOUND ;
 
 	@ behavior found :
     @	assumes ctx != \null ;
     @	assumes \exists integer i ; 0 <= i < num_ctx && ctx_list[i].dev_id == device_id ;
     @ 	assigns *ctx ;
-    @ 	ensures \result == MBED_ERROR_NONE ;  
+    @ 	ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -401,7 +401,7 @@ end:
     @   assumes ep != EP0 ;
     @   assumes (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
     				 ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep);
-    @   ensures \result == \true ;   
+    @   ensures \result == \true ;
 
     @ complete behaviors;
     @ disjoint behaviors;
@@ -682,7 +682,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
         volatile usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]) ;
     #endif/*!__FRAMAC__*/
 
-    ep->configured = false; 
+    ep->configured = false;
     /*@ assert ctx_list[ctxh].cfg[iface_config].interfaces[iface_num].eps[i].configured == false ; */
 
 
@@ -748,8 +748,10 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
     #endif/*!__FRAMAC__*/
 
 
+#ifndef __FRAMAC__
     ADD_LOC_HANDLER(usbctrl_handle_inepevent)
     ADD_LOC_HANDLER(usbctrl_handle_outepevent)
+#endif
 
     log_printf("[USBCTRL] configuring backend driver\n");
     //PMO
@@ -866,7 +868,7 @@ void test_fcn_usbctrl(){
 
     usbctrl_declare(dev_id, &ctxh);
 
- 
+
 
     /*@ assert 0 <= num_ctx < MAX_USB_CTRL_CTX ; */
 
@@ -878,7 +880,7 @@ void test_fcn_usbctrl(){
     usbctrl_context_t *ctx1 = NULL;
 
 
-    //@ assert GHOST_num_ctx == num_ctx ; 
+    //@ assert GHOST_num_ctx == num_ctx ;
     usbctrl_get_context(dev_id, &ctx1);
     usbctrl_declare_interface(ctxh, &iface_2);
     usbctrl_get_interface((usbctrl_context_t *)&(ctx_list[ctxh]), iface);

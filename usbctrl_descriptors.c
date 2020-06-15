@@ -493,8 +493,12 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                             if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {
                                 log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
                             }
-                            //uint32_t max_buf_size = *desc_size - curr_offset;
+#ifndef __FRAMAC__
+                            /* FIXME: there is a RTE here, to check if the semantic of __FRAMAC__ version is okay, using a noRTE statement globaly */
+                            uint32_t max_buf_size = *desc_size - curr_offset;
+#else
                             uint32_t max_buf_size = curr_offset ;  // Cyril : pour faire passer framaC sans erreur...
+#endif
                             // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
                             // Cyril : probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset;
 
@@ -581,18 +585,18 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                     */
                                       // Cyril : pour faire passer frama, on peut faire un compteur max de 9 (poll a 8 bits) pour faire un variant sur ce compteur...
                                       // ou 9 -i en variant
-                                    while (!(poll & 0x1) || compteur_poll > 0) {
+                                    while (!(poll & 0x1) && compteur_poll > 0) {
                                         poll >>= 1;
                                         i++;
-                                        compteur_poll -- ;
+                                        compteur_poll-- ;
                                     }
                                     /* binary shift left by 2, to handle (interval-1)*125us from a value in milisecond */
                                     i+=2;
                                     cfg->bInterval = i;
-                                 } else {
+                                } else {
                                     /* in Fullspeed, the bInterval field is directly set in ms, between 1 and 255 */
                                     cfg->bInterval = poll;
-                                  }
+                                }
                             } else {
                                 /* for BULK EP, we set bInterval to 0 */
                                 cfg->bInterval = 0;
