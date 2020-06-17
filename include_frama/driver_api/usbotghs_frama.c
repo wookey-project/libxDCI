@@ -473,9 +473,9 @@ uint32_t usbotghs_get_ep_mpsize(void)
  * We must wait data sent IT to be sure that content is effectively transmitted
  */
 
-/*@
+/* @
     @ requires \valid(src);
-    @ requires \separated(src,&usbotghs_ctx);
+    @ requires \separated(src,&usbotghs_ctx, &usbotghs_ctx.in_eps[0..255]);
 
     @ behavior bad_ctx:
     @   assumes &usbotghs_ctx == \null ;
@@ -507,6 +507,46 @@ uint32_t usbotghs_get_ep_mpsize(void)
     @ assigns usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id) ,*r_CORTEX_M_USBOTG_HS_DOEPTSIZ(ep_id), *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), 
                 *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id), usbotghs_ctx.in_eps[ep_id],
                  usbotghs_ctx.in_eps[ep_id].fifo[usbotghs_ctx.in_eps[ep_id].fifo_idx] ;
+            
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+
+*/
+
+/*@
+    @ requires \valid(src);
+    @ requires \separated(src,&usbotghs_ctx, &usbotghs_ctx.in_eps[ep_id].fifo[usbotghs_ctx.in_eps[ep_id].fifo_idx], 
+            r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id) ,r_CORTEX_M_USBOTG_HS_DOEPTSIZ(ep_id), r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), 
+                r_CORTEX_M_USBOTG_HS_GINTMSK, USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id));
+    @ assigns usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id) ,*r_CORTEX_M_USBOTG_HS_DOEPTSIZ(ep_id), *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), 
+                *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id), usbotghs_ctx.in_eps[ep_id],
+                 usbotghs_ctx.in_eps[ep_id].fifo[usbotghs_ctx.in_eps[ep_id].fifo_idx] ;
+
+    @ behavior bad_ctx:
+    @   assumes &usbotghs_ctx == \null ;
+    @   assigns \nothing ;
+    @   ensures \result == MBED_ERROR_INVSTATE ;
+
+    @ behavior not_configured:
+    @   assumes &usbotghs_ctx != \null ;
+    @   assumes ((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false)); // Cyril : il faut tenir compte de la variable CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE...
+    @   ensures \result == MBED_ERROR_INVSTATE ;
+
+    @ behavior set_fifo_error:  
+    @   assumes &usbotghs_ctx != \null ;   
+    @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false));
+    @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck != 0)  ; 
+    @   ensures \old(usbotghs_ctx) ≡ usbotghs_ctx;
+    @   ensures \result == MBED_ERROR_INVSTATE ;  // Cyril invparam atteint dans usbotghs_set_xmit_fifo si non configuré, cas traité avant
+    
+    @ behavior fifo_no_error:
+    @   assumes &usbotghs_ctx != \null ;
+    @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false));
+    @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck == 0)  ;    
+    @   ensures \result == MBED_ERROR_BUSY || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
+    @   ensures (usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN || usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_DATA_IN_WIP
+                    || usbotghs_ctx.in_eps[ep_id].state == USBOTG_HS_EP_STATE_IDLE)  ;
+
             
     @ complete behaviors ;
     @ disjoint behaviors ;
