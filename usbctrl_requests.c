@@ -504,21 +504,57 @@ err:
 static mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t *pkt,
                                                          usbctrl_context_t *ctx)
 {
+    /* GET_INTERFACE request is used to request an alternate setting when using
+     * interfaces in a same configuration that use mutually exclusive settings.
+     * This is not our case, as we used differenciated configurations instead.
+     * As a consequence, we return INVALID_REQUEST here.
+     */
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] Std req: get iface\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
-        /*request finish here */
-        ctx->ctrl_req_processing = false;
         goto err;
     }
-    /* handling standard Request */
-    pkt = pkt;
-    ctx = ctx;
-    /*request finish here */
-    ctx->ctrl_req_processing = false;
+    /* handling standard Request, get back needed values */
+    uint8_t iface_id = (pkt->wIndex & 0x7f);
+    uint16_t length = pkt->wLength;
+
+    if (pkt->wValue != 0) {
+        /* this field must be set to 0 */
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+        errcode = MBED_ERROR_INVPARAM;
+    }
+    if (length != 1) {
+        /* data length *must* be 1. When valid, the device returns the alternate
+         * setting */
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    if (usbctrl_is_interface_exists(ctx, iface_id) == false) {
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    /* let's respond to the request */
+    switch (usbctrl_get_state(ctx)) {
+        case USB_DEVICE_STATE_DEFAULT:
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        case USB_DEVICE_STATE_ADDRESS:
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        default:
+            /* this should never be reached with the is_std_requests_allowed() function */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+    }
 err:
+    ctx->ctrl_req_processing = false;
     return errcode;
 }
 
@@ -1413,6 +1449,18 @@ err:
 static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *pkt __attribute__((unused)),
                                                           usbctrl_context_t *ctx)
 {
+    /* TODO: this implementation is more complex.
+     *  The goal of this request here is to handle the following:
+     *  if there is more than one configuration in the context, the host can request
+     *  a SetDescriptor, typically for the configuration descriptor. This requires for
+     *  the device to switch from one configuration to another. In that case, previously
+     *  mapped and activated endpoints (other than 0) must be deactivated, and the newly
+     *  requested configuration interfaces and associated endpoints must be enabled.
+     *
+     *  This action can be done at ADDRESS and CONFIGURED state from the host.
+     *  As the libxDCI handles potential multiple configurations, this request *must* be
+     *  handled, at least for the SET_DESCRIPTOR(CONFIGURATION_DESCRIPTOR) request.
+     */
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] Std req: set descriptor\n");
     if (!is_std_requests_allowed(ctx)) {
@@ -1468,21 +1516,47 @@ err:
 static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
 {
+    /* SET_FEATURE is made to activate device/interface and endpoint testing modes.
+     * This is efficient for hardware-based devices stacks for which debugging is
+     * made through the USB protocol only (no software debug is possible.
+     * In our case, the USB control stack is a full software implementation, and
+     * to avoid any vulnerability associated to a complex switch to a test mode of
+     * the stack, we return an INVALID_REQUEST here.
+     */
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] Std req: set feature\n");
     if (!is_std_requests_allowed(ctx)) {
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
-        /* request finish here */
-        ctx->ctrl_req_processing = false;
         goto err;
     }
-    /* handling standard Request */
-    pkt = pkt;
-    usb_backend_drv_send_zlp(0);
-    /*request finish here */
-    ctx->ctrl_req_processing = false;
+    /* handling standard Request, get back needed values */
+    uint16_t length = pkt->wLength;
+
+    if (length != 0) {
+        /* data length *must* be 0. There is no DATA stage after this SETUP stage */
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    /* let's respond to the request */
+    switch (usbctrl_get_state(ctx)) {
+        case USB_DEVICE_STATE_DEFAULT:
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        case USB_DEVICE_STATE_ADDRESS:
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        default:
+            /* this should never be reached with the is_std_requests_allowed() function */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+    }
 err:
+    ctx->ctrl_req_processing = false;
     return errcode;
 }
 
@@ -1512,6 +1586,12 @@ err:
 static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pkt,
                                                          usbctrl_context_t *ctx)
 {
+    /* This request permit to select interfaces of a same configuration which
+     * are mutually exclusive.
+     * This type of profile is not handled by the libxDCI, which, instead, handle
+     * multiple configurations with mutually exclusive interfaces in it.
+     * As a consequence, we return a STALL response to this request.
+     * See SET_CONFIGURATION request instead. */
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] Std req: set interface\n");
     if (!is_std_requests_allowed(ctx)) {
@@ -1519,11 +1599,44 @@ static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pk
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
-    /* handling standard Request */
-    pkt = pkt;
-    usb_backend_drv_send_zlp(0);
+    /* handling standard Request, get back needed values */
+    uint8_t iface_id = (pkt->wIndex & 0x7f);
+    uint16_t length = pkt->wLength;
+    if (length != 0) {
+        /* data length *must* be 0. There is no DATA stage after this SETUP stage */
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    if (usbctrl_is_interface_exists(ctx, iface_id) == false) {
+        /* if the targetted ep does not exist in the current configuration, this
+         * request is invalid. */
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+
+    /* let's respond to the request */
+    switch (usbctrl_get_state(ctx)) {
+        case USB_DEVICE_STATE_DEFAULT:
+            /* on DEFAULT state, USB 2.0 says 'undefined behavior', here, we stall */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        case USB_DEVICE_STATE_ADDRESS:
+            /* USB 2.0 says that we repond with a 'request error' */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            /* here, we supports only default settings for all our interfaces.
+             * we respond a request error */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        default:
+            /* this should never be reached with the is_std_requests_allowed() function */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+    }
 err:
-    /*request finish here */
     ctx->ctrl_req_processing = false;
     return errcode;
 }
@@ -1554,6 +1667,28 @@ err:
 static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
 {
+    /* Set an endpoint syncrhonization frame
+     *
+     * When an endpoint supports isochronous transfers, the endpoint may also require
+     * per-frame transfers to vary in size according to a specific pattern. The host
+     * and the endpoint must agree on which frame the repeating pattern begins.
+     * The number of the frame in which the pattern began is returned to the host.
+     * If a high-speed device supports the Synch Frame request, it must internally
+     * synchronize itself to the zeroth microframe and have a time notion of classic
+     * frame. Only the frame number is used to synchronize and reported by the device
+     * endpoint (i.e., no microframe number). The endpoint must synchronize to the
+     * zeroth microframe.
+     * This value is only used for isochronous data transfers using implicit pattern
+     * synchronization. If wValue is non-zero or wLength is not two, then the behavior
+     * of the device is not specified.
+     * If the specified endpoint does not support this request, then the device will
+     * respond with a Request Error.
+     *
+     * In the current implementation of the libxDCI, SYNC_FRAME is not supported as
+     * there is no frame/micro-frame count (it requires a lot of CPU cycles).
+     * This may be updated later using hardware-assisted calculation.
+     * Thus, we implement the request sanitation.
+     */
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] Std req: sync_frame\n");
     if (!is_std_requests_allowed(ctx)) {
@@ -1561,10 +1696,49 @@ static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt,
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
-    /* handling standard Request */
-    pkt = pkt;
-    usb_backend_drv_send_zlp(0);
+    /* handling standard Request, get back needed values */
+    /* ep_id is mapped on 7 lower bits are USB standard defines up to 127 endpoints */
+    /* NOTE: Here Frama-C will have to accept that a binary mask ensure that the
+     * resulted value can be set in a uint8_t type */
+    uint8_t ep_id = (pkt->wIndex & 0x7f);
+    uint16_t length = pkt->wLength;
+    if (length != 2) {
+        /* data length *must* be 2. The DATA packet received next should be of size 2 */
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    if (usbctrl_is_endpoint_exists(ctx, ep_id) == false) {
+        /* if the targetted ep does not exist in the current configuration, this
+         * request is invalid. */
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+
+    /* let's respond to the request */
+    switch (usbctrl_get_state(ctx)) {
+        case USB_DEVICE_STATE_DEFAULT:
+            /* on DEFAULT state, USB 2.0 says 'undefined behavior', here, we stall */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        case USB_DEVICE_STATE_ADDRESS:
+            /* USB 2.0 says that we repond with a 'request error' */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            /* here, this is a valid request, but while we do not support SYNC_FRAME,
+             * we respond a request error */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+        default:
+            /* this should never be reached with the is_std_requests_allowed() function */
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+            break;
+
+    }
 err:
+    ctx->ctrl_req_processing = false;
     return errcode;
 }
 

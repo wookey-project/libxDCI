@@ -46,17 +46,17 @@
 
 
 #define ZERO_LENGTH_PACKET 0
-#define OUT_NAK     0x01
-#define DataOUT     0x02
-#define Data_Done   0x03
-#define SETUP_Done  0x04
-#define SETUP       0x06
+#define OUT_NAK		0x01
+#define DataOUT		0x02
+#define Data_Done	0x03
+#define SETUP_Done	0x04
+#define SETUP		0x06
 
 #define USB_REG_CHECK_TIMEOUT 50
 #define MAX_EPx_PKT_SIZE 512
 
-#define USBOTG_HS_RX_FIFO_SZ    512
-#define USBOTG_HS_TX_FIFO_SZ    512
+#define USBOTG_HS_RX_FIFO_SZ 	512
+#define USBOTG_HS_TX_FIFO_SZ	512
 
 #define USBOTG_HS_DEBUG 0
 
@@ -93,7 +93,7 @@ static void usbotghs_wait_for_xmit_complete(usbotghs_ep_t *ep)
 
 static const char *devname = "usb-otg-hs";
 /* buffer for setup packets */
-// TODO to use static uint8_t   setup_packet[8];
+// TODO to use static uint8_t 	setup_packet[8];
 
 /* local context. Only one as there is one USB OTG device per SoC */
 
@@ -202,14 +202,14 @@ mbed_error_t usbotghs_declare(void)
                  USBOTG_HS_GINTMSK_IEPINT_Msk   |
 //XXX:                 USBOTG_HS_GINTMSK_NPTXFEM_Msk  |
                  USBOTG_HS_GINTMSK_PTXFEM_Msk   |
-                 USBOTG_HS_GINTMSK_RXFLVLM_Msk;
+				 USBOTG_HS_GINTMSK_RXFLVLM_Msk;
     usbotghs_ctx.dev.irqs[0].posthook.action[3].and.mode = 1; /* binary inversion */
 
 
     /* Now let's configure the GPIOs */
     usbotghs_ctx.dev.gpio_num = 13;
 
-    /* ULPI_D0 */
+	/* ULPI_D0 */
     usbotghs_ctx.dev.gpios[0].mask         = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED | GPIO_MASK_SET_AFR;
     usbotghs_ctx.dev.gpios[0].kref.port    = usb_otg_hs_dev_infos.gpios[USB_HS_ULPI_D0].port;
     usbotghs_ctx.dev.gpios[0].kref.pin     = usb_otg_hs_dev_infos.gpios[USB_HS_ULPI_D0].pin; /* 3 */
@@ -219,7 +219,7 @@ mbed_error_t usbotghs_declare(void)
     usbotghs_ctx.dev.gpios[0].speed        = GPIO_PIN_VERY_HIGH_SPEED;
     usbotghs_ctx.dev.gpios[0].afr          = GPIO_AF_OTG_HS;
 
-    /* ULPI_CLK */
+	/* ULPI_CLK */
     usbotghs_ctx.dev.gpios[1].mask         = GPIO_MASK_SET_MODE | GPIO_MASK_SET_PUPD | GPIO_MASK_SET_TYPE | GPIO_MASK_SET_SPEED | GPIO_MASK_SET_AFR;
     usbotghs_ctx.dev.gpios[1].kref.port    = usb_otg_hs_dev_infos.gpios[USB_HS_ULPI_CLK].port;
     usbotghs_ctx.dev.gpios[1].kref.pin     = usb_otg_hs_dev_infos.gpios[USB_HS_ULPI_CLK].pin; /* 3 */
@@ -484,13 +484,13 @@ uint32_t usbotghs_get_ep_mpsize(void)
     @   assigns \nothing ;
 
     @ behavior not_configured:
-    @   assumes &usbotghs_ctx != \null ;
+    @	assumes &usbotghs_ctx != \null ;
     @   assumes ((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false)); // Cyril : il faut tenir compte de la variable CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE...
     @   ensures \result == MBED_ERROR_INVSTATE ;
     @   assigns \nothing ;
 
     @ behavior set_fifo_error:
-    @   assumes &usbotghs_ctx != \null ;
+    @	assumes &usbotghs_ctx != \null ;
     @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false));
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck != 0)  ;
     @   ensures \old(usbotghs_ctx) ≡ usbotghs_ctx;
@@ -498,7 +498,7 @@ uint32_t usbotghs_get_ep_mpsize(void)
     @   assigns usbotghs_ctx ;
 
     @ behavior fifo_no_error:
-    @   assumes &usbotghs_ctx != \null ;
+    @	assumes &usbotghs_ctx != \null ;
     @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false));
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck == 0)  ;
     @   ensures \result == MBED_ERROR_BUSY || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
@@ -688,25 +688,25 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 
        //PMO loop assigns cpt sortie non standard
        /*@
-               @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-               @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DSTS);
-               @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
-               @ loop invariant 0<=cpt<= CPT_HARD ;
-               @ loop assigns cpt ;
-               @ loop variant CPT_HARD - cpt ;
+	           @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
+	           @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DSTS);
+	           @ loop invariant ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
+	           @ loop invariant 0<=cpt<= CPT_HARD ;
+	           @ loop assigns cpt ;
+	           @ loop variant CPT_HARD - cpt ;
        */
        //PMO ajout compteur matériel
        for (uint8_t cpt=0; cpt<CPT_HARD; cpt++)
-     {
-       if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (ep->mpsize / 4)) {
-         if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){ // !((mask == 0x00) || (pos > 31)) : condition pour avoir get_reg return != 0
-           log_printf("[USBOTG][HS] Suspended!\n");                        // get_reg_value(REG, BITS##_Msk, BITS##_Pos)
+	 {
+	   if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (ep->mpsize / 4)) {
+	     if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){ // !((mask == 0x00) || (pos > 31)) : condition pour avoir get_reg return != 0
+	       log_printf("[USBOTG][HS] Suspended!\n");                        // get_reg_value(REG, BITS##_Msk, BITS##_Pos)
                                                                             // return (uint32_t) (((*reg) & mask) >> pos);
-           errcode = MBED_ERROR_BUSY;
-           goto err;
-         }
-       }
-     }
+	       errcode = MBED_ERROR_BUSY;
+	       goto err;
+	     }
+	   }
+	 }
 
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE  // Cyril : je suis dans ce cas
         ep->state = USBOTG_HS_EP_STATE_DATA_IN;
@@ -746,20 +746,20 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
     //PMO loop assigns pas errcode
     while (residual_size >= fifo_size) {
       /*@
-    @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-    @ loop invariant 0<=cpt<= CPT_HARD ;
-    @ loop assigns cpt ;
-    @ loop variant CPT_HARD - cpt ;
+	@ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
+	@ loop invariant 0<=cpt<= CPT_HARD ;
+	@ loop assigns cpt ;
+	@ loop variant CPT_HARD - cpt ;
       */
       //PMO compteur hardware
       for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
-           if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {  // Cyril : est-ce que c'est utile de différentier les comportements en fonction de get_reg?
-               if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){                                  // de manière générale, que veut on prouver avec send data?
-                   log_printf("[USBOTG][HS] Suspended!\n");
-                   errcode = MBED_ERROR_BUSY;
-                   goto err;
-               }
-           }
+	       if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (fifo_size / 4)) {  // Cyril : est-ce que c'est utile de différentier les comportements en fonction de get_reg?
+	           if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){                                  // de manière générale, que veut on prouver avec send data?
+	               log_printf("[USBOTG][HS] Suspended!\n");
+	               errcode = MBED_ERROR_BUSY;
+	               goto err;
+	           }
+	       }
         }
 
         if (residual_size == fifo_size) {
@@ -791,15 +791,15 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
         /* wait while there is enough space in TxFIFO */
 
       /*@
-    @ loop invariant 0<=cpt<= CPT_HARD ;
-    @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-    @ loop invariant  ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
-    @ loop assigns cpt ;
-    @ loop variant CPT_HARD - cpt;
+	@ loop invariant 0<=cpt<= CPT_HARD ;
+	@ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
+	@ loop invariant  ep->state == USBOTG_HS_EP_STATE_DATA_IN_WIP;
+	@ loop assigns cpt ;
+	@ loop variant CPT_HARD - cpt;
       */
       //PMO compteur hardware
       for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
-    if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV)  < ((residual_size / 4) + (residual_size & 3 ? 1 : 0))) {
+	if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV)  < ((residual_size / 4) + (residual_size & 3 ? 1 : 0))) {
             if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
                 log_printf("[USBOTG][HS] Suspended!\n");
                 errcode = MBED_ERROR_BUSY;
@@ -878,12 +878,12 @@ mbed_error_t usbotghs_send_zlp(uint8_t ep_id)
     //PMO compteur hardware
     for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
      if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) <
-         USBOTG_HS_TX_CORE_FIFO_SZ / 4) {
-    // Are we suspended?
-    if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
-      log_printf("[USBOTG][HS] Suspended!\n");
-      errcode = MBED_ERROR_BUSY;
-      goto err;
+	     USBOTG_HS_TX_CORE_FIFO_SZ / 4) {
+	// Are we suspended?
+	if (get_reg(r_CORTEX_M_USBOTG_HS_DSTS, USBOTG_HS_DSTS_SUSPSTS)){
+	  log_printf("[USBOTG][HS] Suspended!\n");
+	  errcode = MBED_ERROR_BUSY;
+	  goto err;
         }
       }
     }
@@ -942,21 +942,21 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
                 goto err;
             }
             /* wait for end of current transmission */
-        /*@
-          @ loop invariant 0<=cpt<= CPT_HARD ;
-          @ loop assigns cpt, count ;
-          @ loop variant CPT_HARD - cpt ;
-        */
-        //PMO compteur hardware
-        for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
-          if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
+	    /*@
+	      @ loop invariant 0<=cpt<= CPT_HARD ;
+	      @ loop assigns cpt, count ;
+	      @ loop variant CPT_HARD - cpt ;
+	    */
+	    //PMO compteur hardware
+	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-                  log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
-                  errcode = MBED_ERROR_BUSY;
-                  goto err;
+		          log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
+		          errcode = MBED_ERROR_BUSY;
+		          goto err;
             }
-          }
-        }
+	      }
+	    }
 
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_SNAK_Msk);
             if (ep_id == 0) {
@@ -973,21 +973,21 @@ mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
                 goto err;
             }
             /* wait for end of current transmission */
-        /*@
-          @ loop invariant 0<=cpt<= CPT_HARD ;
-          @ loop assigns cpt, count ;
-          @ loop variant CPT_HARD - cpt ;
-        */
-        //PMO compteur hardware
-        for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
-          //while (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {  // Cyril : voir avec Philippe comment faire un compteur pour ce while
+	    /*@
+	      @ loop invariant 0<=cpt<= CPT_HARD ;
+	      @ loop assigns cpt, count ;
+	      @ loop variant CPT_HARD - cpt ;
+	    */
+	    //PMO compteur hardware
+	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	      //while (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {  // Cyril : voir avec Philippe comment faire un compteur pour ce while
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-                      log_printf("[USBOTG][HS] HANG! DOEPCTL:EPENA\n");
-                      errcode = MBED_ERROR_BUSY;
-                      goto err;
+		              log_printf("[USBOTG][HS] HANG! DOEPCTL:EPENA\n");
+		              errcode = MBED_ERROR_BUSY;
+		              goto err;
                 }
-          //}
-        }
+	      //}
+	    }
 
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DIEPCTL_SNAK_Msk);
             break;
@@ -1204,23 +1204,23 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
             }
             /* wait for end of current transmission */
 
-        /*@
-          @ loop invariant 0<=cpt<= CPT_HARD ;
-          @ loop assigns count, cpt ;
-          @ loop variant CPT_HARD - cpt;
-        */
-        //PMO compteur hardware
-        for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
-          if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
+	    /*@
+	      @ loop invariant 0<=cpt<= CPT_HARD ;
+	      @ loop assigns count, cpt ;
+	      @ loop variant CPT_HARD - cpt;
+	    */
+	    //PMO compteur hardware
+	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPENA_Msk, USBOTG_HS_DIEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
-                      log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
-                      errcode = MBED_ERROR_BUSY;
-                      goto err;
+		              log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
+		              errcode = MBED_ERROR_BUSY;
+		              goto err;
                 }
 
                 continue; //FIXME TIMEOUT
-          }
-        }
+	      }
+	    }
 
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_EPDIS_Msk);
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), USBOTG_HS_DIEPCTL_STALL_Msk);
@@ -1235,21 +1235,21 @@ mbed_error_t usbotghs_endpoint_stall(uint8_t ep_id, usbotghs_ep_dir_t dir)
                 goto err;
             }
             /* wait for end of current transmission */
-        /*@
-          @ loop invariant 0<=cpt<= CPT_HARD ;
-          @ loop assigns count, cpt ;
-          @ loop variant CPT_HARD - cpt;
-        */
-        //PMO compteur hardware
-        for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
-          if (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
+      	/*@
+	      @ loop invariant 0<=cpt<= CPT_HARD ;
+	      @ loop assigns count, cpt ;
+	      @ loop variant CPT_HARD - cpt;
+	    */
+	    //PMO compteur hardware
+	    for(uint8_t cpt=0; cpt<CPT_HARD; cpt++){
+	      if (get_reg_value(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPENA_Msk, USBOTG_HS_DOEPCTL_EPENA_Pos))  {
                 if (++count > USBOTGHS_REG_CHECK_TIMEOUT){
                     log_printf("[USBOTG][HS] HANG! DIEPCTL:EPENA\n");
                     errcode = MBED_ERROR_BUSY;
                     goto err;
                 }
-          }
-        }
+	      }
+	    }
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_EPDIS_Msk);
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id), USBOTG_HS_DOEPCTL_STALL_Msk);
             break;
@@ -1441,11 +1441,11 @@ mbed_error_t usbotghs_deconfigure_endpoint(uint8_t ep)
     }
 
     clear_reg_bits(r_CORTEX_M_USBOTG_HS_GINTMSK, USBOTG_HS_GINTMSK_NPTXFEM_Msk | USBOTG_HS_GINTMSK_RXFLVLM_Msk);
-    if (ctx->in_eps[ep].configured == true) {  // Cyril : RTE : aucun test sur ep, donc ça peut dépasser la taille du tableau
+    if (ctx->in_eps[ep].configured == true) {  // Cyril : potentiel bug (avec EVA) : aucun test sur ep, donc ça peut dépasser la taille du tableau
         clear_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep),
                 USBOTG_HS_DIEPCTL_EPENA_Msk);
     }
-    if (ctx->out_eps[ep].configured == true) {  // Cyril : RTE : aucun test sur ep, donc ça peut dépasser la taille du tableau
+    if (ctx->out_eps[ep].configured == true) {  // Cyril : potentiel bug (avec EVA) : aucun test sur ep, donc ça peut dépasser la taille du tableau
         clear_reg_bits(r_CORTEX_M_USBOTG_HS_DOEPCTL(ep),
                 USBOTG_HS_DOEPCTL_EPENA_Msk);
     }
@@ -2061,10 +2061,8 @@ mbed_error_t usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep)
 
     //usbotghs_write_core_fifo(&(ep->fifo[ep->fifo_idx]), size, ep->id);  // Cyril : commenté car pb de cast et d'accès mémoire
 
-      /* 
-        RTE : je ne le voyais pas avant car la fonction usbotghs_write_core_fifo ne termine pas correctement 
-      assert rte: unsigned_overflow: ep->fifo_idx + size ≤ 4294967295; 
-    */
+      /* assert rte: unsigned_overflow: ep->fifo_idx + size ≤ 4294967295; */  //cyril : attention, RTE ici (je ne le voyais pas avant car la fonction
+      //	usbotghs_write_core_fifo ne termine pas correctement )
 
     ep->fifo_idx += size;
     ep->fifo_lck = false;

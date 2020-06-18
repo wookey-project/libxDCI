@@ -16,6 +16,16 @@ config USR_LIB_USBCTRL_DEV_VENDORID
   Device vendor identifier (VID value of [VID:PID] pair)
 
 
+if !USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
+
+config USR_LIB_USBCTRL_FW_DEV_PRODUCTID
+  hex "USB Product Identifier"
+  default 0xCAFE
+  ---help---
+  Device  product identifier (PID value of [VID:PID] pair)
+
+endif
+
 
 config USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
   bool "Make Firmware and DFU mode features differenciated"
