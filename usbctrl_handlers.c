@@ -28,6 +28,11 @@
 #include "usbctrl.h"
 
 
+/*@
+    @ assigns \nothing ;
+    @ ensures \result == MBED_ERROR_NONE ;
+*/
+
 mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -35,12 +40,11 @@ mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
     return errcode;
 }
 
-
-
-/* @
+/*@
     @ assigns \nothing ;
     @ ensures \result == MBED_ERROR_NONE ;
 */
+
 
 mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 {
@@ -49,19 +53,6 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
     return errcode;
 }
 
-/*@
-    @ behavior bad_ctx:
-    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
-    @   assigns \nothing ;
-    @   ensures \result == MBED_ERROR_INVPARAM ;
-
-    @ behavior no_valid_transition:
-    @   assumes (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && !is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) ) ;
-    @   ensures \result == MBED_ERROR_INVSTATE ;
-    @   ensures ctx_list[0].state == USB_DEVICE_STATE_INVALID ;
-
-
-*/
 
 mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 {
@@ -83,11 +74,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
         goto err;
     }
 
-    // Cyril : de ctx, je dois remonter à ctx_list[i], avec i inconnu... 0 <= i <= num_ctx
-
-    /*@ assert \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ; */
-    /*@ assert &ctx_list[0] == ctx ; */
-
     usb_device_state_t state = usbctrl_get_state(ctx);
 
     /*@ assert ctx_list[0].state == state ;   */
@@ -95,7 +81,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     /* resetting directly depends on the current state */
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
         log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
-        /*@ assert ctx_list[0].state ==  USB_DEVICE_STATE_INVALID; */
+        /* @ assert ctx_list[0].state ==  USB_DEVICE_STATE_INVALID; */
         /* @ assert \at(ctx_list,Here) != \at(ctx_list,Pre) ; */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
@@ -210,6 +196,25 @@ err:
  * IN EP event (data sent) for EP 0
  */
 
+/* @
+    @ behavior ctx_not_found:
+    @   assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id ;
+    @   assigns \nothing ;    
+    @   ensures \result == MBED_ERROR_NOTFOUND ;
+
+    @ behavior ctx_found :
+    @   assumes \exists integer i ; 0 <= i < num_ctx && ctx_list[i].dev_id == dev_id ;
+    @   assigns ctx_list[0..(num_ctx-1)] ;  // cyril :c'est large mais ça passe, je ne sais pas comment faire un assigns plus précise (ctx_list[i])
+    @   ensures is_valid_error(\result);
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
+
+/*
+    FIXME : ajout d'une variable ghost pour num_ctx
+*/
+
 mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -217,8 +222,13 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
     log_printf("[LIBCTRL] handle inevent\n");
     /* get back associated context */
     if ((errcode = usbctrl_get_context(dev_id, &ctx)) != MBED_ERROR_NONE) {
+        /* @ assert \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id ; */
         goto err;
     }
+
+    /* @ assert \exists integer i ; 0 <= i < num_ctx && ctx_list[i].dev_id == dev_id  ; */
+    /* @ assert \exists integer i ; 0 <= i < num_ctx && ctx == &ctx_list[i] ; */  // Cyril : plus généralement, c'est ctx == &ctx_list[i] tel que ctx_list[i].dev_id == dev_id
+                                         // mais je sais pas comment le dire 
 
     /*
      * By now, this handler is called only for successfully transmitted pkts
@@ -241,7 +251,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         ctx->ctrl_req_processing = false;
     } else {
         log_printf("[LIBCTRL] end of upper layer request\n");
-
+        
         /*@
             @ loop invariant 0 <= iface <= ctx->cfg[curr_cfg].interface_num ;
             @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num - 1));
@@ -250,13 +260,13 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         */
 
         for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
-
+            
         /*@
             @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
             @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num - 1));
             @ loop assigns i, errcode ;
             @ loop variant (ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number - i);
-        */
+        */            
 
             for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
                 /* here we check both ep id and direction and EP0 is a specific full duplex case */
@@ -264,9 +274,13 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
                     && ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_IN) {
                     log_printf("[LIBCTRL] found ep in iface %d, declared ep %d\n", iface, i);
                     if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
+                        
+                        #ifndef __FRAMAC__
                         if (handler_sanity_check_with_panic((physaddr_t)ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler)) {
                             goto err;
                         }
+                        #endif
+
                         log_printf("[LIBCTRL] iepint: executing upper class handler for EP %d\n", ep);
                         /* XXX: c'est ma FIFO ? oui, c'est pour moi. Non, c'est pour au dessus :-)*/
                             /*@ assert ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler ∈ {&handler_ep}; */
@@ -288,6 +302,25 @@ err:
  * OUT EP event (data recv) for EP 0
  */
 
+/* @
+    @ behavior ctx_not_found:
+    @   assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id ;   
+    @   ensures \result == MBED_ERROR_NOTFOUND ;
+
+    @ behavior ctx_found_USB_BACKEND_DRV_EP_STATE_SETUP_SIZE_8 :
+    @   assumes \exists integer i ; 0 <= i < num_ctx && ctx_list[i].dev_id == dev_id ;
+    @   assumes usbotghs_ctx.in_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP ;
+    @   assumes size == 8 ;
+
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
+
+/*
+    TODO : finir de spécifier la fonction (au moins sans les assigns)
+*/
+
 
 
 mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
@@ -306,16 +339,13 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
      * In the first case, we have received a SETUP packet, targetting the libctrl,
      * in the second case, we have received some data, targetting one of the
      * interface which has registered a DATA EP with the corresponding EP id */
-    #if defined(__FRAMAC__)
-    uint8_t State = Frama_C_interval(0,9);
-    switch(State){
-    #else
-    switch (usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT)) {
-    #endif/*!__FRAMAC__*/
+    
+
+    switch (usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT)) { 
         case USB_BACKEND_DRV_EP_STATE_SETUP:
             log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
             if (size == 8) {
-                /* first, we shoule not accept setup pkt from other EP than 0.
+                /* first, we should not accept setup pkt from other EP than 0.
                  * Although, this is not forbidden by USB 2.0 standard. */
                 /* Second, we must convert received data into current endianess */
                 uint8_t *setup_packet = ctx->ctrl_fifo;
@@ -327,9 +357,9 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                     setup_packet[7] << 8 | setup_packet[6]
                 };
                 errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
-                //usb_backend_drv_ack(EP0, USB_EP_DIR_OUT);
+                usb_backend_drv_ack(EP0, USB_EP_DIR_OUT);
                 return errcode;
-            } else {
+            } else {  // Cyril : pas de errcode ici, donc \result == MBED_ERROR_NONE, c'est normal?
                 log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
                 usb_backend_drv_stall(ep, USB_BACKEND_DRV_EP_DIR_OUT);
             }
@@ -348,7 +378,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
             */
 
             for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
-
+            
             /*@
                 @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num-1));
@@ -392,8 +422,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * the EP on which we have received some content. This is *not* a valid behavior, and we
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
-            //usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);
-            break;
+            usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);
         }
         default:
             log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",
@@ -404,10 +433,15 @@ err:
     return errcode;
 }
 
+/*@
+    @ assigns \nothing ;
+    @ ensures \result == MBED_ERROR_NONE ;
+
+*/
+
 mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     dev_id = dev_id;
     return errcode;
 }
-

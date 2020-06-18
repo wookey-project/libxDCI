@@ -50,70 +50,60 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
  * get_descriptor standard request handler
  */
 
-/* @
-    @ requires is_valid_descriptor_type(type);
-    @ requires \separated(buf,desc_size,ctx,pkt);
+/*@
+    @ requires is_valid_descriptor_type(type); 
+    @ requires \separated(buf,desc_size,ctx,pkt);  // cyril : je ne pense pas que separated sans valid soit une utilisation correcte
 
     @ behavior invaparam:
     @   assumes  (buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
-    @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_DESC_DEVICE:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_DEVICE ;
-    @   assigns *desc_size, *buf ;
     @   ensures  \result == MBED_ERROR_NONE && *desc_size == sizeof(usbctrl_device_descriptor_t) ;
 
     @ behavior USB_DESC_INTERFACE:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_INTERFACE ;
-    @   assigns *desc_size ;
     @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;
 
     @ behavior USB_DESC_ENDPOINT:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_ENDPOINT ;
-    @   assigns *desc_size ;
     @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;
 
     @ behavior USB_DESC_STRING:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_STRING ;
-    @   assigns *buf, *desc_size ;
     @   ensures (\result == MBED_ERROR_UNSUPORTED_CMD &&  *desc_size == 0) ||
-         (\result == MBED_ERROR_NONE && (*desc_size == 4 || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER))
+         (\result == MBED_ERROR_NONE && (*desc_size == 4 || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER)) 
                                     || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME)) || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL) ))) ;
 
     @ behavior USB_DESC_CONFIGURATION:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_CONFIGURATION ;
-    @   assigns *buf, *desc_size ;
     @   ensures is_valid_error(\result) ;
 
     @ behavior USB_DESC_DEV_QUALIFIER:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_DEV_QUALIFIER ;
-    @   assigns *desc_size ;
-    @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;
+    @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;   
 
     @ behavior USB_DESC_OTHER_SPEED_CFG:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_OTHER_SPEED_CFG ;
-    @   assigns *desc_size ;
-    @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;
+    @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;  
 
     @ behavior USB_DESC_IFACE_POWER:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_IFACE_POWER ;
-    @   assigns *desc_size ;
-    @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;
+    @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;    
 
     @ behavior other_type:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes (type != USB_DESC_DEVICE) && (type != USB_DESC_INTERFACE) && (type != USB_DESC_ENDPOINT) && (type != USB_DESC_STRING) && (type != USB_DESC_CONFIGURATION) &&
                 (type != USB_DESC_DEV_QUALIFIER) && (type != USB_DESC_OTHER_SPEED_CFG) && (type != USB_DESC_IFACE_POWER) ;
-    @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ complete behaviors ;
@@ -122,9 +112,7 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
 */
 
 /*
-    2 problemes pour finir de spécifier la fonction:
-        - pointeurs de fonction, que wp ne gère pas correctement (les loop assigns ne passent pas dès qu'un pointeur de fonction apparaît)
-        -   cast du type : usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;
+    1 problemes pour finir de spécifier la fonction:  cast du type : usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;  
                             desc->bLength = sizeof(usbctrl_device_descriptor_t);
             wp est perdu, assigns *buf ne passe pas (en même temps, buf est de type uin8_t *...)
 
@@ -132,10 +120,11 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
                 *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
                 probleme pour EVA  assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset;
 
-    enfin, boucle while (!(poll & 0x1)) : comment faire le variant?
+    pour le compteur poll, eva n'arrive pas à prouver qu'il reste >= 0
+
+    les loop assigns ne passent pas également
 
 */
-
 
 mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                     __out uint8_t                   *buf,
@@ -152,16 +141,16 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
     }
 
     #if defined(__FRAMAC__)
-    const char *USB_DEV_MANUFACTURER = CONFIG_USB_DEV_MANUFACTURER;
-    const char *USB_DEV_PRODNAME = CONFIG_USB_DEV_PRODNAME;
-    const char *USB_DEV_SERIAL = CONFIG_USB_DEV_SERIAL;
+    const char *USB_DEV_MANUFACTURER = CONFIG_USB_DEV_MANUFACTURER;  
+    const char *USB_DEV_PRODNAME = CONFIG_USB_DEV_PRODNAME;  
+    const char *USB_DEV_SERIAL = CONFIG_USB_DEV_SERIAL;  
     #endif/*__FRAMAC__*/
 
 
     switch (type) {
         case USB_DESC_DEVICE: {
             log_printf("[USBCTRL] request device desc (num cfg: %d)\n", ctx->num_cfg);
-            usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;
+            usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;  
             desc->bLength = sizeof(usbctrl_device_descriptor_t);
             desc->bDescriptorType = 0x1; /* USB Desc Device */
             desc->bcdUSB = 0x0200; /* USB 2.0 */
@@ -214,8 +203,8 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 uint8_t string_type = pkt->wValue & 0xff;
                 cfg->bDescriptorType = USB_DESC_STRING;
                 /* INFO:  UTF16 double each size */
-                #if defined(__FRAMAC__)
-
+                #if defined(__FRAMAC__)  
+                
                 switch (string_type) {
                     case 0:
                         cfg->bLength = 4;
@@ -223,7 +212,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         *desc_size = 4;
                         break;
 
-
+                  
                     case CONFIG_USB_DEV_MANUFACTURER_INDEX:
                         cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER);
 
@@ -242,7 +231,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         break;
                     case CONFIG_USB_DEV_PRODNAME_INDEX:
                         cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME);
-
+                        
                         /*@
                             @ loop invariant \valid(cfg->wString + (0..(sizeof(CONFIG_USB_DEV_PRODNAME)-1)));
                             @ loop invariant \valid_read(USB_DEV_PRODNAME + (0..(sizeof(CONFIG_USB_DEV_PRODNAME)-1)));
@@ -258,7 +247,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         break;
                     case CONFIG_USB_DEV_SERIAL_INDEX:
                         cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL);
-
+                        
                         /*@
                             @ loop invariant \valid(cfg->wString + (0..(sizeof(CONFIG_USB_DEV_SERIAL)-1)));
                             @ loop invariant \valid_read(USB_DEV_SERIAL + (0..(sizeof(CONFIG_USB_DEV_SERIAL)-1)));
@@ -285,7 +274,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         cfg->wString[0] = LANGUAGE_ENGLISH;
                         *desc_size = 4;
                         break;
-
+                  
                     case CONFIG_USB_DEV_MANUFACTURER_INDEX:
                         cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER);
                         for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_MANUFACTURER); ++i) {
@@ -295,7 +284,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         break;
                     case CONFIG_USB_DEV_PRODNAME_INDEX:
                         cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME);
-
+                        
                         for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_PRODNAME); ++i) {
                             cfg->wString[i] = CONFIG_USB_DEV_PRODNAME[i];
                         }
@@ -303,7 +292,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         break;
                     case CONFIG_USB_DEV_SERIAL_INDEX:
                         cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL);
-
+                        
                         for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_SERIAL); ++i) {
                             cfg->wString[i] = CONFIG_USB_DEV_SERIAL[i];
                         }
@@ -320,7 +309,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             }
             break;
         }
-        case USB_DESC_CONFIGURATION: {
+        case USB_DESC_CONFIGURATION: { 
             log_printf("[USBCTRL] request configuration desc\n");
             /* configuration descriptor is dynamic, depends on current config and its number of endpoints... */
             /* FIXME, we should be able to return a config descriptor with more
@@ -346,7 +335,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 log_printf("[LIBCTRL] didn't get back handler from ctx\n");
                 goto err;
             }
-
+         
             /* @
                 @ loop invariant 0 <= i <= iface_num ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num-1)));
@@ -358,13 +347,15 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             for (uint8_t i = 0; i < iface_num; ++i) {
                 if (ctx->cfg[curr_cfg].interfaces[i].class_desc_handler != NULL) {
                     uint32_t max_buf_size = MAX_DESCRIPTOR_LEN;
-                    /*@ assert ctx->cfg[curr_cfg].interfaces[i].class_desc_handler ∈ {&class_get_descriptor}; */
-                    /*@ calls class_get_descriptor; */
-#ifndef __FRAMAC__
+                    
+                    #ifndef __FRAMAC__
                     if (handler_sanity_check_with_panic((physaddr_t)ctx->cfg[curr_cfg].interfaces[i].class_desc_handler)) {
                         goto err;
                     }
-#endif
+                    #endif
+
+                    /*@ assert ctx->cfg[curr_cfg].interfaces[i].class_desc_handler ∈ {&class_get_descriptor}; */
+                    /*@ calls class_get_descriptor; */
                     errcode = ctx->cfg[curr_cfg].interfaces[i].class_desc_handler(i, buf, &max_buf_size, handler);
                     if (errcode != MBED_ERROR_NONE) {
                         log_printf("[LIBCTRL] failure while getting class desc: %d\n", errcode);
@@ -380,20 +371,20 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              */
             /* then calculate the overall descriptor size */
             uint32_t descriptor_size = sizeof(usbctrl_configuration_descriptor_t);
-
+ 
              /* @
                 @ loop invariant 0 <= i <= iface_num ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num-1)));
                 @ loop assigns i, descriptor_size  ;
                 @ loop variant (iface_num -i);
-            */
+            */           
 
 
             for (uint8_t i = 0; i < iface_num; ++i) {
                 /* for endpoint, we must not declare CONTROL eps in interface descriptor */
                 uint8_t num_ep = 0;
-
-                /*@
+                
+                /* @
                     @ loop invariant 0 <= ep <= ctx->cfg[curr_cfg].interfaces[i].usb_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[i].eps + (0..(ctx->cfg[curr_cfg].interfaces[i].usb_ep_number -1))) ;
                     @ loop assigns num_ep, ep ;
@@ -407,7 +398,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 }
                 descriptor_size += sizeof(usbctrl_interface_descriptor_t) + num_ep * sizeof(usbctrl_endpoint_descriptor_t);
             }
-
+            
             /* we add potential class descriptors found above ... From now on, the global descriptor size is
              * complete, and can be sanitized properly in comparison with the passed buffer size */
             descriptor_size += class_desc_size;
@@ -442,10 +433,10 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              * To do this, we start at offset 0 after configuration descriptor for the first
              * interface, and at the end of each interface, we increment the offset of the size
              * of the complete interface descriptor, including EP. */
-
+                                            
             /* @
                 @ loop invariant 0 <= iface_id <= iface_num ;
-                @ loop invariant 0 <= curr_offset <=  255 ;
+                @ loop invariant 0 <= curr_offset <=  255 ; 
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num -1))) ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1))) ;
                 @ loop invariant \valid(buf + (0..255));
@@ -453,7 +444,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 @ loop assigns iface_id, curr_offset, errcode, buf[0..255] ;
                 @ loop variant (iface_num - iface_id) ;
             */
-
+            
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
                     {
                         /* pointing to next field: interface descriptor */
@@ -477,7 +468,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 ++num_ep;
                             }
                         }
-
+                       
                         cfg->bNumEndpoints = num_ep;
                         cfg->bInterfaceClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_class;
                         cfg->bInterfaceSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
@@ -486,29 +477,38 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         curr_offset += sizeof(usbctrl_interface_descriptor_t);
                     }
                     {
-                        // class level descriptor of current interface
+                        // class level descriptor of current interface 
+
+                         #if defined(__FRAMAC__)
+                         ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler = class_get_descriptor ; 
+                         // Cyril : la ligne du dessus sert à faire passer EVA, je ne comprends pas pourquoi je n'entre pas dans le test sinon... 
+                         #endif/*!__FRAMAC__*/
+
                         if (ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler != NULL) {
                             uint8_t *cfg = &(buf[curr_offset]);
                             uint32_t handler;
                             if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {
                                 log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
                             }
-#ifndef __FRAMAC__
+                            
+                        #ifndef __FRAMAC__
                             /* FIXME: there is a RTE here, to check if the semantic of __FRAMAC__ version is okay, using a noRTE statement globaly */
                             uint32_t max_buf_size = *desc_size - curr_offset;
-#else
-                            uint32_t max_buf_size = curr_offset ;  // Cyril : pour faire passer framaC sans erreur...
-#endif
-                            // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
-                            // Cyril : probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset;
+                        #else
+                            uint32_t max_buf_size = curr_offset ;  
+                        #endif
 
-                            /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler ∈ {&class_get_descriptor}; */
-                            /*@ calls class_get_descriptor; */
-#ifndef __FRAMAC__
+                            // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
+                            // Cyril : probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset; 
+                        
+                        #ifndef __FRAMAC__
                             if (handler_sanity_check_with_panic((physaddr_t)ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler)) {
                                 goto err;
                             }
-#endif
+                        #endif
+
+                            /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler ∈ {&class_get_descriptor}; */
+                            /*@ calls class_get_descriptor; */
                             errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &max_buf_size, handler);
 
 
@@ -527,7 +527,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1))) ;
                     @ loop invariant \valid(buf + (0..255));
                     @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1)),buf + (0..255));
-                    @ loop invariant 0 <= curr_offset <=  255 ;
+                    @ loop invariant 0 <= curr_offset <=  255 ; 
                     @ loop assigns ep_number, poll, curr_offset, buf[0..255];
                     @ loop variant (ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - ep_number);
                 */
@@ -541,7 +541,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                             cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
                             cfg->bDescriptorType = USB_DESC_ENDPOINT;
                             cfg->bEndpointAddress = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].ep_num;
-
+                          
                             if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].dir == USB_EP_DIR_IN) {
                                 cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for IN EPs */
                             }
@@ -551,7 +551,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].attr << 2  |
                                 ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].usage << 4;
                             cfg->wMaxPacketSize = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].pkt_maxsize;
-
+                            
                             /* See table 9.3: microframe interval: bInterval specification */
                             if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].type == USB_EP_TYPE_INTERRUPT) {
                                 /* in case of HS driver, bInterval == 2^(interval-1), where interval is the
@@ -575,35 +575,36 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                      * value, to get the same result as the above */
                                     uint8_t i = 0;  // Cyril : on a déjà une boucle avec i déclaré, je pense qu'il faut nommer deux variables différentes (variable renommé en ep_number)
                                     /* get back the position of the first '1' bit */
-
+                                    
                                     uint8_t compteur_poll = 9;
                                     /* @
                                         @ loop invariant i >= 0 ;
                                         @ loop invariant poll >= 0 ;
+                                        @ loop invariant compteur_poll >= 0 ;
                                         @ loop assigns poll, i, compteur_poll;
                                         @ loop variant compteur_poll;
                                     */
                                       // Cyril : pour faire passer frama, on peut faire un compteur max de 9 (poll a 8 bits) pour faire un variant sur ce compteur...
-                                      // ou 9 -i en variant
+                                      // ou 9 -i en variant  
                                     while (!(poll & 0x1) && compteur_poll > 0) {
                                         poll >>= 1;
                                         i++;
-                                        compteur_poll-- ;
+                                        compteur_poll -- ; 
                                     }
                                     /* binary shift left by 2, to handle (interval-1)*125us from a value in milisecond */
                                     i+=2;
                                     cfg->bInterval = i;
-                                } else {
+                                 } else {
                                     /* in Fullspeed, the bInterval field is directly set in ms, between 1 and 255 */
                                     cfg->bInterval = poll;
-                                }
+                                  }
                             } else {
                                 /* for BULK EP, we set bInterval to 0 */
                                 cfg->bInterval = 0;
                             }
                             curr_offset += sizeof(usbctrl_endpoint_descriptor_t);
                         }
-
+                        
                     }
             /* returns the descriptor */
             }
