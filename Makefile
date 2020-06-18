@@ -172,13 +172,13 @@ frama-c-parsing:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c include_frama/driver_api/usbotghs_frama.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I include_frama" 
+		 -cpp-extra-args="-nostdinc -I include_frama"
 
 frama-c-parsing-concat:
 	frama-c usbctrl_frama.c include_frama/driver_api/usbotghs_frama.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I include_frama" 
+		 -cpp-extra-args="-nostdinc -I include_frama"
 
 frama-c-eva:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
@@ -302,7 +302,7 @@ frama-c-gui:
 	frama-c-gui -load $(SESSION)
 
 
-# -wp-dynamic         Handle dynamic calls with specific annotations. (set by  
+# -wp-dynamic         Handle dynamic calls with specific annotations. (set by
 #                     default, opposite option is -wp-no-dynamic) (calls = pointeur de fonction, wp a du mal avec cette notion,
 #						contrairement à 	eva)
 
