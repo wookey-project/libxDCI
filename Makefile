@@ -169,19 +169,19 @@ TIMEOUT:=30
 # See https://bts.frama-c.com/view.php?id=2206
 
 frama-c-parsing:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c include_frama/driver_api/usbotghs_frama.c \
+	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I include_frama" 
+		 -cpp-extra-args="-nostdinc -I framac/include" 
 
 frama-c-parsing-concat:
-	frama-c usbctrl_frama.c include_frama/driver_api/usbotghs_frama.c \
+	frama-c usbctrl_frama.c framac/include/driver_api/usbotghs_frama.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I include_frama" 
+		 -cpp-extra-args="-nostdinc -I framac/include" 
 
 frama-c-eva:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
+	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
@@ -191,7 +191,7 @@ frama-c-eva:
 	            -warn-unsigned-downcast \
 	            -warn-unsigned-overflow \
 				-kernel-msg-key pp \
-				-cpp-extra-args="-nostdinc -I include_frama" \
+				-cpp-extra-args="-nostdinc -I framac/include" \
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
@@ -206,7 +206,7 @@ frama-c-eva:
 			-save result_frama/frama-c-rte-eva.session
 
 frama-c-eva-concat:
-	frama-c usbctrl_frama.c include_frama/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
+	frama-c usbctrl_frama.c framac/include/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
@@ -216,7 +216,7 @@ frama-c-eva-concat:
 	            -warn-unsigned-downcast \
 	            -warn-unsigned-overflow \
 				-kernel-msg-key pp \
-				-cpp-extra-args="-nostdinc -I include_frama" \
+				-cpp-extra-args="-nostdinc -I framac/include" \
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
@@ -231,7 +231,7 @@ frama-c-eva-concat:
 			-save result_frama/frama-c-rte-eva.session
 
 frama-c:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c include_frama/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
+	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
@@ -241,7 +241,7 @@ frama-c:
 	            -warn-unsigned-downcast \
 	            -warn-unsigned-overflow \
 				-kernel-msg-key pp \
-				-cpp-extra-args="-nostdinc -I include_frama" \
+				-cpp-extra-args="-nostdinc -I framac/include" \
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
@@ -262,7 +262,7 @@ frama-c:
    			-time calcium_wp-eva.txt
 
 frama-c-concat:
-	frama-c usbctrl_frama.c include_frama/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
+	frama-c usbctrl_frama.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x40080000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
@@ -272,7 +272,7 @@ frama-c-concat:
 	            -warn-unsigned-downcast \
 	            -warn-unsigned-overflow \
 				-kernel-msg-key pp \
-				-cpp-extra-args="-nostdinc -I include_frama" \
+				-cpp-extra-args="-nostdinc -I framac/include" \
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
