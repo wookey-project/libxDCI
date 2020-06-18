@@ -186,7 +186,7 @@ static const struct {
 /*@
   @ assigns \nothing ;
   @ ensures (ctx == \null) ==> \result == USB_DEVICE_STATE_INVALID ;
-  @ ensures ((ctx != \null) && is_valid_state(ctx->state)) ==> \result == ctx->state ;
+  @ ensures (ctx != \null) ==> \result == ctx->state ;
 */
 
 usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx)
@@ -219,10 +219,10 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
        return MBED_ERROR_INVPARAM;
    }
     if (newstate > USB_DEVICE_STATE_INVALID) {
-        //log_printf("[USBCTRL] invalid state transition !\n");
+        log_printf("[USBCTRL] invalid state transition !\n");
         return MBED_ERROR_INVPARAM;
     }
-    //log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
+    log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
     ctx->state = newstate;
 
       /* assert ctx->state == newstate; */
@@ -237,7 +237,7 @@ mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
    if (ctx == NULL) {
        return MBED_ERROR_INVPARAM;
    }
-    if (newstate > USB_DEVICE_STATE_INVALID) {   //Cyril : avant, newstate >= USB_DEVICE_STATE_INVALID donc on avait jamais ctx->state = USB_DEVICE_STATE_INVALID
+    if (newstate > USB_DEVICE_STATE_INVALID) {   
         log_printf("[USBCTRL] invalid state transition !\n");
         return MBED_ERROR_INVPARAM;
     }
