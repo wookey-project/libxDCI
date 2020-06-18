@@ -157,7 +157,7 @@ endif
 # Frama-C
 #####################################################################
 
-SESSION:=result_frama/frama-c-rte-eva-wp-no-split.session
+SESSION:=framac/results/frama-c-rte-eva-wp-no-split.session
 JOBS:=$(shell nproc)
 TIMEOUT:=30
 
@@ -203,7 +203,7 @@ frama-c-eva:
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
 		    -eva-log a:frama-c-rte-eva.log \
-			-save result_frama/frama-c-rte-eva.session
+			-save framac/results/frama-c-rte-eva.session
 
 frama-c-eva-concat:
 	frama-c usbctrl_frama.c framac/include/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
@@ -228,7 +228,7 @@ frama-c-eva-concat:
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
 		    -eva-log a:frama-c-rte-eva.log \
-			-save result_frama/frama-c-rte-eva.session
+			-save framac/results/frama-c-rte-eva.session
 
 frama-c:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
