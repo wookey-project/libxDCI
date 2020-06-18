@@ -122,7 +122,9 @@ typedef struct {
     usbotghs_speed_t    speed;        /* device enumerated speed, default HS */
 } usbotghs_context_t;
 
-//@ ghost usbotghs_context_t *GHOST_usbotghs_ctx ;
+usbotghs_context_t usbotghs_ctx;
+
+// Cyril : attention, usbotghs_context_t usbotghs_ctx = {0} ; peut faire foirer des assigns...
 
 #else
 

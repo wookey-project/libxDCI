@@ -14,6 +14,7 @@ Résulats obtenus avec EVA : il reste 3 RTE sur la libxDCI
             faux positif avec EVA si Index > 0 ... (la comparaison avec 0x255 va forcement >= 1 ...) j'ai choisi de faire varier pkt->WIndex de 0 à 65535 (pas de raison pour ne pas considérer 0, mais c'est le cas qui pose pb pour iface_idx : 0 - 1 < 0)
 
 
+
     - usbctrl_get_descriptor:
             uint8_t compteur_poll = 9;
             while (!(poll & 0x1) || compteur_poll > 0) {
@@ -27,7 +28,7 @@ Résulats obtenus avec EVA : il reste 3 RTE sur la libxDCI
 
 Les autres bugs ont été corrigés (déjà signalés auparavant, voir // Cyril pour les voir)
 
-Pour la libxDCI, quasiment 100% de taux de couverture suaf : certains case default dans les switch, impossible à atteindre car test avant le switch qui éliminent les case default
+Pour la libxDCI, quasiment 100% de taux de couverture sauf : certains case default dans les switch, impossible à atteindre car test avant le switch qui éliminent les case default
 
 dès cas d'erreur qui nécessitent ctx null par exemple, mais comme la fonction nécessite valid(ctx), je ne sais pas si je peux faire ctx == null pour ces fonctions
 
@@ -38,7 +39,7 @@ Pour les fonctions du driver : ajout de la fonction test_fcn_driver_eva pour app
 
 RTE découverts :
 
-	- usbotghs_deconfigure_endpoint : if (ctx->in_eps[ep].configured  == true)et (ctx->out_eps[ep].configured == true)
+	- usbotghs_deconfigure_endpoint : if (ctx->in_eps[ep].configured  == true) et (ctx->out_eps[ep].configured == true)
 	il n'y a pas de tests sur ep, donc risque de dépassement de tableau  /*@ assert rte: index_bound: ep < 3; */ et  /*@ assert rte: index_bound: ep < 8; */
 
 
@@ -103,17 +104,12 @@ Même ave un separated (mais separated et assigns \nothing, je sais pas trop quo
 usbctrl_std_req_handle_get_status : ok sans les assigns (voir si separated aide)
 
 
-
-
 usbctrl_std_req_handle_set_address : spec ok, ajout de \separated important pour que ça passe !!
-
 
 
 usbctrl_std_req_handle_get_configuration : les assigns ne passent pas car pas de spec definitive dans send_data
 											voir pour ajout de \separated quand des appels aux fonctions du driver sont faits
 											sinon la spec est ok (completed / disjoint)
-
-
 
 usbctrl_std_req_handle_set_configuration : spec à travailler, sans les assigns d'abord
 		pour correctement spécifier la boucle, je dois gerer GHOST_usbotghs_ctx (usbotghs_ctx est une variable static) (appel à usb_backend_drv_configure_endpoint dans la boucle)
@@ -153,4 +149,5 @@ usbctrl_handle_outepevent : fonction compliquée à spécifier
 probleme, je dois faire référence à usbotghs_ctx.in_eps[epnum].state pour les différents comportements. Mais usbotghs_ctx est une variable static pour usbotghs...
 tentative avec GHOST_usbotghs_ctx->out_eps[ep].state, ça ne marche pas
 comment parcourir la fonction avec plusieurs états?  le driver est dans l'état IDLE, je ne sais pas comment le forcer à changer d'état (tentative avec framac interval, mais bcp d'effets indésirables sur d'autres fonctions... + pb de garbled mix)
+en fait, ça dépend du matériel pour les états d'appels à outepevent : idée faire une "fausse fonction get_ep_state" avec eva use spec (je fais pas une fonction, je fais une spec)
 

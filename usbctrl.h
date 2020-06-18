@@ -27,9 +27,11 @@
 #include "libc/types.h"
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"
-#include "libc/sanhandlers.h"
+
 #if defined(__FRAMAC__)
 #include "driver_api/usbotghs_frama.h"
+#else
+#include "libc/sanhandlers.h"
 #endif
 
 /*
@@ -108,7 +110,6 @@ int Frama_C_interval(int min, int max);
 
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 
-//@ ghost uint8_t GHOST_num_ctx = 0 ;
 
 /*@
     @ requires \valid(packet);
@@ -222,7 +223,7 @@ typedef struct usbctrl_context {
 } usbctrl_context_t;
 
 #if defined(__FRAMAC__)
-usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = { 0 };
+usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = {0} ;
 #endif/*!__FRAMAC__*/
 
 /*
