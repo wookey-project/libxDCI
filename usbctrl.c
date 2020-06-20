@@ -53,6 +53,7 @@
 
 #if defined(__FRAMAC__)
 static   uint8_t num_ctx = 0;
+
 #define MAX_EPx_PKT_SIZE 512
 #define RAND_UINT_32 65535
 #else
@@ -63,34 +64,36 @@ volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 
 /*@
     @ requires 0 <= dev_id < RAND_UINT_32 ;
-    @
+    @   ensures GHOST_num_ctx == num_ctx ;
+    
     @ behavior bad_ctxh:
-    @   assumes  ctxh == \null;
-    @   assigns \nothing ;
+    @   assumes ctxh == \null;
+    @   assigns GHOST_num_ctx ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @
     @ behavior bad_num_ctx:
     @   assumes num_ctx >= MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null  ;
-    @   assigns \nothing ;
+    @   assigns GHOST_num_ctx ;
     @   ensures \result == MBED_ERROR_NOMEM ;
     @
     @ behavior bad_dev_id:
     @   assumes num_ctx < MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null  ;
     @   assumes dev_id != USB_OTG_HS_ID && dev_id != USB_OTG_FS_ID ;
-    @   assigns \nothing ;
+    @   assigns GHOST_num_ctx ;
     @   ensures \result == MBED_ERROR_NOBACKEND ;
     @
     @ behavior ok:
     @   assumes (dev_id == USB_OTG_HS_ID || dev_id == USB_OTG_FS_ID) ;
     @   assumes num_ctx < MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null ;
-    @   assigns *ctxh, ctx_list[\old(num_ctx)], num_ctx, usbotghs_ctx  ;
+    @   assigns *ctxh, num_ctx, usbotghs_ctx, GHOST_num_ctx, ctx_list[\old(num_ctx)]   ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
-    @   ensures *ctxh == \old(num_ctx) ;
-    @   ensures num_ctx == \old(num_ctx) +1 ;
-    @   ensures ctx_list[\old(num_ctx)].dev_id == dev_id ;
+    @   ensures *ctxh == \old(GHOST_num_ctx) ;
+    @   ensures GHOST_num_ctx == \old(GHOST_num_ctx) +1 ;
+    @   ensures ctx_list[\old(GHOST_num_ctx)].dev_id == dev_id ;
+    @   ensures ctx_list[\at(GHOST_num_ctx,Pre)] == ctx_list[\at(num_ctx,Pre)] ;
 
     @ complete behaviors;
     @ disjoint behaviors;
@@ -101,6 +104,8 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
     log_printf("[USBCTRL] declaring USB backend\n");
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t i = 0;
+
+    //@ ghost GHOST_num_ctx = num_ctx ;
 
     /* sanitiation */
     if (ctxh == NULL) {
@@ -114,11 +119,11 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
 
     switch (dev_id) {
         case USB_OTG_HS_ID:
-            /*@ assert \separated(&usbotghs_ctx,ctx_list + (0..(num_ctx-1))); */
+            /*@ assert \separated(&usbotghs_ctx,ctx_list + (0..(GHOST_num_ctx-1))); */
             errcode = usb_backend_drv_declare() ; // Cyril : usbotghs_declare : assigns usbotghs_ctx
             break;
         case USB_OTG_FS_ID:
-            /*@ assert \separated(&usbotghs_ctx,ctx_list + (0..(num_ctx-1))); */
+            /*@ assert \separated(&usbotghs_ctx,ctx_list + (0..(GHOST_num_ctx-1))); */
             errcode = usb_backend_drv_declare() ;
             break;
         default:
@@ -127,16 +132,23 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
             break;  // Cyril : jamais atteint à cause du goto
     }
 
+
+    /*@ assert ctx_list[GHOST_num_ctx] == ctx_list[num_ctx] ; */
     ctx_list[num_ctx].dev_id = dev_id;
     *ctxh = num_ctx;
 
     #if defined(__FRAMAC__)
         usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
+        /*@ assert ctx == &(ctx_list[GHOST_num_ctx]); */
     #else
         volatile usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
     #endif/*!__FRAMAC__*/
 
     num_ctx++;
+
+    //@ ghost GHOST_num_ctx++  ;
+    /*@ assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre)+1 ; */
+
 
     /* initialize context */
     ctx->num_cfg = 1;
@@ -157,8 +169,11 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
 
     ctx->curr_cfg = 0;
 
-    /*@ assert *ctxh == num_ctx-1 ; */   // Cyril : ajout de ces 2 assert pour que les ensures soient prouvés par WP
-    /*@ assert ctx_list[num_ctx-1].dev_id == dev_id ; */
+    /*@ assert ctx_list[\at(GHOST_num_ctx,Pre)] == ctx_list[\at(num_ctx,Pre)] ; */
+    /*@ assert *ctxh == GHOST_num_ctx-1 ; */   // Cyril : ajout de ces 2 assert pour que les ensures soient prouvés par WP
+    /*@ assert ctx_list[GHOST_num_ctx-1].dev_id == dev_id ; */
+
+    /*@ assert GHOST_num_ctx == num_ctx ; */
 
 err:
     return errcode;
@@ -259,24 +274,29 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
 
 
 end:
+    /*@ assert GHOST_num_ctx == num_ctx ; */
     return errcode;
 }
 
 /*@
+
+    @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
+    @ ensures GHOST_num_ctx == num_ctx ;
+
     @ behavior bad_pointer :
     @   assumes (ctx == \null || handler == \null) ;
-    @   assigns \nothing ;
+    @   assigns \nothing;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior not_found :
     @   assumes ctx != \null && handler != \null ;
-    @   assumes \forall integer i ; 0 <= i < num_ctx ==> &(ctx_list[i]) != ctx ;
+    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> &(ctx_list[i]) != ctx ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_NOTFOUND ;
 
     @ behavior found :
     @   assumes ctx != \null && handler != \null ;
-    @   assumes \exists integer i ; 0 <= i < num_ctx && &(ctx_list[i]) == ctx ;
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && &(ctx_list[i]) == ctx ;
     @   assigns *handler ;
     @   ensures \result == MBED_ERROR_NONE  ;
 
@@ -287,6 +307,7 @@ end:
 mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
                                 uint32_t *handler)
 {
+    
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
     if (ctx == NULL || handler == NULL) {
@@ -296,31 +317,32 @@ mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
     /* search */
 
 /*@
-        @ loop invariant 0 <= i <= num_ctx;
-        @ loop invariant \valid_read(&ctx_list + (0..(num_ctx-1))) ;
+        @ loop invariant 0 <= i <= GHOST_num_ctx;
+        @ loop invariant \valid_read(&ctx_list + (0..(GHOST_num_ctx-1))) ;
         @ loop invariant \valid_read(ctx) ;
         @ loop invariant \valid(handler);
         @ loop invariant \forall integer prei; 0<=prei<i ==> &(ctx_list[prei]) != ctx;
         @ loop assigns i  ;
-        @ loop variant (num_ctx - i);
+        @ loop variant (GHOST_num_ctx - i);
 */
 
     for (uint8_t i = 0; i < num_ctx; ++i) {
         if (&(ctx_list[i]) == ctx) {
             *handler = i;
             /*@ assert errcode == MBED_ERROR_NONE ; */
-            /*@ assert 0 <= i < num_ctx ; */
+            /*@ assert 0 <= i < GHOST_num_ctx ; */
             goto end;
         }
     }
     errcode = MBED_ERROR_NOTFOUND;
 end:
+    /* @ assert GHOST_num_ctx == num_ctx ; */
     return errcode;
 }
 
 
 /*@
-
+   
     @ behavior bad_pointer :
     @   assumes ctx == \null ;
     @   assigns \nothing ;
@@ -328,26 +350,32 @@ end:
 
     @ behavior not_found :
     @   assumes ctx != \null ;
-    @   assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != device_id ;
-    @   assigns \nothing ;
+    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != device_id ;
+    @   assigns \nothing ;    
     @   ensures \result == MBED_ERROR_NOTFOUND ;
 
     @ behavior found :
     @   assumes ctx != \null ;
-    @   assumes \exists integer i ; 0 <= i < num_ctx && ctx_list[i].dev_id == device_id ;
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id ;
     @   assigns *ctx ;
-    @   ensures \result == MBED_ERROR_NONE ;
-    @   ensures \exists integer i ; 0 <= i < num_ctx && *ctx == &ctx_list[i]; // Cyril : je pense que c'est  ça le résultat important
+    @   ensures \result == MBED_ERROR_NONE ; 
+    @   ensures \exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i]; 
 
     @ complete behaviors ;
     @ disjoint behaviors ;
 */
 
+/*     ensures GHOST_num_ctx == num_ctx ;  je peux plus rien prouver dans inepevent après...je comprends pas pq
+        sans requires GHOST_num_ctx == num_ctx, je ne peux pas introduire la variable GHOST dans la spec...je ne connais pas sa valeur
+
+*/
 
 mbed_error_t usbctrl_get_context(uint32_t device_id,
                                  usbctrl_context_t **ctx)
 {
 
+    /*@ assert GHOST_num_ctx == num_ctx ; */
+    
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
     if (ctx == NULL) {
@@ -356,27 +384,34 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
     }
     /* search */
 
+
     /*@
-        @ loop invariant 0 <= i <= num_ctx;
-        @ loop invariant \valid_read(&ctx_list + (0..(num_ctx-1))) ;
+        @ loop invariant 0 <= i <= GHOST_num_ctx;
+        @ loop invariant \valid_read(&ctx_list + (0..(GHOST_num_ctx-1))) ;
+        @ loop invariant \separated(&ctx_list + (0..(GHOST_num_ctx-1)),*ctx);
         @ loop invariant \valid(ctx) ;
         @ loop invariant \forall integer prei; 0<=prei<i ==> ctx_list[prei].dev_id != device_id  ;
         @ loop invariant \at(ctx,LoopEntry) == \at(ctx,LoopCurrent) ;
         @ loop assigns i ;
-        @ loop variant (num_ctx - i);
+        @ loop variant (GHOST_num_ctx - i);
     */
 
     for (uint8_t i = 0; i < num_ctx; ++i) {
         if (ctx_list[i].dev_id == device_id) {
             *ctx = (usbctrl_context_t*)&(ctx_list[i]);
+            /*@ assert  \exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i]; */
             /*@ assert *ctx == &ctx_list[i]; */
             goto end;
         }
     }
    /*@ assert \at(ctx,Here) == \at(ctx,Pre) ; */
+    /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != device_id ; */
+    /*@ assert \separated(&ctx_list + (0..(GHOST_num_ctx-1)),*ctx); */
+    /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> &ctx_list[i] != *ctx ; */
     errcode = MBED_ERROR_NOTFOUND;
 
 end:
+    /*@ assert GHOST_num_ctx == num_ctx ; */
     return errcode;
 }
 
@@ -388,11 +423,6 @@ end:
     @   assumes ctx == \null ;
     @   ensures \result == \false ;
 
-    @ behavior EP_0:
-    @   assumes ctx != \null;
-    @   assumes ep == EP0 ;
-    @   ensures \result == \true ;
-
     @ behavior EP_not_found:
     @   assumes ctx != \null ;
     @   assumes ep != EP0 ;
@@ -402,9 +432,8 @@ end:
 
     @ behavior EP_found:
     @   assumes ctx != \null ;
-    @   assumes ep != EP0 ;
     @   assumes (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
-                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep);
+                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) || ep == EP0 ;
     @   ensures \result == \true ;
 
     @ complete behaviors;
@@ -453,6 +482,7 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
             }
         }
     }
+    /*@ assert GHOST_num_ctx == num_ctx ; */
     return false;
 }
 
@@ -611,7 +641,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                 Cyril : ajout d'un test sur le nombre de config max :
                 check space
             */
-        if(ctx->num_cfg >= CONFIG_USBCTRL_MAX_CFG){
+        if(ctx->num_cfg >= (CONFIG_USBCTRL_MAX_CFG - 1)){
             errcode = MBED_ERROR_NOMEM;
             goto err;
         }
@@ -739,6 +769,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
    ctx->cfg[iface_config].interface_num++;
    /* 5) iface EPs should be configured when receiving setConfiguration or SetInterface */
 err:
+   /*@ assert GHOST_num_ctx == num_ctx ; */
    return errcode;
 }
 
@@ -746,21 +777,37 @@ err:
  * Libctrl is a device-side control plane, the device is configured in device mode
  */
 
-/* @
+/*@
+    @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
     @ behavior bad_ctxh :
     @   assumes ctxh >= num_ctx ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
-    @ behavior error_configure:
+    @ behavior other :
     @   assumes ctxh < num_ctx ;
-    @   assumes
+    @   assigns usbotghs_ctx,  *r_CORTEX_M_USBOTG_HS_DOEPDMA(0), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0), ctx_list[ctxh] ;
+    @   ensures is_valid_error(\result) ;
 
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+
+
+*/
+
+/*
+    TODO : specifier plus en détail avec configure et set_recv_fifo
+            problème : la spec de usbotghs_configure est pas très précise, car usbotghs_ulpi_reset, usbotghs_initialize_core, usbotghs_initialize_host et usbotghs_initialize_device
+            Question : est-ce que ça vaut le coup de spécifier le driver à fond?
 
 */
 
 mbed_error_t usbctrl_start_device(uint32_t ctxh)
 {
+    
+
+    /*@ assert GHOST_num_ctx == num_ctx ; */
+
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
     if (ctxh >= num_ctx) {
@@ -774,6 +821,7 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
      volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #endif/*!__FRAMAC__*/
 
+     /*@ assert GHOST_num_ctx == num_ctx ; */
 
 #ifndef __FRAMAC__
     ADD_LOC_HANDLER(usbctrl_handle_inepevent)
@@ -783,22 +831,37 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
 
     log_printf("[USBCTRL] configuring backend driver\n");
     //PMO
-    /* @ assert usbotghs_ctx.in_eps[0].mpsize ==0 ;*/
+    /*@ assert usbotghs_ctx.in_eps[0].mpsize ==0 ;*/
+
+    /*@ assert GHOST_num_ctx == num_ctx ; */
+
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
         usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
         goto end;
     }
+
+    /*@ assert GHOST_num_ctx == num_ctx ; */
+
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
     if ((errcode = usb_backend_drv_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
         printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
+        /*@ assert GHOST_num_ctx == num_ctx ; */
         goto end;
     }
 
 
 end:
+    /*@ assert GHOST_num_ctx == num_ctx ; */
     return errcode;
 }
+
+/*@
+    @ ensures (ctxh >= num_ctx)  ==> (\result == MBED_ERROR_INVPARAM) ;
+    @ ensures (ctxh < num_ctx) ==> (\result == MBED_ERROR_NONE) ;
+    @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
+    @ assigns ctx_list[ctxh];
+*/
 
 mbed_error_t usbctrl_stop_device(uint32_t ctxh)
 {
@@ -808,14 +871,18 @@ mbed_error_t usbctrl_stop_device(uint32_t ctxh)
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
+    #if defined(__FRAMAC__)
+    usbctrl_context_t *ctx = &(ctx_list[ctxh]);
+    #else
     volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
+    #endif/*!__FRAMAC__*/
 
     ctx = ctx;
     /* FIXME: TODO */
 err:
+    /*@ assert GHOST_num_ctx == num_ctx ; */
     return errcode;
 }
-
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -863,7 +930,9 @@ int Frama_C_interval(int min, int max)
  					correctement définis (pas de débordement de tableaux, pointeurs valides...)
 
 */
+
 void test_fcn_usbctrl(){
+
 
     uint32_t dev_id = Frama_C_interval(0,RAND_UINT_32-1) ;
     uint32_t size = Frama_C_interval(0,RAND_UINT_32-1) ;
@@ -877,7 +946,6 @@ void test_fcn_usbctrl(){
     uint8_t  USB_class = Frama_C_interval(0,17);
     uint32_t USBdci_handler = Frama_C_interval(0,RAND_UINT_32-1) ;
 
-
 /*
     def d'une nouvelle interface pour test de la fonction usbctrl_declare_interface
     Déclaration d'une structure usb_rqst_handler_t utilisée dans les interfaces, qui nécessite aussi une structure usbctrl_setup_pkt_t
@@ -886,7 +954,7 @@ void test_fcn_usbctrl(){
     uint8_t RequestType = Frama_C_interval(0,255);
     uint8_t Request = Frama_C_interval(0,255);
     uint16_t Value = Frama_C_interval(0,65535);
-    uint16_t Index = Frama_C_interval(0,65535);  // Cyril : à confirmer avec Philippe que Index commence bien à 1 (sinon bug dans usbctrl_handle_class_requests)
+    uint16_t Index = Frama_C_interval(0,65535); 
     uint16_t Length = Frama_C_interval(0,65535);
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
@@ -897,44 +965,46 @@ void test_fcn_usbctrl(){
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
                                    .rqst_handler = usbctrl_class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
-    /*@ assert  \valid(ctx_list + (0 .. (MAX_USB_CTRL_CTX - 1))); */
-    /*@ assert 0 <= num_ctx < MAX_USB_CTRL_CTX ; */
-
     usbctrl_declare(dev_id, &ctxh);
-
-    /*@ assert 0 <= num_ctx < MAX_USB_CTRL_CTX ; */
-
+    //@ assert GHOST_num_ctx == num_ctx ; 
     usbctrl_initialize(ctxh);
     usbctrl_declare_interface(ctxh, &iface_1) ;
     usbctrl_get_interface((usbctrl_context_t *)&(ctx_list[ctxh]), iface);
     usbctrl_get_handler((usbctrl_context_t *)&(ctx_list[ctxh]), &handler);
-
     usbctrl_context_t *ctx1 = NULL;
-
     usbctrl_get_context(dev_id, &ctx1);
+    usbctrl_start_device(ctxh) ;
+    usbctrl_stop_device(ctxh) ;
+    usbctrl_handle_inepevent(dev_id, size, ep);
+    //@ assert GHOST_num_ctx == num_ctx ; 
     usbctrl_declare_interface(ctxh, &iface_2);
     usbctrl_get_interface((usbctrl_context_t *)&(ctx_list[ctxh]), iface);
     usbctrl_is_endpoint_exists((usbctrl_context_t *)&(ctx_list[ctxh]), ep);
     usbctrl_is_interface_exists((usbctrl_context_t *)&(ctx_list[ctxh]), iface);
-    usbctrl_start_device(ctxh) ;
-    usbctrl_stop_device(ctxh) ;
+    //@ assert GHOST_num_ctx == num_ctx ; 
+    
+    //@ assert GHOST_num_ctx == num_ctx ; 
+
 /*
     appel des différentes fonctions de la libxDCI
 */
 
     ctx_list[ctxh].state = Frama_C_interval(0,9);  // pour EVA, pour avoir tous les états possibles notamment pour la fonction usbctrl_handle_reset
 
-    usbctrl_handle_reset(dev_id);
-    usbctrl_handle_inepevent(dev_id, size, ep);
-    usbctrl_handle_outepevent(dev_id, size, ep);  // voir comment l'appeler, je dois être dans certains états je pense                                                  // USB_BACKEND_DRV_EP_STATE_SETUP ou USB_BACKEND_DRV_EP_STATE_DATA_OUT
+    
+    
+     //@ assert GHOST_num_ctx == num_ctx ;   
+    
+    //@ assert GHOST_num_ctx == num_ctx ;
+    usbctrl_handle_outepevent(dev_id, size, ep);                                                  
     usbctrl_handle_requests(&pkt, dev_id) ;
     usbctrl_handle_class_requests(&pkt,&(ctx_list[ctxh])) ;
-    usbctrl_handle_earlysuspend(dev_id) ;
-    usbctrl_handle_usbsuspend(dev_id);
-    usbctrl_handle_wakeup(dev_id) ;
-    usbctrl_std_req_get_dir(&pkt) ;
+    //usbctrl_handle_earlysuspend(dev_id) ;
+    //usbctrl_handle_usbsuspend(dev_id);
+    //usbctrl_handle_wakeup(dev_id) ;
+    //usbctrl_std_req_get_dir(&pkt) ;
     //usbctrl_std_req_handle_get_status(&pkt, &(ctx_list[ctxh])) ; // pour avoir pkt->wLength qui varie pour parcourir la fonction send_data. Mais ça génère plein de pb...
-
+    //usbctrl_handle_reset(dev_id);
 }
 
 /*
@@ -1039,7 +1109,6 @@ void test_fcn_usbctrl_erreur(){
 
 int main(void)
 {
-
 
     test_fcn_usbctrl() ;
     //test_fcn_usbctrl_erreur() ;

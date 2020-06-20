@@ -61,6 +61,10 @@
  */
 #if defined(__FRAMAC__)
 
+/*@ lemma u16_and_is_u16:
+    \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
+*/
+
 
 /*@ predicate is_valid_error(mbed_error_t i) =
     i == MBED_ERROR_NONE ||
@@ -110,6 +114,7 @@ int Frama_C_interval(int min, int max);
 
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 
+//@ ghost  uint8_t GHOST_num_ctx;
 
 /*@
     @ requires \valid(packet);

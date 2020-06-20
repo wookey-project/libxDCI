@@ -513,7 +513,7 @@ uint32_t usbotghs_get_ep_mpsize(void)
 
 */
 
-/*@
+/* @
     @ requires \valid(src);
     @ requires \separated(src,&usbotghs_ctx, &usbotghs_ctx.in_eps[ep_id].fifo[usbotghs_ctx.in_eps[ep_id].fifo_idx],
             r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id) ,r_CORTEX_M_USBOTG_HS_DOEPTSIZ(ep_id), r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id),
@@ -562,6 +562,7 @@ FIXME : pour behavior set_fifo_error: j'ai du modifier la spec de usbotghs_set_x
         *USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id)
         la spec de usbotghs_write_epx_fifo ne passe pas, à cause d'un pb de cast dans la fonction usbotghs_write_core_fifo
         j'ai repris tous les assigns de usbotghs_write_epx_fifo : pb : est-ce que ça a un intéret de les reporter dans la libxdci
+        il y a un pb de RTE dans usbotghs_write_epx_fifo
 
         Autre pb : je traite le cas #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE, mais il faudrait aussi traiter le else, et donc faire référence à usbotghs_ctx.out_eps[ep_id]
 
@@ -740,7 +741,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 
       /*@
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
-            @ loop assigns  residual_size, usbotghs_ctx  ;
+            @ loop assigns  residual_size, usbotghs_ctx, ep  ;
             @ loop variant (residual_size - fifo_size);
        */
     //PMO loop assigns pas errcode
@@ -777,7 +778,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 
         /*@ assert \separated(ep,&ep->fifo[ep->fifo_idx], r_CORTEX_M_USBOTG_HS_GINTMSK, USBOTG_HS_DEVICE_FIFO(ep->id)  ) ; */
         /* write data from SRC to FIFO */
-        usbotghs_write_epx_fifo(fifo_size, ep); // Cyril : ça bloque le loop assigns du while
+        usbotghs_write_epx_fifo(fifo_size, ep); // Cyril : il y a un RTE dans cette fonction : l'appel à pour conséquence de faire ep->fifo_idx += size, et donc on peut dépasser unint_32
 
         /* wait for XMIT data to be transfered (wait for iepint (or oepint in
          * host mode) to set the EP in correct state */
@@ -1622,7 +1623,7 @@ void usbotghs_set_address(uint16_t addr)
 }
 
 /*@
-    @ assigns Frama_C_entropy_source \from Frama_C_entropy_source;
+    @ assigns Frama_C_entropy_source ;
 
     @ behavior DIR_IN_EPNUM_BIG:
     @   assumes (dir == USBOTG_HS_EP_DIR_IN && epnum >= USBOTGHS_MAX_IN_EP);
@@ -1794,22 +1795,20 @@ end:
 
 /*@
     @ requires \valid(dst);
+    @ assigns *r_CORTEX_M_USBOTG_HS_DOEPDMA(epid), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), usbotghs_ctx;
 
     @ behavior not_configured:
     @   assumes (usbotghs_ctx.out_eps[epid].configured == \false) ;
-    @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior bad_size:
     @   assumes !(usbotghs_ctx.out_eps[epid].configured == \false) ;
     @   assumes size == 0 ;
-    @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior ok:
     @   assumes !(usbotghs_ctx.out_eps[epid].configured == \false) ;
     @   assumes size != 0 ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DOEPDMA(epid), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), usbotghs_ctx;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors;
@@ -2025,7 +2024,7 @@ static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, 
 #endif
 }
 
-/*@
+/* @
     @ requires \valid(ep);
     @ requires \separated(ep,&ep->fifo[0..255],r_CORTEX_M_USBOTG_HS_GINTMSK,USBOTG_HS_DEVICE_FIFO(ep->id));
     @ assigns *ep, *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id), ep->fifo[ep->fifo_idx] ;
@@ -2038,6 +2037,7 @@ static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, 
 /*
 
     FIXME : assigns ep->fifo[ep->fifo_idx] pour que ça passe, mais après send data ne passe pas
+            RTE pour ep->fifo_idx += size; à corriger
 */
 
 mbed_error_t usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep)

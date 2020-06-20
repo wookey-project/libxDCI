@@ -138,7 +138,7 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
         default:
             errcode = MBED_ERROR_NOBACKEND;
             goto err;
-            //break;  // Cyril : jamais atteint à cause du goto
+            break;  // Cyril : jamais atteint à cause du goto
     }
 
     ctx_list[num_ctx].dev_id = dev_id;

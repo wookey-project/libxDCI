@@ -245,20 +245,21 @@ frama-c:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 20 \
-		    -eva-slevel 300 \
+		    -eva-auto-loop-unroll 400 \
+		    -eva-precision 4 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
   			-wp-dynamic \
 		    -eva-split-return auto \
-		    -eva-partition-history 6 \
+		    -eva-partition-history 10 \
 		    -eva-log a:frama-c-rte-eva.log \
    		    -then \
    		    -wp \
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
-   			-wp-timeout $(TIMEOUT) -save $(SESSION)  \
+   			-wp-timeout $(TIMEOUT) \
+   			 -save $(SESSION)  \
    			-time calcium_wp-eva.txt
 
 frama-c-concat:
@@ -277,7 +278,7 @@ frama-c-concat:
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
 		    -eva-auto-loop-unroll 20 \
-		    -eva-slevel 300 \
+		    -eva-precision 10 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
   			-wp-dynamic \
@@ -289,7 +290,8 @@ frama-c-concat:
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
-   			-wp-timeout $(TIMEOUT) -save $(SESSION)  \
+   			-wp-timeout $(TIMEOUT) \
+   			 -save $(SESSION)  \
    			-time calcium_wp-eva.txt
 
 

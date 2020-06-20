@@ -367,9 +367,7 @@ err:
 */
 
 /*
-    FIXME : usbctrl_std_req_get_recipient(pkt) est commenté car sinon, les assigns ne passent pas (alors que assigns \nothing dans get_recipient...)
-
-    pour send_data, la fonction passe parce que write_fifo a été commentée... j'ai choisi de faire le plus de assigns possible, mais write_fifo a du être commentée
+    FIXME : le assigns de USB_DEVICE_STATE_ADDRESS_recipient_USB_REQ_RECIPIENT_ENDPOINT_endpoint_true ne passe pas à cause de l'appel à send_data (qui n'est pas complet)
 
 
 pour behavior USB_DEVICE_STATE_ADDRESS_recipient_USB_REQ_RECIPIENT_ENDPOINT_endpoint_true : je dois ajouter un ensures pour : return the recipient status (2 bytes, or wLength if smaller) ?
@@ -482,6 +480,7 @@ err:
     @ requires \valid(ctx) && \valid(pkt) ;
     @ requires \separated(ctx,pkt);
     @ assigns *ctx ;
+    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -490,10 +489,58 @@ err:
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
-    @ behavior std_requests_allowed:
+    @ behavior pktvalue_not_null:
     @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
+    @   assumes (pkt->wValue != 0) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior lenght_not_one:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
+    @   assumes !(pkt->wValue != 0) ;    
+    @   assumes (pkt->wLength != 1) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior no_interface:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
+    @   assumes !(pkt->wValue != 0) ;    
+    @   assumes !(pkt->wLength != 1) ;  
+    @   assumes   !( (pkt->wIndex & 0x7f) < ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior interface_ok_USB_DEVICE_STATE_DEFAULT:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
+    @   assumes !(pkt->wValue != 0) ;    
+    @   assumes !(pkt->wLength != 1) ;  
+    @   assumes   ( (pkt->wIndex & 0x7f) < ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_DEFAULT ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ behavior interface_ok_USB_DEVICE_STATE_ADDRESS:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
+    @   assumes !(pkt->wValue != 0) ;    
+    @   assumes !(pkt->wLength != 1) ;  
+    @   assumes   ( (pkt->wIndex & 0x7f) < ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_ADDRESS ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ behavior interface_ok_USB_DEVICE_STATE_CONFIGURED:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
+    @   assumes !(pkt->wValue != 0) ;    
+    @   assumes !(pkt->wLength != 1) ;  
+    @   assumes   ( (pkt->wIndex & 0x7f) < ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_CONFIGURED ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors ;
@@ -1484,24 +1531,50 @@ err:
 }
 
 /*@
-    @ requires \valid(pkt) && \valid(ctx);
+    @ requires \valid_read(pkt) && \valid(ctx);
     @ requires \separated(ctx,pkt);
-
+    @ assigns *ctx ;
+    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @ ensures ctx->ctrl_req_processing == \false;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
-    @   ensures ctx->ctrl_req_processing == \false;
-    @   assigns *ctx ;
 
-    @ behavior std_requests_allowed:
+
+    @ behavior length_not_null:
     @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
-    @   assigns *pkt, *ctx, *r_CORTEX_M_USBOTG_HS_DTXFSTS(0), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(0) ;
-    @   ensures \result == MBED_ERROR_NONE && ctx->ctrl_req_processing == \false;
+    @   assumes (pkt->wLength != 0 ) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior USB_DEVICE_STATE_DEFAULT:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;   
+    @   assumes !(pkt->wLength != 0 ) ; 
+    @   assumes ctx->state == USB_DEVICE_STATE_DEFAULT ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ behavior USB_DEVICE_STATE_ADDRESS:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
+    @   assumes !(pkt->wLength != 0 ) ; 
+    @   assumes ctx->state == USB_DEVICE_STATE_ADDRESS ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ behavior USB_DEVICE_STATE_CONFIGURED:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
+    @   assumes !(pkt->wLength != 0 ) ; 
+    @   assumes ctx->state == USB_DEVICE_STATE_CONFIGURED ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -1561,22 +1634,59 @@ err:
 }
 
 /*@
-    @ requires \valid(pkt) && \valid(ctx);
+    @ requires \valid(ctx) && \valid(pkt) ;
     @ requires \separated(ctx,pkt);
+    @ assigns *ctx ;
+    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
-    @   assigns *ctx;
-    @   ensures \result == MBED_ERROR_INVSTATE && ctx->ctrl_req_processing == \false;
+    @   ensures \result == MBED_ERROR_INVSTATE ;
 
-    @ behavior std_requests_allowed:
+    @ behavior lenght_not_null:
     @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
-                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
-    @   assigns *pkt, *ctx, *r_CORTEX_M_USBOTG_HS_DTXFSTS(0), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(0) ;
-    @   ensures \result == MBED_ERROR_NONE && ctx->ctrl_req_processing == \false;
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;   
+    @   assumes (pkt->wLength != 0) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior no_interface:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;  
+    @   assumes !(pkt->wLength != 0) ;  
+    @   assumes   !( (pkt->wIndex & 0x7f) < ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior interface_ok_USB_DEVICE_STATE_DEFAULT:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;   
+    @   assumes !(pkt->wLength != 0) ;  
+    @   assumes   ( (pkt->wIndex & 0x7f) < ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_DEFAULT ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ behavior interface_ok_USB_DEVICE_STATE_ADDRESS:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;  
+    @   assumes !(pkt->wLength != 0) ;  
+    @   assumes   ( (pkt->wIndex & 0x7f) < ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_ADDRESS ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ behavior interface_ok_USB_DEVICE_STATE_CONFIGURED:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;   
+    @   assumes !(pkt->wLength != 0) ;  
+    @   assumes   ( (pkt->wIndex & 0x7f) < ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_CONFIGURED ;
+    @   ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -1608,7 +1718,7 @@ static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pk
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
-    if (usbctrl_is_interface_exists(ctx, iface_id) == false) {
+    if (usbctrl_is_interface_exists(ctx, iface_id) == false) {     // Cyril : EP ou iface?
         /* if the targetted ep does not exist in the current configuration, this
          * request is invalid. */
         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
@@ -1642,21 +1752,62 @@ err:
 }
 
 /*@
-    @ requires \valid(pkt) && \valid(ctx);
+    @ requires \valid(ctx) && \valid_read(pkt) ;
     @ requires \separated(ctx,pkt);
+    @ assigns *ctx ;
+    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
-    @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
-    @ behavior std_requests_allowed:
+    @ behavior lenght_not_twice:
     @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
-                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
-    @   assigns *pkt, *r_CORTEX_M_USBOTG_HS_DTXFSTS(0), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(0) ;
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;   
+    @   assumes (pkt->wLength != 2) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior no_endpoint:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;  
+    @   assumes !(pkt->wLength != 2) ;  
+    @   assumes (((pkt->wIndex & 0x7f) != EP0) && !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == (pkt->wIndex & 0x7f))) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior endpoint_ok_USB_DEVICE_STATE_DEFAULT:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;   
+    @   assumes !(pkt->wLength != 2) ;  
+    @   assumes !(((pkt->wIndex & 0x7f) != EP0) && !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == (pkt->wIndex & 0x7f))) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_DEFAULT ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ behavior endpoint_ok_USB_DEVICE_STATE_ADDRESS:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;  
+    @   assumes !(pkt->wLength != 2) ;  
+    @   assumes !(((pkt->wIndex & 0x7f) != EP0) && !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == (pkt->wIndex & 0x7f))) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_ADDRESS ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ behavior endpoint_ok_USB_DEVICE_STATE_CONFIGURED:
+    @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+                (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
+                (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;   
+    @   assumes !(pkt->wLength != 2) ;  
+    @   assumes !(((pkt->wIndex & 0x7f) != EP0) && !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == (pkt->wIndex & 0x7f))) ;
+    @   assumes ctx->state == USB_DEVICE_STATE_CONFIGURED ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors ;
@@ -1961,7 +2112,7 @@ err:
 
 */
 
-static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
+mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
                                                          usbctrl_context_t   *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -1988,12 +2139,12 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
 
     */
 
-    if(((uint8_t)((pkt->wIndex) & 0xff)) == 0 ){   // Cyril : ajout du cast pour passer la preuve avec frama, sinon impossible de passer assert ((pkt->wIndex) & 0xff) > 0
+    if((((pkt->wIndex) & 0xff)) == 0 ){   
         /*@ assert ((pkt->wIndex) & 0xff) == 0 ; */ 
         errcode = MBED_ERROR_INVPARAM ;
         goto err ;
     }
-
+    /*@ assert ((pkt->wIndex) & 0xff) != 0 ; */ 
     /*@ assert ((pkt->wIndex) & 0xff) > 0 ; */ 
 
     iface_idx = (((pkt->wIndex) & 0xff) -1 );  // Cyril : iface_idx : problème d'uint8_t >=0 (rte downcast). 0xff joue le rôle d'un masque, les 8 premiers bits de index sont mis à 0 donc <= 255 ça marche
