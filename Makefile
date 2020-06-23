@@ -195,8 +195,8 @@ frama-c-eva:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 20 \
-		    -eva-slevel 300 \
+		    -eva-auto-loop-unroll 100 \
+		    -eva-slevel 1000 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
   			-wp-dynamic \
@@ -220,8 +220,8 @@ frama-c-eva-concat:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 20 \
-		    -eva-slevel 300 \
+		    -eva-auto-loop-unroll 100 \
+		    -eva-slevel 1000 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
   			-wp-dynamic \
@@ -245,13 +245,14 @@ frama-c:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 400 \
-		    -eva-precision 4 \
+		    -eva-auto-loop-unroll 100 \
+		    -eva-slevel 1000 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
+		    -eva-equality-through-calls all \
   			-wp-dynamic \
 		    -eva-split-return auto \
-		    -eva-partition-history 10 \
+		    -eva-partition-history 6 \
 		    -eva-log a:frama-c-rte-eva.log \
    		    -then \
    		    -wp \
@@ -281,6 +282,7 @@ frama-c-concat:
 		    -eva-precision 10 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
+		    -eva-equality-through-calls all \
   			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
@@ -299,6 +301,7 @@ frama-c-concat:
 
 #-eva-bitwise-domain
 #-eva-slevel-function usbctrl_declare_interface:300000 \
+#-eva-equality-through-calls all \
 
 frama-c-gui:
 	frama-c-gui -load $(SESSION)

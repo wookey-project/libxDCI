@@ -1,5 +1,5 @@
 commande pour parser rapidement le fichier de log EVA :
-grep 'rte,unsigned_downcast' frama-c-rte-eva.log | grep -v 'got final status valid' & grep "'rte,index_bound' got status unknown" frama-c-rte-eva.log & grep 'rte,mem_access' frama-c-rte-eva.log | grep -v 'got final status valid'
+grep 'rte,unsigned_downcast' frama-c-rte-eva.log | grep -v 'got final status valid' & grep "'rte,index_bound' got status unknown" frama-c-rte-eva.log & grep "'rte,mem_access'" frama-c-rte-eva.log  | grep -v 'got final status valid' & grep "'rte,unsigned_overflow'" frama-c-rte-eva.log | grep -v 'got final status valid'
 
 #define CONFIG_USR_LIB_USBCTRL_DEV_PRODUCTID 0xDEAD
 #define CONFIG_USR_LIB_USBCTRL_DEV_VENDORID 0xCAFE
@@ -153,3 +153,8 @@ tentative avec GHOST_usbotghs_ctx->out_eps[ep].state, ça ne marche pas
 comment parcourir la fonction avec plusieurs états?  le driver est dans l'état IDLE, je ne sais pas comment le forcer à changer d'état (tentative avec framac interval, mais bcp d'effets indésirables sur d'autres fonctions... + pb de garbled mix)
 en fait, ça dépend du matériel pour les états d'appels à outepevent : idée faire une "fausse fonction get_ep_state" avec eva use spec (je fais pas une fonction, je fais une spec)
 
+
+
+je pense avoir trouvé le problème : ctx_list[ctxh].state = Frama_C_interval(0,9); dans mon main...j'ai remplacé par ctx_list[ctxh].state = USB_DEVICE_STATE_CONFIGURED ;
+du coup, ça passe, meme le require ghost_num_ctx == num_ctx est validé (dans un autre fichier c!). J'avais framac interval pour parcourir tous les états possibles, mais ce n'est définitivement pas la bonne solution pour faire ça
+il me reste un problème dans handle_class_request, un assigns nothing qui ne passe pas (je pense qu'il manque un séparated quelque part)

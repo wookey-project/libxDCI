@@ -196,37 +196,18 @@ err:
  * IN EP event (data sent) for EP 0
  */
 
-/* @
-    @ behavior ctx_not_found:
-    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
-    @   assigns \nothing ;    
-    @   ensures \result == MBED_ERROR_NOTFOUND ;
-
-    @ behavior ctx_found :
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assigns ctx_list[0..(GHOST_num_ctx-1)] ;  // cyril :c'est large mais ça passe, je ne sais pas comment faire un assigns plus précise (ctx_list[i])
-    @   ensures is_valid_error(\result);
-
-    @ complete behaviors ;
-    @ disjoint behaviors ;
-*/
-
-/*
-    FIXME : ajout d'une variable ghost pour num_ctx
-*/
-
 /*@
-    
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx);
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
 
     @ behavior ctx_not_found:
     @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
-    @   assigns GHOST_num_ctx;    
-    @   ensures \result == MBED_ERROR_NOTFOUND ==> (\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
+    @   assigns \nothing;    
+    @   ensures \result == MBED_ERROR_NOTFOUND  ;
 
     @ behavior ctx_found :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assigns ctx_list[0..(GHOST_num_ctx-1)], GHOST_num_ctx ;  // cyril :c'est large mais ça passe, je ne sais pas comment faire un assigns plus précise (ctx_list[i])
+    @   assigns ctx_list[0..(GHOST_num_ctx-1)] ;  // cyril :c'est large mais ça passe, je ne sais pas comment faire un assigns plus précise (ctx_list[i])
     @   ensures is_valid_error(\result);
 
     @ complete behaviors ;
@@ -238,19 +219,16 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
     mbed_error_t errcode = MBED_ERROR_NONE;
     usbctrl_context_t *ctx = NULL;
     log_printf("[LIBCTRL] handle inevent\n");
-    /* get back associated context */
 
-    /* @ assert GHOST_num_ctx == num_ctx ; */
+    /* get back associated context */
     if ((errcode = usbctrl_get_context(dev_id, &ctx)) != MBED_ERROR_NONE) {
-        /*@ assert &ctx != \null ; */
-        /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ; */
+        /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> &ctx_list[i] != ctx ; */
+        /*@ assert errcode == MBED_ERROR_NOTFOUND ; */
         goto err;
     }
 
-    /*@ assert \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id  ; */
     /*@ assert \exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] ; */  // Cyril : plus généralement, c'est ctx == &ctx_list[i] tel que ctx_list[i].dev_id == dev_id
                                                                                         // mais je sais pas comment le dire 
-    /* @ assert ctx == &ctx_list[0] ; */
     /*
      * By now, this handler is called only for successfully transmitted pkts
      * TODO: maybe we should handle NAK effective & errors at control level, using

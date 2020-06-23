@@ -591,6 +591,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 #else
       ep = &ctx->out_eps[ep_id];
 #endif
+    /*@ assert ep->fifo_idx == 0 ; */
     if (!ep->configured || !ep->mpsize) {   // Cyril : ajout de || !ep->mpsize (sinon div par 0 plus tard...)
         log_printf("[USBOTG][HS] ep %d not configured\n", ep->id);
         errcode = MBED_ERROR_INVSTATE;
@@ -697,6 +698,8 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 	           @ loop variant CPT_HARD - cpt ;
        */
        //PMO ajout compteur matériel
+       
+
        for (uint8_t cpt=0; cpt<CPT_HARD; cpt++)
 	 {
 	   if (get_reg(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id), USBOTG_HS_DTXFSTS_INEPTFSAV) < (ep->mpsize / 4)) {
@@ -723,6 +726,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
         /*@ assert \separated(ep, &usbotghs_ctx) ; */
         errcode = usbotghs_write_epx_fifo(ep->mpsize, ep);
         /*@ assert ep == &usbotghs_ctx.in_eps[ep_id] ; */
+        /*@ assert ep->fifo_idx ==  ep->mpsize ; */
         goto err;  // Cyril : ajout du errocde =
     }
 
@@ -778,6 +782,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 
         /*@ assert \separated(ep,&ep->fifo[ep->fifo_idx], r_CORTEX_M_USBOTG_HS_GINTMSK, USBOTG_HS_DEVICE_FIFO(ep->id)  ) ; */
         /* write data from SRC to FIFO */
+
         usbotghs_write_epx_fifo(fifo_size, ep); // Cyril : il y a un RTE dans cette fonction : l'appel à pour conséquence de faire ep->fifo_idx += size, et donc on peut dépasser unint_32
 
         /* wait for XMIT data to be transfered (wait for iepint (or oepint in
@@ -912,6 +917,11 @@ mbed_error_t usbotghs_global_stall(void)
     mbed_error_t errcode = MBED_ERROR_NONE;
     return errcode;
 }
+
+
+/*
+    FIXME : spec à faire
+*/
 
 mbed_error_t usbotghs_endpoint_set_nak(uint8_t ep_id, usbotghs_ep_dir_t dir)
 {
@@ -2061,8 +2071,14 @@ mbed_error_t usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep)
 
     //usbotghs_write_core_fifo(&(ep->fifo[ep->fifo_idx]), size, ep->id);  // Cyril : commenté car pb de cast et d'accès mémoire
 
-      /* assert rte: unsigned_overflow: ep->fifo_idx + size ≤ 4294967295; */  //cyril : attention, RTE ici (je ne le voyais pas avant car la fonction
-      //	usbotghs_write_core_fifo ne termine pas correctement )
+    /* int overflow check */
+    if (((uint64_t)(ep->fifo_idx + size)) >= ((uint32_t)4*1024*1024*1000)) {
+        /* In a nominal embedded usage, this should never arise as embedded devices never
+         * handle such amount of memory */
+        log_printf("USBOTG][HS] overflow detected!\n");
+        errcode = MBED_ERROR_NOMEM;
+        goto err;
+    }
 
     ep->fifo_idx += size;
     ep->fifo_lck = false;

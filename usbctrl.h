@@ -104,6 +104,7 @@ int Frama_C_interval(int min, int max);
 #define usb_backend_drv_stall usbotghs_endpoint_stall
 #define usb_backend_drv_send_data usbotghs_send_data
 #define usb_backend_drv_ack usbotghs_endpoint_clear_nak
+#define usb_backend_drv_nak usbotghs_endpoint_set_nak
 #define usb_backend_drv_set_address usbotghs_set_address
 #define usb_backend_drv_send_zlp usbotghs_send_zlp
 #define usb_backend_drv_configure_endpoint usbotghs_configure_endpoint
@@ -122,7 +123,7 @@ int Frama_C_interval(int min, int max);
     @ ensures is_valid_error(\result);
 */
 
-mbed_error_t usbctrl_class_rqst_handler(uint32_t usbxdci_handler,
+mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
                                        usbctrl_setup_pkt_t *packet)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;

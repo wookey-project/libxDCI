@@ -63,7 +63,8 @@ static inline usbctrl_req_type_t usbctrl_std_req_get_type(usbctrl_setup_pkt_t *p
     @ ensures \result == ((pkt->bmRequestType >> 7) & 0x1);
 */
 
-static inline usbctrl_req_dir_t usbctrl_std_req_get_dir(usbctrl_setup_pkt_t *pkt)
+usbctrl_req_dir_t usbctrl_std_req_get_dir(usbctrl_setup_pkt_t *pkt)
+//static inline usbctrl_req_dir_t usbctrl_std_req_get_dir(usbctrl_setup_pkt_t *pkt)
 {
     /* bit 7 */
     return ((pkt->bmRequestType >> 7) & 0x1);
@@ -216,7 +217,8 @@ static inline bool is_vendor_requests_allowed(usbctrl_context_t *ctx)
 
 */
 
-static inline bool is_class_requests_allowed(usbctrl_context_t *ctx)
+bool is_class_requests_allowed(usbctrl_context_t *ctx)
+//static inline bool is_class_requests_allowed(usbctrl_context_t *ctx)
 {
     
     if ( usbctrl_get_state(ctx) == USB_DEVICE_STATE_CONFIGURED)
@@ -373,9 +375,11 @@ err:
 pour behavior USB_DEVICE_STATE_ADDRESS_recipient_USB_REQ_RECIPIENT_ENDPOINT_endpoint_true : je dois ajouter un ensures pour : return the recipient status (2 bytes, or wLength if smaller) ?
 */
 
-
-static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
+// cyril : question pour eva pour faire un test sur des fonctions static?
+mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                                                       usbctrl_context_t *ctx)
+//static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
+//                                                      usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] Std req: get status\n");
@@ -1010,7 +1014,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
  * Here is
  */
 
-/*@
+/* @
     @ requires \valid(pkt) && \valid(ctx);
     @ requires \separated(ctx,pkt);
 
@@ -1899,7 +1903,7 @@ err:
  * These requests handlers are written above and executed directly by the libusbctrl
  */
 
-/*@
+/* @
     @ requires \valid(pkt) && \valid(ctx);
     @ requires \separated(ctx,pkt);
 
@@ -2080,9 +2084,10 @@ err:
 */
 
 /*@
+    
     @ requires \valid(pkt) && \valid(ctx);
     @ requires \separated(ctx,pkt);
-
+    @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !(ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
@@ -2093,13 +2098,21 @@ err:
     @   assumes (ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
     @   assumes (((pkt->wIndex) & 0xff) - 1 ) >= ctx->cfg[ctx->curr_cfg].interface_num ;  // condition pour is_interface_exists : iface_idx >= ctx->cfg[ctx->curr_cfg].interface_num
     @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
-    @   ensures \result == MBED_ERROR_NOTFOUND || \result == MBED_ERROR_UNKNOWN ;  // Cyril : je ne comprends pas pq invstate...
+    @   ensures \result == MBED_ERROR_NOTFOUND || \result == MBED_ERROR_UNKNOWN ; 
 
-    @ behavior handler:
+    @ behavior handler_not_found :
     @   assumes (ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
     @   assumes !((((pkt->wIndex) & 0xff) - 1) >= ctx->cfg[ctx->curr_cfg].interface_num) ;
-    @   assigns \nothing ;  // Cyril : parce que le pointeur de fonction assigns \nothing (hypothèse de ma part)
-    @   ensures is_valid_error(\result) ;  // errcode = iface->rqst_handler(handler, pkt); // pour etre général avec le pointeur de fonction
+    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> &(ctx_list[i]) != ctx ;
+    @   assigns \nothing ;  
+    @   ensures \result == MBED_ERROR_NOTFOUND || \result == MBED_ERROR_INVPARAM ;  
+
+    @ behavior handler_found :
+    @   assumes (ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
+    @   assumes !((((pkt->wIndex) & 0xff) - 1) >= ctx->cfg[ctx->curr_cfg].interface_num) ;
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && &(ctx_list[i]) == ctx ;
+    @   assigns \nothing ;  
+    @   ensures is_valid_error(\result) ;    
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -2109,21 +2122,26 @@ err:
 /*
     CYRIL : cette fonction est une fonction static inline, mais elle n'est appelée par aucune autre fonction...
     comment faire pour l'utiliser alors?
+    ici se trouve handle_class_requests
 
 */
 
 mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
                                                          usbctrl_context_t   *ctx)
 {
+    /* @ assert GHOST_num_ctx == num_ctx ; */
+    /* @ assert \separated(&GHOST_num_ctx, &num_ctx) ; */
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t iface_idx = 0;
     usbctrl_interface_t* iface = NULL;
 
     if (!is_class_requests_allowed(ctx)) {
         /* error handling, invalid state */
+        /*@ assert ctx->state != USB_DEVICE_STATE_CONFIGURED ; */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
+    /* @ assert GHOST_num_ctx == num_ctx ; */
     /* when sending a class request, this should be to a specific interface.
      * Interfaces are identified by their cell number in the interfaces[] table,
      * and declared to the host through the descriptors, through which
@@ -2148,26 +2166,34 @@ mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
     /*@ assert ((pkt->wIndex) & 0xff) > 0 ; */ 
 
     iface_idx = (((pkt->wIndex) & 0xff) -1 );  // Cyril : iface_idx : problème d'uint8_t >=0 (rte downcast). 0xff joue le rôle d'un masque, les 8 premiers bits de index sont mis à 0 donc <= 255 ça marche
-
-    if (!usbctrl_is_interface_exists(ctx, iface_idx)) {
+ /* @ assert GHOST_num_ctx == num_ctx ; */
+     if (!usbctrl_is_interface_exists(ctx, iface_idx)) {
         //errcode = MBED_ERROR_NOTFOUND;
         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
         errcode = MBED_ERROR_NOTFOUND;
         goto err;
     }
+    /* @ assert GHOST_num_ctx == num_ctx ; */
     if ((iface = usbctrl_get_interface(ctx, iface_idx)) == NULL) {   // je ne peux pas arriver ici après le passage dans usbctrl_is_interface_exists si ça c'est bien passé
-        //errcode = MBED_ERROR_UNKNOWN;
         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
         errcode = MBED_ERROR_UNKNOWN;
         goto err;
     }
     /* interface found, call its dedicated request handler */
-    uint32_t handler = 0 ;  // Cyril : ajout pour EVA, handler doit être initialisé avant l'appel de iface->rqst_handler(handler, pkt)
-                            // ou alors il manque un goto err dans le test en dessous 
-    if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {
+    uint32_t handler ;  
+    
+    /*@ assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
+    /* @ assert GHOST_num_ctx == num_ctx ; */
+    
+    if ((errcode = usbctrl_get_handler(ctx, &handler)) != MBED_ERROR_NONE) {
+        /*@ assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
+        /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> &(ctx_list[i]) != ctx ; */
+        /*@ assert errcode == MBED_ERROR_NOTFOUND || errcode == MBED_ERROR_INVPARAM ;  */
         log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
+        goto err ;  // Cyril : ajout pour avoir un retour d'erreur et pour initialiser handler avant d'entrer dans le pointeur de fonction
     }
-
+    /*@ assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
+    /*@ assert \exists integer i ; 0 <= i < GHOST_num_ctx && &(ctx_list[i]) == ctx ; */
     if (iface->rqst_handler != NULL) {   // Cyril : ajout d'un test sur la valeur du pointeur de fonction
  
 #ifndef __FRAMAC__
@@ -2176,14 +2202,15 @@ mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
     }
 #endif
 
-    /*@ assert iface->rqst_handler ∈ {usbctrl_class_rqst_handler}; */   // Cyril : ne passe pas avec EVA : il manque un test sur le pointeur de fonction : null ou pas...
-    /*@ calls usbctrl_class_rqst_handler; */  // Cyril : problem assert Eva: initialization: \initialized(&handler);  à creuser...
+    /*@ assert iface->rqst_handler ∈ {class_rqst_handler}; */   // Cyril : ne passe pas avec EVA : il manque un test sur le pointeur de fonction : null ou pas...
+    /*@ calls class_rqst_handler; */  // Cyril : problem assert Eva: initialization: \initialized(&handler);  à creuser...
 
     errcode = iface->rqst_handler(handler, pkt); 
     }
 err:
     return errcode;
 }
+
 
 
 /*
@@ -2223,38 +2250,38 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
 
     @ behavior bad_ctx:
     @   assumes pkt != \null ;
-    @   assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id ;
+    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
     @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
     @   ensures \result == MBED_ERROR_UNKNOWN ;
 
     @ behavior USB_REQ_TYPE_STD:
     @   assumes pkt != \null ;
-    @   assumes !(\forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id) ;
+    @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
     @   assumes (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_STD) ;
     @   assumes (((pkt->bmRequestType) & 0x1F) != USB_REQ_RECIPIENT_INTERFACE) ;
     @   ensures is_valid_error(\result) ;   // être plus précis quand la fonction usbctrl_handle_std_requests sera correctement spécifiée
-    @   assigns ctx_list[0..(num_ctx-1)];
+    @   assigns ctx_list[0..(GHOST_num_ctx-1)];
 
     @ behavior USB_REQ_TYPE_VENDOR:
     @   assumes pkt != \null ;
-    @   assumes !(\forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id) ;
+    @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
     @   assumes (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;
     @   ensures (\result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE) ;
 
     @ behavior USB_REQ_TYPE_CLASS:
     @   assumes pkt != \null ;
-    @   assumes !(\forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id) ;
+    @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
     @   assumes !(((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;   
     @   assumes ((((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_CLASS) || (((pkt->bmRequestType) & 0x1F) == USB_REQ_RECIPIENT_INTERFACE)) ;
     @   ensures is_valid_error(\result) ;   // Cyril : dans l'attente de discuter avec Philippe de errcode et upperstack
 
     @ behavior UNKNOWN:
     @   assumes pkt != \null ;
-    @   assumes !(\forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id) ;
+    @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
     @   assumes !(((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_STD) ;
     @   assumes !(((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;    
     @   assumes !((((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_CLASS) || (((pkt->bmRequestType) & 0x1F) == USB_REQ_RECIPIENT_INTERFACE)) ; 
-    @   assigns *pkt, ctx_list[0..(num_ctx-1)] ;  // cyril : je dois laisser ctx_list[0..(num_ctx-1)], *ctx_list n'est pas validé par WP
+    @   assigns *pkt, ctx_list[0..(GHOST_num_ctx-1)] ;  // cyril : je dois laisser ctx_list[0..(num_ctx-1)], *ctx_list n'est pas validé par WP
     @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;  
     @   ensures \result == MBED_ERROR_UNKNOWN ;
 
@@ -2285,15 +2312,15 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     /* Detect which context is assocated to current request and set local ctx */
         if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {  
         /* trapped on oepint() from a device which is not handled here ! what ? */
-        /* @ assert \separated(pkt,ctx_list + (0..(num_ctx-1)),r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+        /*@ assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
         errcode = MBED_ERROR_UNKNOWN;
         usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
-        /* @ assert \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != dev_id ; */  // Cyril : seule condition pour avoir usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE car *ctx != NULL
+        /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ; */  
         goto err;
     }
 
-  /* @ assert \exists integer i; 0 ≤ i < num_ctx && ctx_list[i].dev_id == dev_id; */
-  /* @ assert \exists integer i; 0 ≤ i < num_ctx && ctx == &ctx_list[i]; */ ;
+  /*@ assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id; */
+  /*@ assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx == &ctx_list[i]; */ ;
 
 #if defined(__FRAMAC__)
     if ((((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_STD) && (((pkt->bmRequestType) & 0x1F) != USB_REQ_RECIPIENT_INTERFACE)   )  {
@@ -2341,8 +2368,9 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
             if (ctx->cfg[curr_cfg].interfaces[i].rqst_handler) {
                 log_printf("[USBCTRL] execute iface class handler\n");
                 uint32_t handler;
-                if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {  // cyril : il manque pas un break ici aussi?
+                if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {  // cyril : il manque pas un break ici aussi? : ajout d'un goto err, sinon pb d'initialisation pour rqst_handler
                     log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
+                    goto err ;
                 }
 
 #ifndef __FRAMAC__
@@ -2350,9 +2378,9 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                     goto err;
                 }
 #endif     
-                            
-                /*@ assert ctx->cfg[curr_cfg].interfaces[i].rqst_handler ∈ {&usbctrl_class_rqst_handler}; */
-                /*@ calls usbctrl_class_rqst_handler; */
+                           
+                /*@ assert ctx->cfg[curr_cfg].interfaces[i].rqst_handler ∈ {&class_rqst_handler}; */
+                /*@ calls class_rqst_handler; */
 
                 if ((upper_stack_err = ctx->cfg[curr_cfg].interfaces[i].rqst_handler(handler, pkt)) == MBED_ERROR_NONE) {  // Cyril : mais que devient errcode? c'est lui qui est return à la fin
                     /* upper class handler found, we can leave the loop */
