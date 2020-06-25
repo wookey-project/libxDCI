@@ -351,6 +351,7 @@ mbed_error_t usbotghs_declare(void)
 
 /*@
     @ requires is_valid_dev_mode(mode) ;
+    @ assigns usbotghs_ctx \from indirect:ieph, indirect:oeph;
     @ assigns usbotghs_ctx ;
     @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INITFAIL
             || \result == MBED_ERROR_BUSY || \result == MBED_ERROR_UNSUPORTED_CMD || \result == MBED_ERROR_NOMEM ;
@@ -591,7 +592,6 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 #else
       ep = &ctx->out_eps[ep_id];
 #endif
-    /*@ assert ep->fifo_idx == 0 ; */
     if (!ep->configured || !ep->mpsize) {   // Cyril : ajout de || !ep->mpsize (sinon div par 0 plus tard...)
         log_printf("[USBOTG][HS] ep %d not configured\n", ep->id);
         errcode = MBED_ERROR_INVSTATE;
@@ -1323,7 +1323,9 @@ mbed_error_t usbotghs_endpoint_stall_clear(uint8_t ep, usbotghs_ep_dir_t dir)
 
 /*@
     @ requires \separated(&usbotghs_ctx, r_CORTEX_M_USBOTG_HS_GINTMSK, r_CORTEX_M_USBOTG_HS_DAINTMSK) ;
-    @   assigns usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_GINTMSK, *r_CORTEX_M_USBOTG_HS_DAINTMSK ;
+    @   assigns usbotghs_ctx \from indirect:handler ;
+    @   assigns usbotghs_ctx ;
+    @   assigns *r_CORTEX_M_USBOTG_HS_GINTMSK, *r_CORTEX_M_USBOTG_HS_DAINTMSK ;
 
 
     @ behavior bad_ctx:
@@ -2085,6 +2087,71 @@ mbed_error_t usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep)
 err:
     return errcode;
 }
+
+mbed_error_t usbotghs_reset_epx_fifo(usbotghs_ep_t *ep)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    usbotghs_context_t *ctx = usbotghs_get_context();
+    if (ctx == NULL) {
+        log_printf("[USBOTG] ctx null\n");
+        errcode = MBED_ERROR_INVSTATE;
+        goto err;
+    }
+    if (ep->id == 0) {
+        /*
+         * EndPoint 0 TX FIFO configuration (should store a least 4 64byte paquets)
+         */
+        /*  – Program the OTG_HS_TX0FSIZ register (depending on the FIFO number
+         *  chosen) to be able to transmit control IN data. At a minimum, this must be equal to
+         *  1 max packet size of control endpoint 0.
+         *
+         *  FIXME: this work is not made in the previous driver... Maybe we should correct this here.
+         */
+
+
+        /*
+         */
+        set_reg(r_CORTEX_M_USBOTG_HS_DIEPTXF0, USBOTG_HS_RX_CORE_FIFO_SZ, USBOTG_HS_DIEPTXF_INEPTXSA);
+        set_reg(r_CORTEX_M_USBOTG_HS_DIEPTXF0, USBOTG_HS_TX_CORE_FIFO_SZ, USBOTG_HS_DIEPTXF_INEPTXFD);
+        /*
+         * 4. Program STUPCNT in the endpoint-specific registers for control OUT endpoint 0 to receive a SETUP packet
+         *      – STUPCNT = 3 in OTG_HS_DOEPTSIZ0 (to receive up to 3 back-to-back SETUP packets)
+         */
+        set_reg(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0),
+                3, USBOTG_HS_DOEPTSIZ_STUPCNT);
+        set_reg(r_CORTEX_M_USBOTG_HS_DOEPCTL(0),
+                1, USBOTG_HS_DOEPCTL_CNAK);
+        usbotghs_txfifo_flush(0);
+        ctx->fifo_idx += USBOTG_HS_TX_CORE_FIFO_SZ;
+    } else {
+        /* all other EPs have their DIEPTXF registers accesible through a single macro */
+        if (ep->dir == USBOTG_HS_EP_DIR_OUT) {
+            /* using global RX fifo... GRXFIFOSZ set as global RX FIFO */
+        } else {
+            set_reg(r_CORTEX_M_USBOTG_HS_DIEPTXF(ep->id), ctx->fifo_idx, USBOTG_HS_DIEPTXF_INEPTXSA);
+            /* this field is in 32bits words unit */
+            /* for very small mpsize EP (e.g. keyboards, we must support at list
+             * URB size + mpsize */
+
+            uint32_t fifosize;
+            if (ep->mpsize <= 64) {
+                fifosize = 128;
+            } else {
+                fifosize = ep->mpsize;
+            }
+            set_reg(r_CORTEX_M_USBOTG_HS_DIEPTXF(ep->id), fifosize, USBOTG_HS_DIEPTXF_INEPTXFD);
+            ctx->fifo_idx += fifosize;
+        }
+    }
+    ep->fifo_idx = 0;
+    ep->fifo = NULL;
+    ep->fifo_lck = false;
+    ep->fifo_size = 0;
+    ep->core_txfifo_empty = true;
+err:
+    return errcode;
+}
+
 
 /*
     fonction utilisée dans le cadre de l'analyse EVA, pour appeler toutes les fonctions du driver

@@ -217,8 +217,7 @@ static inline bool is_vendor_requests_allowed(usbctrl_context_t *ctx)
 
 */
 
-bool is_class_requests_allowed(usbctrl_context_t *ctx)
-//static inline bool is_class_requests_allowed(usbctrl_context_t *ctx)
+static inline bool is_class_requests_allowed(usbctrl_context_t *ctx)
 {
     
     if ( usbctrl_get_state(ctx) == USB_DEVICE_STATE_CONFIGURED)
@@ -810,7 +809,8 @@ err:
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt);
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx,pkt);
+
     @ ensures ctx->ctrl_req_processing == \false;
 
     @ behavior std_requests_not_allowed:
@@ -1014,7 +1014,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
  * Here is
  */
 
-/* @
+/*@
     @ requires \valid(pkt) && \valid(ctx);
     @ requires \separated(ctx,pkt);
 
@@ -1903,7 +1903,7 @@ err:
  * These requests handlers are written above and executed directly by the libusbctrl
  */
 
-/* @
+/*@
     @ requires \valid(pkt) && \valid(ctx);
     @ requires \separated(ctx,pkt);
 
@@ -2126,8 +2126,14 @@ err:
 
 */
 
+#if defined(__FRAMAC__)
 mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
                                                          usbctrl_context_t   *ctx)
+#else
+static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
+                                                         usbctrl_context_t   *ctx)
+#endif/*!__FRAMAC__*/
+
 {
     /* @ assert GHOST_num_ctx == num_ctx ; */
     /* @ assert \separated(&GHOST_num_ctx, &num_ctx) ; */
@@ -2242,7 +2248,7 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
  *
  */
 
-/* @
+/*@
     @ behavior bad_pkt:
     @   assumes pkt == \null ;
     @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;

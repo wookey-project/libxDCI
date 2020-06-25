@@ -518,6 +518,8 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
 
 bool usbctrl_is_interface_exists(usbctrl_context_t *ctx, uint8_t iface)
 {
+    
+	//@ assert GHOST_num_ctx == num_ctx ; 
     /* sanitize */ 
     if (ctx == NULL) { 
         return false;
@@ -788,14 +790,18 @@ err:
  */
 
 /*@
+    @ requires GHOST_num_ctx == num_ctx ;
+    @ ensures GHOST_num_ctx == num_ctx ;
+
     @ behavior bad_ctxh :
-    @   assumes ctxh >= num_ctx ;
+    @   assumes ctxh >= GHOST_num_ctx ;
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior other :
-    @   assumes ctxh < num_ctx ;
-    @   assigns usbotghs_ctx,  *r_CORTEX_M_USBOTG_HS_DOEPDMA(0), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0), ctx_list[ctxh] ;
+    @   assumes ctxh < GHOST_num_ctx ;
+    @	assigns usbotghs_ctx ;
+    @	assigns *r_CORTEX_M_USBOTG_HS_DOEPDMA(0), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0), ctx_list[ctxh] ;
     @   ensures is_valid_error(\result) ;
 
     @ complete behaviors ;
@@ -839,7 +845,6 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
     //PMO
     /*@ assert usbotghs_ctx.in_eps[0].mpsize ==0 ;*/
 
-
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
         usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
@@ -848,15 +853,14 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
 
 
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
-//    if ((errcode = usb_backend_drv_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
-//        printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
-//        /*@ assert GHOST_num_ctx == num_ctx ; */
-//        goto end;
-//    }
+    if ((errcode = usb_backend_drv_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
+        printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
+        goto end;
+    }
 
 
 end:
-
+	
     return errcode;
 }
 
@@ -985,10 +989,11 @@ void test_fcn_usbctrl(){
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);
     usbctrl_get_interface(ctx1, iface);
+    usbctrl_is_interface_exists(ctx1, iface); 
     usbctrl_is_endpoint_exists(ctx1, ep);
-    usbctrl_is_interface_exists(ctx1, iface);
     //@ assert GHOST_num_ctx == num_ctx ; 
     usbctrl_start_device(ctxh) ;
+    //@ assert GHOST_num_ctx == num_ctx ; 
     usbctrl_stop_device(ctxh) ;
 
 
@@ -996,10 +1001,10 @@ void test_fcn_usbctrl(){
     appel des différentes fonctions de la libxDCI
 */
 
-    //ctx_list[ctxh].state = Frama_C_interval(0,9);  // pour EVA, pour avoir tous les états possibles notamment pour la fonction usbctrl_handle_reset
 
     if(ctx1 != NULL){
-    	ctx1->state = USB_DEVICE_STATE_CONFIGURED ;
+    	ctx1->state = Frama_C_interval(0,9); // pour EVA, pour avoir tous les états possibles 
+    	//ctx1->state = USB_DEVICE_STATE_CONFIGURED ;
 		usbctrl_handle_class_requests(&pkt,ctx1) ;
 		usbctrl_std_req_handle_get_status(&pkt, ctx1) ; 
 	}
@@ -1007,14 +1012,14 @@ void test_fcn_usbctrl(){
      //@ assert GHOST_num_ctx == num_ctx ;     
     usbctrl_handle_inepevent(dev_id, size, ep);
     //@ assert GHOST_num_ctx == num_ctx ;
-    usbctrl_handle_outepevent(dev_id, size, ep);                                                  
-    usbctrl_handle_requests(&pkt, dev_id) ;
+    usbctrl_handle_outepevent(dev_id, size, ep);   
+    usbctrl_handle_requests(&pkt, dev_id) ;                                               
     usbctrl_handle_earlysuspend(dev_id) ;
     usbctrl_handle_usbsuspend(dev_id);
     usbctrl_handle_wakeup(dev_id) ;
     usbctrl_std_req_get_dir(&pkt) ;
-    
-    //usbctrl_handle_reset(dev_id);
+    usbctrl_handle_reset(dev_id);
+   
 }
 
 /*

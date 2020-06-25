@@ -195,10 +195,12 @@ frama-c-eva:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 100 \
-		    -eva-slevel 1000 \
+		    -eva-auto-loop-unroll 500 \
+		    -eva-slevel 3000 \
 		    -eva-symbolic-locations-domain \
+		    -eva-bitwise-domain \
 		    -eva-equality-domain  \
+		    -eva-equality-through-calls-function usbctrl_start_device \
   			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
@@ -245,11 +247,12 @@ frama-c:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 100 \
-		    -eva-slevel 1000 \
+		    -eva-auto-loop-unroll 500 \
+		    -eva-slevel 3000 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
-		    -eva-equality-through-calls all \
+		    -eva-bitwise-domain \
+		    -eva-equality-through-calls-function usbctrl_start_device \
   			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
@@ -302,6 +305,7 @@ frama-c-concat:
 #-eva-bitwise-domain
 #-eva-slevel-function usbctrl_declare_interface:300000 \
 #-eva-equality-through-calls all \
+# -from-verify-assigns \
 
 frama-c-gui:
 	frama-c-gui -load $(SESSION)

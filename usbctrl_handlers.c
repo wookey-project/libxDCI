@@ -54,6 +54,18 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 }
 
 
+
+/*@
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx);
+
+*/
+
+/*
+
+    FIXME : spec complete à faire, avec EVA il reste bcp d'embranchement à parcourir et j'ai du commenter l'appel à la fonction usb_backend_drv_set_recv_fifo pour ne pas avoir garbled mix (je ne comprends
+    pas d'où vient la mauvaise précision d'EVA)
+*/
+
 mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 {
 
@@ -97,7 +109,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
              * be reconfigure for EP0 here. */
             log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
 
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);  // Cyril : pose un pb de garbled mix après...qui provient des pointeurs de fonction
 
 
             if (errcode != MBED_ERROR_NONE) {
@@ -197,7 +209,7 @@ err:
  */
 
 /*@
-    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx);
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx);
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
 
     @ behavior ctx_not_found:
@@ -320,6 +332,10 @@ err:
     TODO : finir de spécifier la fonction (au moins sans les assigns)
 */
 
+/*@
+
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx);
+*/
 
 
 mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
@@ -408,9 +424,14 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                          */
                         log_printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d (size %d)\n",ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler, ep, size);
                         if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
+                            
+                            /*@ assert ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler ∈ {&handler_ep}; */
+                            /*@ calls handler_ep; */                            
+
                             ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
                             /* now that data are transfered (oepint finished) whe can set back our FIFO for
                              * EP0, in order to support next EP0 events */
+                            /*@ assert \separated(&usbotghs_ctx,ctx);  */
                             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
                         }
                         goto err;
