@@ -351,7 +351,7 @@ end:
 /*@
    	@ requires GHOST_num_ctx == num_ctx ;
    	@ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),*ctx,&GHOST_num_ctx);
-   	@ assigns *ctx;
+   	@ assigns *ctx, GHOST_idx_ctx;
     
     @ behavior bad_pointer :
     @   assumes ctx == \null ;
@@ -369,6 +369,7 @@ end:
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id ;
     @   ensures \result == MBED_ERROR_NONE ; 
     @   ensures \exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i]; 
+    @	ensures *ctx == &ctx_list[GHOST_idx_ctx];
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -405,6 +406,8 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
             *ctx = (usbctrl_context_t*)&(ctx_list[i]);
             /*@ assert  \exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i]; */
             /*@ assert *ctx == &ctx_list[i]; */
+            /*@ ghost GHOST_idx_ctx = i ; */
+            /*@ assert *ctx == &ctx_list[GHOST_idx_ctx]; */
             goto end;
         }
     }

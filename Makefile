@@ -204,6 +204,7 @@ frama-c-eva:
   			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
+		    -eva-use-spec usbotghs_get_ep_state \
 		    -eva-log a:frama-c-rte-eva.log \
 			-save framac/results/frama-c-rte-eva.session
 
@@ -256,6 +257,7 @@ frama-c:
   			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
+		    -eva-use-spec usbotghs_get_ep_state \
 		    -eva-log a:frama-c-rte-eva.log \
    		    -then \
    		    -wp \
