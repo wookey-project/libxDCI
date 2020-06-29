@@ -201,6 +201,8 @@ frama-c-eva:
 		    -eva-bitwise-domain \
 		    -eva-equality-domain  \
 		    -eva-equality-through-calls-function usbctrl_start_device \
+		    -eva-equality-through-calls-function usbctrl_handle_reset \
+		    -eva-equality-through-calls-function usbctrl_is_valid_transition \
   			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \
@@ -254,6 +256,8 @@ frama-c:
 		    -eva-equality-domain  \
 		    -eva-bitwise-domain \
 		    -eva-equality-through-calls-function usbctrl_start_device \
+		    -eva-equality-through-calls-function usbctrl_handle_reset \
+		    -eva-equality-through-calls-function usbctrl_is_valid_transition \
   			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 6 \

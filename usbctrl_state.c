@@ -308,31 +308,81 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
  * \return true if the transition request is allowed for this state, or false
  */
 
-/*@
+
+
+
+/* @
     @ requires \valid(ctx);
     @ requires is_valid_state(current_state) ;
     @ requires is_valid_transition(transition);
     @ requires \valid_read(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
     @ requires \separated(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx);
 
-    @ behavior true:
-    @   assumes \exists integer i ; 0 <= i < MAX_TRANSITION_STATE && GHOST_usb_automaton[current_state].req_trans[i].request == transition ;
+    @ behavior USB_DEVICE_STATE_ATTACHED :
+    @   assumes ((current_state == USB_DEVICE_STATE_ATTACHED)  &&   (transition == USB_DEVICE_TRANS_HUB_CONFIGURED)) ;
     @   assigns \nothing ;
     @   ensures \result == \true ;
 
-    @ behavior false:
-    @   assumes \forall integer i ; 0 <= i < MAX_TRANSITION_STATE ==> GHOST_usb_automaton[current_state].req_trans[i].request != transition ;
-    @   assigns *ctx ;
-    @   ensures \result == \false  ;
-    @   ensures ctx->state == USB_DEVICE_STATE_INVALID  ;
-    @   ensures (\result == \false && transition == USB_DEVICE_TRANS_RESET) ==> \old(ctx->state) == USB_DEVICE_STATE_INVALID ;
+    @ behavior USB_DEVICE_STATE_POWERED :
+    @   assumes ((current_state == USB_DEVICE_STATE_POWERED)  &&  ((transition == USB_DEVICE_TRANS_BUS_INACTIVE) 
+                                                                            || (transition == USB_DEVICE_TRANS_HUB_RESET) 
+                                                                            || (transition == USB_DEVICE_TRANS_HUB_DECONFIGURED) 
+                                                                            || (transition == USB_DEVICE_TRANS_RESET)))  ;
+    @   assigns \nothing ;
+    @   ensures \result == \true ;    
 
-    @ complete behaviors ;
-    @ disjoint behaviors ;
+    @ behavior USB_DEVICE_STATE_SUSPENDED_POWER :
+    @   assumes ((current_state == USB_DEVICE_STATE_SUSPENDED_POWER)  &&  (transition == USB_DEVICE_TRANS_BUS_ACTIVE))  ;
+    @   assigns \nothing ;
+    @   ensures \result == \true ;    
+
+    @ behavior USB_DEVICE_STATE_SUSPENDED_DEFAULT :
+    @   assumes ((current_state == USB_DEVICE_STATE_SUSPENDED_DEFAULT)  &&  ((transition == USB_DEVICE_TRANS_BUS_ACTIVE) 
+                                                                            || (transition == USB_DEVICE_TRANS_RESET)))  ;                                                       
+    @   assigns \nothing ;
+    @   ensures \result == \true ;    
+
+    @ behavior USB_DEVICE_STATE_SUSPENDED_ADDRESS :
+    @   assumes ((current_state == USB_DEVICE_STATE_SUSPENDED_ADDRESS)  &&  ((transition == USB_DEVICE_TRANS_BUS_ACTIVE) 
+                                                                            || (transition == USB_DEVICE_TRANS_RESET)))  ;                                                       
+    @   assigns \nothing ;
+    @   ensures \result == \true ;    
+
+    @ behavior USB_DEVICE_STATE_SUSPENDED_CONFIGURED :
+    @   assumes ((current_state == USB_DEVICE_STATE_SUSPENDED_CONFIGURED)  &&  ((transition == USB_DEVICE_TRANS_BUS_ACTIVE) 
+                                                                            || (transition == USB_DEVICE_TRANS_RESET)))  ;                                                       
+    @   assigns \nothing ;
+    @   ensures \result == \true ;  
+
+
+    @ behavior USB_DEVICE_STATE_DEFAULT :
+    @   assumes ((current_state == USB_DEVICE_STATE_DEFAULT)  &&  ((transition == USB_DEVICE_TRANS_BUS_INACTIVE) 
+                                                                            || (transition == USB_DEVICE_TRANS_ADDRESS_ASSIGNED) 
+                                                                            || (transition == USB_DEVICE_TRANS_RESET)))  ;
+    @   assigns \nothing ;
+    @   ensures \result == \true ;    
+
+
+    @ behavior USB_DEVICE_STATE_ADDRESS :
+    @   assumes ((current_state == USB_DEVICE_STATE_ADDRESS)              &&  ((transition == USB_DEVICE_TRANS_DEV_CONFIGURED) 
+                                                                            || (transition == USB_DEVICE_TRANS_BUS_INACTIVE) 
+                                                                            || (transition == USB_DEVICE_TRANS_RESET)))  ;
+    @   assigns \nothing ;
+    @   ensures \result == \true ;  
+
+
+    @ behavior USB_DEVICE_STATE_CONFIGURED :
+    @   assumes ((current_state == USB_DEVICE_STATE_CONFIGURED)          &&  ((transition == USB_DEVICE_TRANS_DEV_DECONFIGURED) 
+                                                                            || (transition == USB_DEVICE_TRANS_BUS_INACTIVE) 
+                                                                            || (transition == USB_DEVICE_TRANS_RESET)))  ;
+    @   assigns \nothing ;
+    @   ensures \result == \true ;  
+
 */
 
 
 /* @
+
     @ requires \valid(ctx);
     @ requires is_valid_state(current_state) ;
     @ requires is_valid_transition(transition);
@@ -356,13 +406,14 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
                                                                             || (transition == USB_DEVICE_TRANS_ADDRESS_ASSIGNED) 
                                                                             || (transition == USB_DEVICE_TRANS_RESET)))            ||
                 ((current_state == USB_DEVICE_STATE_ADDRESS)              &&  ((transition == USB_DEVICE_TRANS_BUS_INACTIVE) 
-                                                                            || (transition == USB_DEVICE_TRANS_DEV_DECONFIGURED) 
+                                                                            || (transition == USB_DEVICE_TRANS_DEV_CONFIGURED) 
                                                                             || (transition == USB_DEVICE_TRANS_RESET)))            ||
                  ((current_state == USB_DEVICE_STATE_CONFIGURED)          &&  ((transition == USB_DEVICE_TRANS_BUS_INACTIVE) 
                                                                             || (transition == USB_DEVICE_TRANS_DEV_DECONFIGURED) 
                                                                             || (transition == USB_DEVICE_TRANS_RESET))) ) ;
     @   assigns \nothing ;
     @   ensures \result == \true ;
+    @   ensures (\result == \true) ==> (current_state != USB_DEVICE_STATE_INVALID) ;
 
     @ behavior false:
     @   assumes !( ((current_state == USB_DEVICE_STATE_ATTACHED)           &&   (transition == USB_DEVICE_TRANS_HUB_CONFIGURED))    ||
@@ -381,7 +432,7 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
                                                                             || (transition == USB_DEVICE_TRANS_ADDRESS_ASSIGNED) 
                                                                             || (transition == USB_DEVICE_TRANS_RESET)))            ||
                 ((current_state == USB_DEVICE_STATE_ADDRESS)              &&  ((transition == USB_DEVICE_TRANS_BUS_INACTIVE) 
-                                                                            || (transition == USB_DEVICE_TRANS_DEV_DECONFIGURED) 
+                                                                            || (transition == USB_DEVICE_TRANS_DEV_CONFIGURED) 
                                                                             || (transition == USB_DEVICE_TRANS_RESET)))            ||
                  ((current_state == USB_DEVICE_STATE_CONFIGURED)          &&  ((transition == USB_DEVICE_TRANS_BUS_INACTIVE) 
                                                                             || (transition == USB_DEVICE_TRANS_DEV_DECONFIGURED) 
@@ -395,6 +446,34 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
     @ disjoint behaviors ;
 */
 
+/*@
+    @ requires \valid(ctx);
+    @ requires is_valid_state(current_state) ;
+    @ requires is_valid_transition(transition);
+    @ requires \valid_read(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
+    @ requires \separated(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx);
+
+    @ behavior true:
+    @   assumes ((\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && GHOST_usb_automaton[current_state].req_trans[i].request == transition) && (current_state != USB_DEVICE_STATE_INVALID)) ;
+    @   assigns \nothing ;
+    @   ensures \result == \true ;
+    @   ensures (\result == \true) ==> (current_state != USB_DEVICE_STATE_INVALID) ;
+    @   ensures (\result == \true) && (transition == USB_DEVICE_TRANS_RESET) ==> !(current_state == USB_DEVICE_STATE_INVALID 
+                                                                                  || current_state == USB_DEVICE_STATE_SUSPENDED_POWER
+                                                                                  || current_state == USB_DEVICE_STATE_ATTACHED ) ;
+
+    @ behavior false:
+    @   assumes !((\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && GHOST_usb_automaton[current_state].req_trans[i].request == transition) && (current_state != USB_DEVICE_STATE_INVALID)) ;
+    @   assigns *ctx ;
+    @   ensures \result == \false  ;
+    @   ensures ctx->state == USB_DEVICE_STATE_INVALID  ;
+    @   ensures (\result == \false) && (transition == USB_DEVICE_TRANS_RESET) ==> (current_state == USB_DEVICE_STATE_INVALID 
+                                                                                  || current_state == USB_DEVICE_STATE_SUSPENDED_POWER
+                                                                                  || current_state == USB_DEVICE_STATE_ATTACHED ) ;
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
 
 
 
@@ -414,7 +493,8 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
     for (uint8_t i = 0; i < MAX_TRANSITION_STATE; ++i) {
         if (usb_automaton[current_state].req_trans[i].request == transition) {
             
-            /*@ assert (transition == USB_DEVICE_TRANS_RESET) ==> (current_state != USB_DEVICE_STATE_INVALID) ; */
+              /*@ assert (transition == USB_DEVICE_TRANS_RESET) ==> !(current_state == USB_DEVICE_STATE_INVALID || current_state == USB_DEVICE_STATE_ATTACHED || current_state == USB_DEVICE_STATE_SUSPENDED_POWER) ; */
+
 
             return true;
         }
@@ -423,10 +503,15 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
      * Didn't find any request associated to current state. This is not a
      * valid transition. We should stall the request.
      */
+
+    /*@ assert (\forall integer i ; 0 <= i <  MAX_TRANSITION_STATE==> GHOST_usb_automaton[current_state].req_trans[i].request != transition) ; */
+
+    /*@ assert (transition == USB_DEVICE_TRANS_RESET) ==> (current_state == USB_DEVICE_STATE_INVALID || current_state == USB_DEVICE_STATE_ATTACHED || current_state == USB_DEVICE_STATE_SUSPENDED_POWER) ; */
+
+
     log_printf("%s: invalid transition from state %d, request %d\n", __func__, current_state, transition);
-    /*@ assert (transition == USB_DEVICE_TRANS_RESET) ==> (current_state == USB_DEVICE_STATE_INVALID) ; */
     usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
-    /*@ assert ctx->state ==  USB_DEVICE_STATE_INVALID; */ 
+    /*@ assert ctx->state == USB_DEVICE_STATE_INVALID ; */
     
     return false;
 }

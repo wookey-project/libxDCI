@@ -116,7 +116,7 @@ int Frama_C_interval(int min, int max);
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 
 //@ ghost  uint8_t GHOST_num_ctx;
-//@ ghost  uint8_t GHOST_idx_ctx;
+//@ ghost  uint8_t GHOST_idx_ctx = 0;
 
 /*@
     @ requires \valid(packet);
