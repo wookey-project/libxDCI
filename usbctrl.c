@@ -65,7 +65,7 @@ volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 /*@
     @ requires 0 <= dev_id < RAND_UINT_32 ;
     @   ensures GHOST_num_ctx == num_ctx ;
-    
+
     @ behavior bad_ctxh:
     @   assumes ctxh == \null;
     @   assigns GHOST_num_ctx ;
@@ -186,7 +186,7 @@ err:
 /*@
     @ requires 0 <= ctxh < MAX_USB_CTRL_CTX ;
     @ requires GHOST_num_ctx == num_ctx ;
-    
+
     @ behavior bad_ctxh :
     @   assumes ctxh >= GHOST_num_ctx ;
     @   assigns \nothing ;
@@ -283,7 +283,7 @@ end:
     @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),handler,&GHOST_num_ctx);
     @ requires GHOST_num_ctx == num_ctx ;
     @ assigns *handler ;
-    
+
     @ behavior bad_pointer :
     @   assumes (ctx == \null || handler == \null) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
@@ -310,7 +310,7 @@ end:
 mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
                                 uint32_t *handler)
 {
-    
+
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
     if (ctx == NULL || handler == NULL) {
@@ -352,7 +352,7 @@ end:
    	@ requires GHOST_num_ctx == num_ctx ;
    	@ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),*ctx,&GHOST_num_ctx);
    	@ assigns *ctx, GHOST_idx_ctx;
-    
+
     @ behavior bad_pointer :
     @   assumes ctx == \null ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
@@ -361,14 +361,14 @@ end:
     @   assumes ctx != \null ;
     @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != device_id ;
     @   ensures \result == MBED_ERROR_NOTFOUND ;
-    @	ensures \forall integer i ; 0 <= i < GHOST_num_ctx ==> &ctx_list[i] != *ctx ; 
+    @	ensures \forall integer i ; 0 <= i < GHOST_num_ctx ==> &ctx_list[i] != *ctx ;
 
 
     @ behavior found :
     @   assumes ctx != \null ;
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id ;
-    @   ensures \result == MBED_ERROR_NONE ; 
-    @   ensures \exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i]; 
+    @   ensures \result == MBED_ERROR_NONE ;
+    @   ensures \exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i];
     @	ensures *ctx == &ctx_list[GHOST_idx_ctx];
 
     @ complete behaviors ;
@@ -380,7 +380,7 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
 {
 
     /*@ assert GHOST_num_ctx == num_ctx ; */
-    
+
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
     if (ctx == NULL) {
@@ -451,8 +451,6 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
     uint8_t i = 0 ;
     uint8_t j = 0 ;
 
-    bool result ;
-
     /*@ assert GHOST_num_ctx == num_ctx ; */
 
     /* sanitize */
@@ -521,16 +519,16 @@ bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep)
 
 bool usbctrl_is_interface_exists(usbctrl_context_t *ctx, uint8_t iface)
 {
-    
-	//@ assert GHOST_num_ctx == num_ctx ; 
-    /* sanitize */ 
-    if (ctx == NULL) { 
+
+	//@ assert GHOST_num_ctx == num_ctx ;
+    /* sanitize */
+    if (ctx == NULL) {
         return false;
     }
 
-    if (iface < ctx->cfg[ctx->curr_cfg].interface_num) { 
+    if (iface < ctx->cfg[ctx->curr_cfg].interface_num) {
         return true;
-    } 
+    }
     return false;
 }
 
@@ -559,7 +557,7 @@ bool usbctrl_is_interface_exists(usbctrl_context_t *ctx, uint8_t iface)
 usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface)
 {
     /* sanitize */
-    //@ assert GHOST_num_ctx == num_ctx ; 
+    //@ assert GHOST_num_ctx == num_ctx ;
     if (ctx == NULL) {
         return NULL;
     }
@@ -628,7 +626,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint32_t drv_ep_mpsize ;
 
-//@ assert GHOST_num_ctx == num_ctx ; 
+//@ assert GHOST_num_ctx == num_ctx ;
 
     /* sanitize */
     if (ctxh >= num_ctx) {
@@ -657,7 +655,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                 Cyril : ajout d'un test sur le nombre de config max :
                 check space
             */
-        if(ctx->num_cfg >= (CONFIG_USBCTRL_MAX_CFG - 1)){
+        if(ctx->num_cfg > (CONFIG_USBCTRL_MAX_CFG - 1)){
             errcode = MBED_ERROR_NOMEM;
             goto err;
         }
@@ -822,7 +820,7 @@ err:
 
 mbed_error_t usbctrl_start_device(uint32_t ctxh)
 {
-    
+
 
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
@@ -863,7 +861,7 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
 
 
 end:
-	
+
     return errcode;
 }
 
@@ -965,7 +963,7 @@ void test_fcn_usbctrl(){
     uint8_t RequestType = Frama_C_interval(0,255);
     uint8_t Request = Frama_C_interval(0,255);
     uint16_t Value = Frama_C_interval(0,65535);
-    uint16_t Index = Frama_C_interval(0,65535); 
+    uint16_t Index = Frama_C_interval(0,65535);
     uint16_t Length = Frama_C_interval(0,65535);
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
@@ -979,11 +977,11 @@ void test_fcn_usbctrl(){
     uint32_t ctxh = 0;
 
     usbctrl_declare(dev_id, &ctxh);
-    //@ assert GHOST_num_ctx == num_ctx ; 
+    //@ assert GHOST_num_ctx == num_ctx ;
     /*@ assert ctxh == 0 ; */
     usbctrl_initialize(ctxh);
     /*@ assert ctxh == 0 ; */
-    //@ assert GHOST_num_ctx == num_ctx ; 
+    //@ assert GHOST_num_ctx == num_ctx ;
 
     usbctrl_context_t *ctx1 = NULL;
     usbctrl_get_context(dev_id, &ctx1);
@@ -992,11 +990,11 @@ void test_fcn_usbctrl(){
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);
     usbctrl_get_interface(ctx1, iface);
-    usbctrl_is_interface_exists(ctx1, iface); 
+    usbctrl_is_interface_exists(ctx1, iface);
     usbctrl_is_endpoint_exists(ctx1, ep);
-    //@ assert GHOST_num_ctx == num_ctx ; 
+    //@ assert GHOST_num_ctx == num_ctx ;
     usbctrl_start_device(ctxh) ;
-    //@ assert GHOST_num_ctx == num_ctx ; 
+    //@ assert GHOST_num_ctx == num_ctx ;
     usbctrl_stop_device(ctxh) ;
 
 
@@ -1006,23 +1004,23 @@ void test_fcn_usbctrl(){
 
 
     if(ctx1 != NULL){
-    	ctx1->state = Frama_C_interval(0,9); // pour EVA, pour avoir tous les états possibles 
+    	ctx1->state = Frama_C_interval(0,9); // pour EVA, pour avoir tous les états possibles
     	//ctx1->state = USB_DEVICE_STATE_CONFIGURED ;
 		usbctrl_handle_class_requests(&pkt,ctx1) ;
-		usbctrl_std_req_handle_get_status(&pkt, ctx1) ; 
+		usbctrl_std_req_handle_get_status(&pkt, ctx1) ;
 	}
-    
-     //@ assert GHOST_num_ctx == num_ctx ;     
+
+     //@ assert GHOST_num_ctx == num_ctx ;
     usbctrl_handle_inepevent(dev_id, size, ep);
     //@ assert GHOST_num_ctx == num_ctx ;
-    usbctrl_handle_outepevent(dev_id, size, ep);   
-    usbctrl_handle_requests(&pkt, dev_id) ;                                               
+    usbctrl_handle_outepevent(dev_id, size, ep);
+    usbctrl_handle_requests(&pkt, dev_id) ;
     usbctrl_handle_earlysuspend(dev_id) ;
     usbctrl_handle_usbsuspend(dev_id);
     usbctrl_handle_wakeup(dev_id) ;
     usbctrl_std_req_get_dir(&pkt) ;
     usbctrl_handle_reset(dev_id);
-   
+
 }
 
 /*
@@ -1060,7 +1058,7 @@ void test_fcn_usbctrl_erreur(){
     uint8_t RequestType = Frama_C_interval(0,255);
     uint8_t Request = Frama_C_interval(0,255);
     uint16_t Value = Frama_C_interval(0,65535);
-    uint16_t Index = Frama_C_interval(0,65535); 
+    uint16_t Index = Frama_C_interval(0,65535);
     uint16_t Length = Frama_C_interval(0,65535);
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
