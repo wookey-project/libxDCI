@@ -157,11 +157,11 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
     @ disjoint behaviors ;
 
 
-    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) && 
+    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) &&
               !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
               ==> (\result == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID) ;
 
-    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) && 
+    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) &&
               (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
               ==> (\result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM) ;
 
@@ -173,9 +173,9 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
     @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
     @ ensures !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ==> \result == MBED_ERROR_INVPARAM  ;
-    @ ensures (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && ctx_list[i].state == USB_DEVICE_STATE_ATTACHED ) 
+    @ ensures (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && ctx_list[i].state == USB_DEVICE_STATE_ATTACHED )
                   ==> (\result == MBED_ERROR_INVSTATE) ;
-    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && i == GHOST_idx_ctx) && 
+    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && i == GHOST_idx_ctx) &&
               (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
               ==> (\result == MBED_ERROR_NONE) ;
 */
@@ -192,7 +192,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     This requires a driver table with callbacks or a preprocessing mechanism
     to select the corresponding driver API. While the libctrl is not yet fully
     operational, we handle only usbotghs driver API */
-    
+
     //dev_id = dev_id;
 
     log_printf("[USBCTRL] reset: get context for dev_id %d\n", dev_id);
@@ -652,7 +652,6 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
             /*@ assert \separated(&usbotghs_ctx,ctx) ; */
-            usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);  // cyril : il manque pas un break ici? et un errcode?
             break ;
         }
         default:
