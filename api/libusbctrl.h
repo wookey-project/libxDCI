@@ -85,25 +85,25 @@
 void usbctrl_configuration_set(void);
 
 /*
-  definition de la fonction usbctrl_reset_requested 
+  definition de la fonction usbctrl_reset_requested
   definie dans un fichier main.c qui n'appartient pas à libxDCI
 */
 
 #if defined(__FRAMAC__)
     bool reset_requested = false;
-    
+
 /*@
     @ assigns reset_requested ;
     @ ensures reset_requested == true ;
 */
 
 void usbctrl_reset_received(void){
-    reset_requested = true; 
+    reset_requested = true;
 }
-      
+
 #else
     void usbctrl_reset_received(void);
-#endif/*!__FRAMAC__*/ 
+#endif/*!__FRAMAC__*/
 
 
 /************************************************
@@ -272,9 +272,13 @@ typedef mbed_error_t     (*usb_rqst_handler_t)(uint32_t usbdci_handler,
 typedef mbed_error_t
       (*usb_class_get_descriptor_handler_t)(uint8_t             iface_id,
                                             uint8_t            *buf,
-                                            uint32_t           *desc_size,
+                                            uint8_t           *desc_size,
                                             uint32_t            usbdci_handler);
 
+
+/*
+    cyril : *desc_size : uint8_t * et non uint32_t * : la taille max est de 256 bits
+*/
 
 /*
  * This is the interface definition.

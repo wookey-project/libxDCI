@@ -133,43 +133,15 @@ mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
 
 /*
 
-    introduction de deux fonctions définies seulement pour passer FramaC sur les pointeurs de fonctions
+    introduction des fonctions définies seulement pour passer FramaC sur les pointeurs de fonctions + usbctrl_reset_received (utilisée une fois dans usbctrl_handle_resets)
 
 */
 
 /*@
-    @ assigns \nothing ;
-    @ ensures is_valid_error(\result);
+    assigns \nothing;
 */
-mbed_error_t  class_get_descriptor(uint8_t             iface_id,
-                                        uint8_t            *buf,
-                                        uint32_t           *desc_size,
-                                        uint32_t            usbdci_handler )
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
+void usbctrl_reset_received(void);
 
-    /* sanitation */
-    if (buf == NULL || desc_size == NULL) {
-        log_printf("[USBHID] invalid param buffers\n");
-        errcode = MBED_ERROR_INVPARAM;
-        goto err;
-    }
-
-    /* desc size is usbhid_descriptor_t size plus usbhid_content_descriptor_t size
-     * for each additional optional content descriptor (report descriptor is requested) */
-    uint32_t size = 0;
-    uint8_t i;
-    /* descriptor number is a per-interface information. We get back the iface based on the
-     * identifier passed by libxDCI */
-
-    if (*desc_size < size) {
-        log_printf("[USBHID] invalid param buffers\n");
-        errcode = MBED_ERROR_NOMEM;
-        goto err;
-    }
-err:
-    return errcode;
-}
 
 /*@
     @ assigns \nothing ;
@@ -215,6 +187,8 @@ typedef enum {
                                      it, no provider is accessing it */
 } ctrl_plane_rx_fifo_state_t;
 
+#if defined(__FRAMAC__)
+
 typedef struct usbctrl_context {
     /* first, about device driver interactions */
     uint32_t               dev_id;              /*< device id, from the USB device driver */
@@ -228,14 +202,59 @@ typedef struct usbctrl_context {
     bool                    ctrl_fifo_state; /*< RECV FIFO of control plane state */
     bool           ctrl_req_processing; /* a control level request is being processed */
 } usbctrl_context_t;
-
-#if defined(__FRAMAC__)
 usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = {0} ;
-#endif/*!__FRAMAC__*/
+
+
+/*@
+    @ requires \separated(buf,desc_size,&ctx_list);
+    @ assigns *desc_size, *buf ;
+    @ ensures (buf == \null || desc_size == \null) ==> \result == MBED_ERROR_INVPARAM ;
+    @ ensures !(buf == \null || desc_size == \null) ==> (\result == MBED_ERROR_NONE && 0 <= *desc_size <=  \old(*desc_size)) ;
+*/
+mbed_error_t  class_get_descriptor(uint8_t             iface_id,
+                                        uint8_t            *buf,
+                                        uint8_t           *desc_size,
+                                        uint32_t            usbdci_handler ) ;
+/*{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+
+    // sanitation
+    if (buf == NULL || desc_size == NULL) {
+        log_printf( invalid param buffers\n");
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+
+    *buf = Frama_C_interval(0,*desc_size) ;
+
+err:
+    return errcode;
+}*/
+
+#else
+
+typedef struct usbctrl_context {
+    /* first, about device driver interactions */
+    uint32_t               dev_id;              /*< device id, from the USB device driver */
+    uint16_t               address;             /*< device address, to be set by std req */
+    /* then current context state, associated to the USB standard state automaton  */
+    uint8_t                 num_cfg;        /*< number of different onfigurations */
+    uint8_t                 curr_cfg;       /*< current configuration */
+    usbctrl_configuration_t cfg[CONFIG_USBCTRL_MAX_CFG]; /* configurations list */
+    uint8_t                 state;          /*< USB state machine current state */
+    uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
+    bool                    ctrl_fifo_state; /*< RECV FIFO of control plane state */
+    volatile bool           ctrl_req_processing; /* a control level request is being processed */
+} usbctrl_context_t;
 
 /*
  Cyril : déclaration de cette variable en globale dans ce fichier, et non dans usbctrl.c pour qu'elle soit connue dans les spec dans les autres fichiers (sinon ça marche pas)
 */
+
+#endif/*!__FRAMAC__*/
+
+
+
 /*********************************************************
  * Core API
  */

@@ -172,13 +172,13 @@ frama-c-parsing:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I framac/include" 
+		 -cpp-extra-args="-nostdinc -I framac/include"
 
 frama-c-parsing-concat:
 	frama-c usbctrl_frama.c framac/include/driver_api/usbotghs_frama.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I framac/include" 
+		 -cpp-extra-args="-nostdinc -I framac/include"
 
 frama-c-eva:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
@@ -195,8 +195,8 @@ frama-c-eva:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 500 \
-		    -eva-slevel 3000 \
+		    -eva-auto-loop-unroll 1000 \
+		    -eva-slevel 5000 \
 		    -eva-symbolic-locations-domain \
 		    -eva-bitwise-domain \
 		    -eva-equality-domain  \
@@ -250,7 +250,7 @@ frama-c:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 500 \
+		    -eva-auto-loop-unroll 1000 \
 		    -eva-slevel 3000 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain  \
@@ -317,7 +317,7 @@ frama-c-gui:
 	frama-c-gui -load $(SESSION)
 
 
-# -wp-dynamic         Handle dynamic calls with specific annotations. (set by  
+# -wp-dynamic         Handle dynamic calls with specific annotations. (set by
 #                     default, opposite option is -wp-no-dynamic) (calls = pointeur de fonction, wp a du mal avec cette notion,
 #						contrairement à 	eva)
 

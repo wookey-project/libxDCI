@@ -55,32 +55,42 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 
 
 
-/*@
+/* @
     @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx);
-    @ requires \valid(&ctx_list[GHOST_num_ctx]);
+    @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
 
     @ behavior ctx_not_found:
-    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;  
+    @   assumes  !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id);
     @   ensures \result == MBED_ERROR_INVPARAM  ;
-    @   assigns GHOST_idx_ctx ;
 
     @ behavior no_valid_transition :
-    @   assumes (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ;
-    @   assumes (\exists integer i ; 0 <= i < GHOST_num_ctx && GHOST_idx_ctx == i && (ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID   
-                                                                                    || ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_SUSPENDED_POWER 
-                                                                                    || ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_ATTACHED));
-    @   ensures \result == MBED_ERROR_INVSTATE ==> (\old(ctx_list[GHOST_idx_ctx].state) == USB_DEVICE_STATE_INVALID ||
-                                                    \old(ctx_list[GHOST_idx_ctx].state) == USB_DEVICE_STATE_SUSPENDED_POWER ||
-                                                     \old(ctx_list[GHOST_idx_ctx].state) == USB_DEVICE_STATE_ATTACHED ) ;
-    @   ensures ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID ; 
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id  && i == GHOST_idx_ctx;
+    @   assumes  !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET);
+    @   ensures \result == MBED_ERROR_INVSTATE ;
+    @   ensures ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID ;
 
+    @ behavior valid_transition:
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id  && i == GHOST_idx_ctx;
+    @   assumes  (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET);
+    @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM  ;
+
+@ complete behaviors ;  // ne passe pas car les assumes entre ctx_not_found et les autres behaviors ne sont pas opposés
+@ disjoint behaviors ;
 
 */
 
 /*
     TODO?      @   assigns *r_CORTEX_M_USBOTG_HS_DOEPDMA(0), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0), usbotghs_ctx ;
-               @   assigns ctx_list[0..(GHOST_num_ctx-1)] ; 
+               @   assigns ctx_list[0..(GHOST_num_ctx-1)] ;
+
+
+    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id  && i == GHOST_idx_ctx)
+                 && (!(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)))
+                 ==> ( \result == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID ) ;
+    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id  && i == GHOST_idx_ctx)
+                 && ((\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)))
+                 ==> ( \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM  ) ;
 
     @ behavior USB_DEVICE_STATE_POWERED :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
@@ -90,53 +100,53 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 
     @ behavior USB_DEVICE_STATE_SUSPENDED_DEFAULT :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id 
-                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) 
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id
+                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET)
                 && ctx_list[i].state ==  USB_DEVICE_STATE_SUSPENDED_DEFAULT ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_DEVICE_STATE_SUSPENDED_ADDRESS :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id 
-                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) 
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id
+                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET)
                 && ctx_list[i].state ==  USB_DEVICE_STATE_SUSPENDED_ADDRESS ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_DEVICE_STATE_SUSPENDED_CONFIGURED :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id 
-                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) 
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id
+                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET)
                 && ctx_list[i].state ==  USB_DEVICE_STATE_SUSPENDED_CONFIGURED ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_DEVICE_STATE_DEFAULT :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id 
-                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) 
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id
+                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET)
                 && ctx_list[i].state ==  USB_DEVICE_STATE_DEFAULT ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_DEVICE_STATE_ADDRESS :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id 
-                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) 
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id
+                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET)
                 && ctx_list[i].state ==  USB_DEVICE_STATE_ADDRESS ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_DEVICE_STATE_CONFIGURED :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id 
-                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) 
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id
+                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET)
                 && ctx_list[i].state ==  USB_DEVICE_STATE_CONFIGURED ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior other_state :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id 
-                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET) 
-                && ( ctx_list[i].state !=  USB_DEVICE_STATE_CONFIGURED) 
-                && ( ctx_list[i].state !=  USB_DEVICE_STATE_ADDRESS) 
-                && ( ctx_list[i].state !=  USB_DEVICE_STATE_DEFAULT) 
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id
+                && is_valid_request_transition(ctx_list[i].state,USB_DEVICE_TRANS_RESET)
+                && ( ctx_list[i].state !=  USB_DEVICE_STATE_CONFIGURED)
+                && ( ctx_list[i].state !=  USB_DEVICE_STATE_ADDRESS)
+                && ( ctx_list[i].state !=  USB_DEVICE_STATE_DEFAULT)
                 && (ctx_list[i].state ==  USB_DEVICE_STATE_SUSPENDED_CONFIGURED)
                 && (ctx_list[i].state ==  USB_DEVICE_STATE_SUSPENDED_ADDRESS)
                 && (ctx_list[i].state ==  USB_DEVICE_STATE_SUSPENDED_DEFAULT)
@@ -164,35 +174,42 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     log_printf("[USBCTRL] reset: get context for dev_id %d\n", dev_id);
     if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] reset: no ctx found!\n");
+        /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
+        /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
 
     /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
+    /*@ assert ctx->state == ctx_list[GHOST_idx_ctx].state ; */
 
     usb_device_state_t state = usbctrl_get_state(ctx);
+    /*@ assert state == ctx->state ; */  // Cyril : pas validé par WP, je ne comprends pas pq...
 
-    /*@ assert ctx->state == state ; */
-    /*@ assert ctx_list[GHOST_idx_ctx].state == state ; */
-    /*@ assert \at(ctx_list[GHOST_idx_ctx].state,Here) == state ; */
-    /* @ assert is_valid_state( \at(ctx_list[GHOST_idx_ctx].state,Pre)) ; */  // non validé par WP...ce qui est normal, GHOST_idx_ctx n'existe pas avant l'appel à get_context
-
+ beforeif:
     /* resetting directly depends on the current state */
-    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {   // faire référence à l'ancienne valeur de ctx->state...
+    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
         log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
-        /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID ; */  // avec false, is_valid_transition : set_state pour USB_DEVICE_STATE_INVALID 
-        /*@ assert (state == USB_DEVICE_STATE_INVALID || state == USB_DEVICE_STATE_SUSPENDED_POWER || state == USB_DEVICE_STATE_ATTACHED) ; */  // comment dire l'état avant d'entrer dans is_valid_transition
+        /*@ assert \at(ctx->state,Here) == USB_DEVICE_STATE_INVALID ; */
+        /*@ assert (state == USB_DEVICE_STATE_ATTACHED || state == USB_DEVICE_STATE_SUSPENDED_POWER || state == USB_DEVICE_STATE_INVALID) ; */
+        /*@ assert \at(ctx_list[GHOST_idx_ctx].state,beforeif) == state ; */
+        /*@ assert  ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID ; */
+        /*@ assert !(\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[state].req_trans[i].request == USB_DEVICE_TRANS_RESET) ; */
+        /*@ assert !(\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[ \at(ctx_list[GHOST_idx_ctx].state,beforeif)].req_trans[i].request == USB_DEVICE_TRANS_RESET) ; */
         errcode = MBED_ERROR_INVSTATE;
         goto err;
     }
-
-    /*@ assert !(state == USB_DEVICE_STATE_INVALID || state == USB_DEVICE_STATE_SUSPENDED_POWER || state == USB_DEVICE_STATE_ATTACHED) ; */ 
+    /*@ assert (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[state].req_trans[i].request == USB_DEVICE_TRANS_RESET) ; */
+    /*@ assert ctx->state == \at(ctx->state,beforeif) ; */
+    /*@ assert state == \at(state,beforeif) ;*/
+    /*@ assert state == ctx->state ; */
+    /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
+    /*@ assert state == ctx_list[GHOST_idx_ctx].state ; */
+    /*@ assert !(state == USB_DEVICE_STATE_ATTACHED || state == USB_DEVICE_STATE_SUSPENDED_POWER || state == USB_DEVICE_STATE_INVALID) ; */
 
     log_printf("[USBCTRL] reset: execute transition from state %d\n", state);
     /* handling RESET event depending on current state */
-    
-    switch(ctx->state){
-    //switch (state) {
+    switch (state) {
         case USB_DEVICE_STATE_POWERED:
             /* initial reset of the device, set EP0 FIFO. Other EPs FIFO
              * are handled at SetConfiguration & SetInterface time */
@@ -200,7 +217,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
              * be reconfigure for EP0 here. */
             /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_POWERED ; */
             log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);  
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
 
 
             if (errcode != MBED_ERROR_NONE) {
@@ -210,7 +227,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             break;
         case USB_DEVICE_STATE_SUSPENDED_DEFAULT:
-            /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_SUSPENDED_DEFAULT ; */
             /* awake from suspended state, back to default */
             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
@@ -221,7 +237,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 
             break;
         case USB_DEVICE_STATE_SUSPENDED_ADDRESS:
-            /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_SUSPENDED_ADDRESS ; */
             /* awake from suspended state, back to address */
             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
@@ -232,7 +247,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 
             break;
         case USB_DEVICE_STATE_SUSPENDED_CONFIGURED:
-            /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_SUSPENDED_CONFIGURED ; */
             /* awake from suspended state, back to configured */
             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
@@ -242,7 +256,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             break;
         case USB_DEVICE_STATE_DEFAULT:
-            /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_DEFAULT ; */
             /* going back to default... meaning doing nothing */
             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
@@ -252,7 +265,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             break;
         case USB_DEVICE_STATE_ADDRESS:
-            /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_ADDRESS ; */
             /* going back to default */
             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
             if (errcode != MBED_ERROR_NONE) {
@@ -264,7 +276,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             usb_backend_drv_set_address(0);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
-            /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_CONFIGURED ; */
             /* INFO: deconfigure any potential active EP of current config is automatically
              * done by USB OTG HS core at reset */
 
@@ -281,10 +292,8 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             usbctrl_reset_received();
             break;
         default:
-            /*@ assert (ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID || ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_SUSPENDED_POWER || ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_ATTACHED)  ; */
             /* this should *not* happend ! this is not standard. */
             usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
-            /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID ; */
             errcode = MBED_ERROR_INVSTATE;
             goto err;
             break;
@@ -296,8 +305,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
      * of the above switch().
      * after sanitation, should not fail */
     usbctrl_set_state(ctx, usbctrl_next_state(state, USB_DEVICE_TRANS_RESET));
-    // détailler tous les assert pour chaque état du driver?
-
 
 err:
     return errcode;
@@ -310,18 +317,18 @@ err:
  */
 
 /*@
-    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx);
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx,&GHOST_idx_ctx);
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
+    @   assigns ctx_list[0..(GHOST_num_ctx-1)],GHOST_idx_ctx ;  // cyril :c'est large mais ça passe, je ne sais pas comment faire un assigns plus précise (ctx_list[i])
 
     @ behavior ctx_not_found:
-    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
-    @   assigns GHOST_idx_ctx;    
+    @   assumes !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ;
     @   ensures \result == MBED_ERROR_NOTFOUND  ;
 
     @ behavior ctx_found :
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assigns ctx_list[0..(GHOST_num_ctx-1)],GHOST_idx_ctx ;  // cyril :c'est large mais ça passe, je ne sais pas comment faire un assigns plus précise (ctx_list[i])
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id  ;
     @   ensures is_valid_error(\result);
+    @   ensures  (\exists integer i ; 0 <= i < GHOST_num_ctx && GHOST_idx_ctx == i ) ;
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -329,7 +336,7 @@ err:
 
 /*
     TODO : spec très large pour ctx_found : possible de raffiner? pb, comment dire ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep && ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_IN
-            à partir de ctx_list
+            à partir de ctx_list  ? même probleme pour reset et outepevent (mais bon, j'ai prouvé la terminaison de la fonction pour le moment)
 */
 
 mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
@@ -340,13 +347,14 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
 
     /* get back associated context */
     if ((errcode = usbctrl_get_context(dev_id, &ctx)) != MBED_ERROR_NONE) {
-        /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> &ctx_list[i] != ctx ; */
+        /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
+        /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
         /*@ assert errcode == MBED_ERROR_NOTFOUND ; */
         goto err;
     }
 
-    /*@ assert \exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] ; */  // Cyril : plus généralement, c'est ctx == &ctx_list[i] tel que ctx_list[i].dev_id == dev_id
-                                                                                        // mais je sais pas comment le dire 
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
     /*@ assert  ctx == &ctx_list[GHOST_idx_ctx] ; */
 
     /*
@@ -370,7 +378,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         ctx->ctrl_req_processing = false;
     } else {
         log_printf("[LIBCTRL] end of upper layer request\n");
-        
+
         /*@
             @ loop invariant 0 <= iface <= ctx->cfg[curr_cfg].interface_num ;
             @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num - 1));
@@ -379,13 +387,13 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         */
 
         for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
-            
+
         /*@
             @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
             @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num - 1));
             @ loop assigns i, errcode ;
             @ loop variant (ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number - i);
-        */            
+        */
 
             for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number; ++i) {
                 /* here we check both ep id and direction and EP0 is a specific full duplex case */
@@ -393,7 +401,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
                     && ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_IN) {
                     log_printf("[LIBCTRL] found ep in iface %d, declared ep %d\n", iface, i);
                     if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
-                        
+
                         #ifndef __FRAMAC__
                         if (handler_sanity_check_with_panic((physaddr_t)ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler)) {
                             goto err;
@@ -430,53 +438,54 @@ err:
 
     @ behavior ctx_not_found:
     @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
-    @   assigns GHOST_idx_ctx;    
-    @   ensures \result == MBED_ERROR_NOTFOUND  ;
+    @   assigns GHOST_idx_ctx;
+    @   ensures \result == MBED_ERROR_NOTFOUND ;
 
     @ behavior bad_ep:
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes ep >= USBOTGHS_MAX_OUT_EP ;
-    @   assigns GHOST_idx_ctx ;
+    @   assumes !(ep < USBOTGHS_MAX_OUT_EP) ;
+    @   assigns GHOST_idx_ctx;
     @   ensures \result == MBED_ERROR_NONE ;
-
 
     @ behavior state_USB_BACKEND_DRV_EP_STATE_SETUP_size_8 :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes ep < USBOTGHS_MAX_OUT_EP ;
-    @   assumes usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP ;
+    @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+    @   assumes (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP) ;
     @   assumes size == 8 ;
     @   ensures is_valid_error(\result);
 
     @ behavior state_USB_BACKEND_DRV_EP_STATE_SETUP_size_other :
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes ep < USBOTGHS_MAX_OUT_EP ;
-    @   assumes usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP ;
+    @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+    @   assumes (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP) ;
     @   assumes size != 8 ;
+	@   assigns GHOST_idx_ctx;
+    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep) ;
     @   ensures \result == MBED_ERROR_NONE ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep),GHOST_idx_ctx ;  
 
     @ behavior state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_0:
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes ep < USBOTGHS_MAX_OUT_EP ;
-    @   assumes usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT ;
+    @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+    @   assumes (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT) ;
     @   assumes size == 0 ;
+    @   assigns GHOST_idx_ctx;
     @   ensures \result == MBED_ERROR_NONE ;
-    @   assigns GHOST_idx_ctx ;
 
     @ behavior state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_not_0:
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes ep < USBOTGHS_MAX_OUT_EP ;
-    @   assumes usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT ;
+    @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+    @   assumes (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT) ;
     @   assumes size != 0 ;
+	@   assigns GHOST_idx_ctx;
+    @   assigns *r_CORTEX_M_USBOTG_HS_DOEPDMA(0), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0), usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep) ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_INVPARAM ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DOEPDMA(0), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0), usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep),GHOST_idx_ctx ;
 
-    @ behavior other_state :
+    @ behavior defaults_state:
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-    @   assumes ep < USBOTGHS_MAX_OUT_EP ;
-    @   assumes (usbotghs_ctx.out_eps[ep].state != USB_BACKEND_DRV_EP_STATE_DATA_OUT &&
-                usbotghs_ctx.out_eps[ep].state != USB_BACKEND_DRV_EP_STATE_SETUP);
-    @   assigns GHOST_idx_ctx ;
+    @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+    @   assumes !(usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP) ;
+    @   assumes !(usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT) ;
+    @   assigns GHOST_idx_ctx;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors ;
@@ -484,9 +493,12 @@ err:
 */
 
 /*
+    Pour faire passer la spec, j'ai du faire deux points d'entrée dans usbctrl.c : le premier avec ep = 0 et l'état qui varie entre 0 et 9
+    																				le 2ème avec ep qui varie, sans me soucier de l'état de usbotghs
+
     TODO :  assigns pour behavior state_USB_BACKEND_DRV_EP_STATE_SETUP_size_8 : en attente des assigns de usbctrl_handle_requests
-            parcourir la fonction avec EVA : ça dépend de l'état de usbotghs_ctx, donc appel spécifique à cette fonction après avoir modifié l'état (avec frama_c interval)
-            state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_not_0 : possiblité de plus préciser ce behavior, mais ça dépend de ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep 
+
+            state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_not_0 : possiblité de plus préciser ce behavior, mais ça dépend de ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep
             && ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_OUT   ==> problème, ctx c'est ctx_list[i], et c'est compliqué de dire ça...
 
 */
@@ -510,12 +522,16 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
      * In the first case, we have received a SETUP packet, targetting the libctrl,
      * in the second case, we have received some data, targetting one of the
      * interface which has registered a DATA EP with the corresponding EP id */
-    
+
     /*@ assert \separated(ctx, &usbotghs_ctx) ; */
-    switch (usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT)) { 
+    switch (usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT)) {
         case USB_BACKEND_DRV_EP_STATE_SETUP:
+            /*@ assert (ep < USBOTGHS_MAX_OUT_EP && usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP) ; */
             log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
             if (size == 8) {
+            /*@ assert (ep < USBOTGHS_MAX_OUT_EP) &&
+                (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP) && size == 8 ;  */
+
                 /* first, we should not accept setup pkt from other EP than 0.
                  * Although, this is not forbidden by USB 2.0 standard. */
                 /* Second, we must convert received data into current endianess */
@@ -530,27 +546,40 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                 errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
                 usb_backend_drv_ack(EP0, USB_EP_DIR_OUT);
                 return errcode;
-            } else {  // Cyril : pas de errcode ici, donc \result == MBED_ERROR_NONE, c'est normal?
+            } else {
+                /*@ assert (ep < USBOTGHS_MAX_OUT_EP) &&
+                (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP) && size != 8 ;  */
+
                 log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
                 /*@ assert \separated(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep),r_CORTEX_M_USBOTG_HS_DOEPCTL(ep), &usbotghs_ctx,ctx) ; */
                 usb_backend_drv_stall(ep, USB_BACKEND_DRV_EP_DIR_OUT);
             }
             break;
         case USB_BACKEND_DRV_EP_STATE_DATA_OUT: {
+            /*@ assert (ep < USBOTGHS_MAX_OUT_EP &&usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT) ; */
             uint8_t curr_cfg = ctx->curr_cfg;
             if (size == 0) {
+            /*@ assert (ep < USBOTGHS_MAX_OUT_EP) &&
+                (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT) && size == 0 ;  */
+
                 /* Well; nothing to do with size = 0 ? */
                 break;
             }
+
+            /*@ assert (ep < USBOTGHS_MAX_OUT_EP) &&
+                (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT) && size != 0 ;  */
+
             /*@
                 @ loop invariant 0 <= iface <= ctx->cfg[curr_cfg].interface_num ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num-1));
+                @ loop invariant size != 0 ;
+                @ loop invariant usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT ;
                 @ loop assigns iface ;
                 @ loop variant (ctx->cfg[curr_cfg].interface_num -iface) ;
             */
 
             for (uint8_t iface = 0; iface < ctx->cfg[curr_cfg].interface_num; ++iface) {
-            
+
             /*@
                 @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface].eps + (ctx->cfg[curr_cfg].interface_num-1));
@@ -581,16 +610,18 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                          */
                         log_printf("[LIBCTRL] oepint: executing upper data handler (0x%x) for EP %d (size %d)\n",ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler, ep, size);
                         if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler) {
-                            
+
                             /*@ assert ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler ∈ {&handler_ep}; */
-                            /*@ calls handler_ep; */                            
+                            /*@ calls handler_ep; */
                             ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
-                            
+
                             /* now that data are transfered (oepint finished) whe can set back our FIFO for
                              * EP0, in order to support next EP0 events */
                             /*@ assert \separated(&usbotghs_ctx,ctx,r_CORTEX_M_USBOTG_HS_DOEPDMA(0),r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0));  */
                             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+                            /*@ assert errcode == MBED_ERROR_NONE || errcode == MBED_ERROR_INVPARAM ; */
                         }
+                        /*@ assert errcode == MBED_ERROR_NONE || errcode == MBED_ERROR_INVPARAM ; */
                         goto err;
                     }
                 }
@@ -600,11 +631,13 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
             /*@ assert \separated(&usbotghs_ctx,ctx) ; */
-            usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);  // cyril : il manque pas un break ici?
+            usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);  // cyril : il manque pas un break ici? et un errcode?
             break ;
         }
         default:
-            log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT));   
+            log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT));
+			/*@ assert !(ep < USBOTGHS_MAX_OUT_EP &&usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP) ; */
+			/*@ assert !(ep < USBOTGHS_MAX_OUT_EP &&usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT) ; */
             /*@ assert errcode == MBED_ERROR_NONE ; */
             break;
     }

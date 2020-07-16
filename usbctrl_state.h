@@ -236,7 +236,7 @@ static const struct {
 
 };
 
-/*@ 
+/*@
     ghost const struct {
     usb_device_state_t state;
     usb_request_code_transition_t   req_trans[MAX_TRANSITION_STATE];
@@ -375,10 +375,10 @@ static const struct {
 };
 */
 
-/*@
-  
-  @ predicate is_valid_request_transition(usb_device_state_t current_state,usb_device_trans_t transition) = 
-      (\exists integer i; 0 <= i < MAX_TRANSITION_STATE && GHOST_usb_automaton[current_state].req_trans[i].request == transition) ;
+/* @
+
+  @ predicate is_valid_request_transition(usb_device_state_t current_state,usb_device_trans_t transition) =
+      (\exists integer i; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ;
 */
 
 #endif/*__FRAMAC__*/
@@ -409,5 +409,7 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
 bool usbctrl_is_valid_transition(usb_device_state_t current_state,
                                  usb_device_trans_t transition,
                                  usbctrl_context_t *ctx);
+
+
 
 #endif/*!USBCTRL_STATE_H_*/
