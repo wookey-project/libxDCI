@@ -28,7 +28,8 @@
 
 #include "devinfo.h"
 
-# define USB_OTG_HS_BASE 0x40040000
+#define USB_OTG_HS_BASE 0x40040000
+#define USB_OTG_HS_END 0x40150000
 #define OTG_HS_IRQ 93
 #define OTG_HS_WKUP_IRQ 92
 #define OTG_HS_EP1_IN_IRQ 91

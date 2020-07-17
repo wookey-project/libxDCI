@@ -1,12 +1,9 @@
 #ifndef STM32F4XX_USBOTG_HS_REGS_H
 # define STM32F4XX_USBOTG_HS_REGS_H
 
-#if defined(__FRAMAC__)
+
 #include "libc/regutils.h"
-#else
-#include "libc/regutils.h"
-#endif/*!__FRAMAC__*/
-# include "libc/types.h"
+#include "libc/types.h"
 #include "usb_otg_hs.h"
 
 #define USBOTG_HS_DIEPCTL0_MPSIZ_64BYTES      0
@@ -561,7 +558,7 @@
 #else
 # define USBOTG_HS_DIEPCTL_MPSIZ_Msk(EP)        ((EP) > 0 ? ((uint32_t)0x7ff << USBOTG_HS_DIEPCTL_MPSIZ_Pos(EP)) \
                         : ((uint32_t)0x3 << USBOTG_HS_DIEPCTL_MPSIZ_Pos(EP)))
-#endif/*!__FRAMAC__*/ 
+#endif/*!__FRAMAC__*/
 
 # define USBOTG_HS_DIEPCTL_USBAEP_Pos        15
 # define USBOTG_HS_DIEPCTL_USBAEP_Msk        ((uint32_t)1 << USBOTG_HS_DIEPCTL_USBAEP_Pos)
@@ -626,17 +623,17 @@
 #else
 # define USBOTG_HS_DIEPTSIZ_XFRSIZ_Msk(EP)        ((EP) > 0 ? ((uint32_t)0x7ffff << USBOTG_HS_DIEPTSIZ_XFRSIZ_Pos(EP)) \
                         : ((uint32_t)0x7f << USBOTG_HS_DIEPTSIZ_XFRSIZ_Pos(EP)))
-#endif/*!__FRAMAC__*/ 
+#endif/*!__FRAMAC__*/
 
 # define USBOTG_HS_DIEPTSIZ_PKTCNT_Pos(EP)        19
 
 
 #if defined(__FRAMAC__)
-# define USBOTG_HS_DIEPTSIZ_PKTCNT_Msk(EP)        ((uint32_t)0x3ff << USBOTG_HS_DIEPTSIZ_PKTCNT_Pos(EP)) 
+# define USBOTG_HS_DIEPTSIZ_PKTCNT_Msk(EP)        ((uint32_t)0x3ff << USBOTG_HS_DIEPTSIZ_PKTCNT_Pos(EP))
 #else
 # define USBOTG_HS_DIEPTSIZ_PKTCNT_Msk(EP)        ((EP) > 0 ? ((uint32_t)0x3ff << USBOTG_HS_DIEPTSIZ_PKTCNT_Pos(EP)) \
                         : ((uint32_t)0x3 << USBOTG_HS_DIEPTSIZ_PKTCNT_Pos(EP)))
-#endif/*!__FRAMAC__*/ 
+#endif/*!__FRAMAC__*/
 
 
 # define USBOTG_HS_DIEPTSIZ_MCNT_Pos(EP)        29
@@ -645,7 +642,7 @@
 # define USBOTG_HS_DIEPTSIZ_MCNT_Msk(EP)        ((uint32_t)0x3 << USBOTG_HS_DIEPTSIZ_MCNT_Pos(EP))
 #else
 # define USBOTG_HS_DIEPTSIZ_MCNT_Msk(EP)        ((EP) > 0 ? ((uint32_t)0x3 << USBOTG_HS_DIEPTSIZ_MCNT_Pos(EP)) : 0)
-#endif/*!__FRAMAC__*/ 
+#endif/*!__FRAMAC__*/
 
 /* Device EPx DMA address register */
 # define USBOTG_HS_DIEPDMA_DMAADDR_Pos        0
@@ -663,7 +660,7 @@
 #else
 # define USBOTG_HS_DOEPCTL_MPSIZ_Msk(EP)        ((EP) > 0 ? ((uint32_t)0x7ff << USBOTG_HS_DOEPCTL_MPSIZ_Pos(EP)) \
                         : ((uint32_t)0x3 << USBOTG_HS_DOEPCTL_MPSIZ_Pos(EP)))
-#endif/*!__FRAMAC__*/ 
+#endif/*!__FRAMAC__*/
 
 # define USBOTG_HS_DOEPCTL_USBAEP_Pos        15
 # define USBOTG_HS_DOEPCTL_USBAEP_Msk        ((uint32_t)1 << USBOTG_HS_DOEPCTL_USBAEP_Pos)
@@ -726,7 +723,7 @@
 #else
 # define USBOTG_HS_DOEPTSIZ_XFRSIZ_Msk(EP)        ((EP) > 0 ? ((uint32_t)0x7ffff << USBOTG_HS_DOEPTSIZ_XFRSIZ_Pos(EP)) \
                         : ((uint32_t)0x7f << USBOTG_HS_DOEPTSIZ_XFRSIZ_Pos(EP)))
-#endif/*!__FRAMAC__*/ 
+#endif/*!__FRAMAC__*/
 
 
 # define USBOTG_HS_DOEPTSIZ_PKTCNT_Pos(EP)        19
@@ -736,7 +733,7 @@
 #else
 # define USBOTG_HS_DOEPTSIZ_PKTCNT_Msk(EP)        ((EP) > 0 ? ((uint32_t)0x3ff << USBOTG_HS_DOEPTSIZ_PKTCNT_Pos(EP)) \
                         : ((uint32_t)1 << USBOTG_HS_DOEPTSIZ_PKTCNT_Pos(EP)))
-#endif/*!__FRAMAC__*/ 
+#endif/*!__FRAMAC__*/
 
 
 

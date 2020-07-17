@@ -159,7 +159,7 @@ endif
 
 SESSION:=framac/results/frama-c-rte-eva-wp-no-split.session
 JOBS:=$(shell nproc)
-TIMEOUT:=30
+TIMEOUT:=15
 
 # "-val-warn-undefined-pointer-comparison none" is to deal with the
 # checks (\pointer_comparable( - ,  - )) otherwise added by EVA before
@@ -181,8 +181,9 @@ frama-c-parsing-concat:
 		 -cpp-extra-args="-nostdinc -I framac/include"
 
 frama-c-eva:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
-	            -absolute-valid-range 0x40040000-0x40080000 \
+	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
+	            -absolute-valid-range 0x40040000-0x400150000 \
+	            -memexec-all \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
 	            -warn-right-shift-negative \
@@ -196,49 +197,33 @@ frama-c-eva:
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
 		    -eva-auto-loop-unroll 1000 \
-		    -eva-slevel 5000 \
+		    -eva-slevel 500 \
+		    -eva-slevel-function usbctrl_get_descriptor:12000 \
+		    -eva-slevel-function usbotghs_send_data:1000 \
+		    -eva-slevel-function usbotghs_endpoint_stall:1000 \
+		    -eva-slevel-function usbotghs_endpoint_set_nak:1000 \
+		    -eva-plevel 300 \
 		    -eva-symbolic-locations-domain \
+		    -eva-equality-domain \
 		    -eva-bitwise-domain \
-		    -eva-equality-domain  \
 		    -eva-equality-through-calls-function usbctrl_start_device \
 		    -eva-equality-through-calls-function usbctrl_handle_reset \
+		    -eva-equality-through-calls-function usbctrl_get_state \
 		    -eva-equality-through-calls-function usbctrl_is_valid_transition \
   			-wp-dynamic \
 		    -eva-split-return auto \
-		    -eva-partition-history 6 \
-		    -eva-use-spec usbotghs_get_ep_state \
-		    -eva-log a:frama-c-rte-eva.log \
-			-save framac/results/frama-c-rte-eva.session
-
-frama-c-eva-concat:
-	frama-c usbctrl_frama.c framac/include/driver_api/usbotghs_frama.c  -c11 -machdep x86_32 \
-	            -absolute-valid-range 0x40040000-0x40080000 \
-	            -no-frama-c-stdlib \
-	            -warn-left-shift-negative \
-	            -warn-right-shift-negative \
-	            -warn-signed-downcast \
-	            -warn-signed-overflow \
-	            -warn-unsigned-downcast \
-	            -warn-unsigned-overflow \
-				-kernel-msg-key pp \
-				-cpp-extra-args="-nostdinc -I framac/include" \
-		    -rte \
-		    -eva \
-		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 100 \
-		    -eva-slevel 1000 \
-		    -eva-symbolic-locations-domain \
-		    -eva-equality-domain  \
-  			-wp-dynamic \
-		    -eva-split-return auto \
-		    -eva-partition-history 6 \
+		    -eva-partition-history 10 \
+		    -eva-use-spec class_get_descriptor \
+		    -eva-use-spec usbctrl_reset_received \
+		    -eva-use-spec usbotghs_configure \
 		    -eva-log a:frama-c-rte-eva.log \
 			-save framac/results/frama-c-rte-eva.session
 
 frama-c:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
-	            -absolute-valid-range 0x40040000-0x40080000 \
+	            -absolute-valid-range 0x40040000-0x400150000 \
 	            -no-frama-c-stdlib \
+	            -memexec-all \
 	            -warn-left-shift-negative \
 	            -warn-right-shift-negative \
 	            -warn-signed-downcast \
@@ -251,17 +236,23 @@ frama-c:
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
 		    -eva-auto-loop-unroll 1000 \
-		    -eva-slevel 3000 \
+		    -eva-slevel 500 \
+		    -eva-slevel-function usbctrl_get_descriptor:12000 \
+		    -eva-slevel-function usbotghs_send_data:1000 \
+		    -eva-slevel-function usbotghs_endpoint_stall:1000 \
+		    -eva-slevel-function usbotghs_endpoint_set_nak:1000 \
+		    -eva-plevel 300 \
 		    -eva-symbolic-locations-domain \
-		    -eva-equality-domain  \
+		    -eva-equality-domain \
 		    -eva-bitwise-domain \
 		    -eva-equality-through-calls-function usbctrl_start_device \
-		    -eva-equality-through-calls-function usbctrl_handle_reset \
 		    -eva-equality-through-calls-function usbctrl_is_valid_transition \
   			-wp-dynamic \
 		    -eva-split-return auto \
-		    -eva-partition-history 6 \
-		    -eva-use-spec usbotghs_get_ep_state \
+		    -eva-partition-history 10 \
+		    -eva-use-spec class_get_descriptor \
+		    -eva-use-spec usbctrl_reset_received \
+		    -eva-use-spec usbotghs_configure \
 		    -eva-log a:frama-c-rte-eva.log \
    		    -then \
    		    -wp \
@@ -269,40 +260,7 @@ frama-c:
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
    			-wp-timeout $(TIMEOUT) \
-   			 -save $(SESSION)  \
-   			-time calcium_wp-eva.txt
-
-frama-c-concat:
-	frama-c usbctrl_frama.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
-	            -absolute-valid-range 0x40040000-0x40080000 \
-	            -no-frama-c-stdlib \
-	            -warn-left-shift-negative \
-	            -warn-right-shift-negative \
-	            -warn-signed-downcast \
-	            -warn-signed-overflow \
-	            -warn-unsigned-downcast \
-	            -warn-unsigned-overflow \
-				-kernel-msg-key pp \
-				-cpp-extra-args="-nostdinc -I framac/include" \
-		    -rte \
-		    -eva \
-		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 20 \
-		    -eva-precision 10 \
-		    -eva-symbolic-locations-domain \
-		    -eva-equality-domain  \
-		    -eva-equality-through-calls all \
-  			-wp-dynamic \
-		    -eva-split-return auto \
-		    -eva-partition-history 6 \
-		    -eva-log a:frama-c-rte-eva.log \
-   		    -then \
-   		    -wp \
-  			-wp-model "Typed+ref+int" \
-  			-wp-literals \
-  			-wp-prover alt-ergo,cvc4,z3 \
-   			-wp-timeout $(TIMEOUT) \
-   			 -save $(SESSION)  \
+   			 -save $(SESSION) \
    			-time calcium_wp-eva.txt
 
 
@@ -353,6 +311,6 @@ frama-c-gui:
 # -wp-literals        Export content of string literals. (opposite option is
 #                     -wp-no-literals)
 
-
+# -eva-bitwise-domain \
 
 

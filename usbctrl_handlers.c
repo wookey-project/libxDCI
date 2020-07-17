@@ -183,6 +183,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
     /*@ assert ctx->state == ctx_list[GHOST_idx_ctx].state ; */
 
+    /*@ assert ctx != 0 ; */
     usb_device_state_t state = usbctrl_get_state(ctx);
     /*@ assert state == ctx->state ; */  // Cyril : pas validé par WP, je ne comprends pas pq...
 
@@ -432,8 +433,7 @@ err:
 
 /*@
 
-    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx,
-        r_CORTEX_M_USBOTG_HS_DOEPDMA(0), r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0) );
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx,((uint32_t *)(0x40040000 .. 0x40150000)) );
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
 
     @ behavior ctx_not_found:
@@ -460,7 +460,7 @@ err:
     @   assumes (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP) ;
     @   assumes size != 8 ;
 	@   assigns GHOST_idx_ctx;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep) ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ behavior state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_0:
@@ -477,7 +477,7 @@ err:
     @   assumes (usbotghs_ctx.out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT) ;
     @   assumes size != 0 ;
 	@   assigns GHOST_idx_ctx;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DOEPDMA(0), *r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0), usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep), *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep) ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)), usbotghs_ctx ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior defaults_state:
@@ -617,7 +617,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
 
                             /* now that data are transfered (oepint finished) whe can set back our FIFO for
                              * EP0, in order to support next EP0 events */
-                            /*@ assert \separated(&usbotghs_ctx,ctx,r_CORTEX_M_USBOTG_HS_DOEPDMA(0),r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0));  */
+                            /*@ assert \separated(&usbotghs_ctx,ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
                             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
                             /*@ assert errcode == MBED_ERROR_NONE || errcode == MBED_ERROR_INVPARAM ; */
                         }

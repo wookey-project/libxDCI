@@ -94,11 +94,8 @@ static inline usbctrl_req_dir_t usbctrl_std_req_get_dir(usbctrl_setup_pkt_t *pkt
     @ assigns \nothing ;
     @ ensures \result == ((pkt->bmRequestType) & 0x1F);
 */
-#if defined(__FRAMAC__)
-usbctrl_req_recipient_t usbctrl_std_req_get_recipient(usbctrl_setup_pkt_t *pkt)
-#else
+
 static inline usbctrl_req_recipient_t usbctrl_std_req_get_recipient(usbctrl_setup_pkt_t *pkt)
-#endif/*__FRAMAC__*/
 {
     /* bits 4..0 */
     return ((pkt->bmRequestType) & 0x1F);
@@ -313,26 +310,24 @@ static mbed_error_t usbctrl_std_req_handle_clear_feature(usbctrl_setup_pkt_t *pk
     ctx = ctx;
     /*request finish here */
     ctx->ctrl_req_processing = false;
-    /*@ assert ctx->ctrl_req_processing == \false; */   // Cyril :  ne marche pas si ctx->ctrl_req_processing est déclaré en volatile bool
 err:
     return errcode;
 }
 
 /*@
-    @ requires \valid(ctx) && \valid(pkt) ;
-    @ requires \separated(ctx,pkt);
+    @ requires \valid(ctx) && \valid_read(pkt) ;
+    @ requires \separated(ctx,pkt,((uint32_t *) (0x40040000 .. 0x40150000)),&usbotghs_ctx);
+    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)), *ctx ;
+    @ assigns usbotghs_ctx, usbotghs_ctx.in_eps[EP0] ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
-    @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
     @ behavior USB_DEVICE_STATE_DEFAULT:
     @   assumes ctx->state == USB_DEVICE_STATE_DEFAULT ;
-    @   assigns *ctx ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
     @   ensures \result == MBED_ERROR_NONE   ;
     @   ensures ctx->ctrl_req_processing == \false;
 
@@ -340,8 +335,6 @@ err:
     @   assumes ctx->state == USB_DEVICE_STATE_ADDRESS ;
     @   assumes ((((pkt->bmRequestType) & 0x1F) != USB_REQ_RECIPIENT_ENDPOINT && ((pkt->bmRequestType) & 0x1F) != USB_REQ_RECIPIENT_INTERFACE) ||
              ((pkt->wIndex & 0xf) != 0)) ;
-    @   assigns *ctx ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
     @   ensures \result == MBED_ERROR_NONE   ;
     @   ensures ctx->ctrl_req_processing == \false;
 
@@ -355,8 +348,7 @@ err:
                 ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == (pkt->wIndex & 0xf)) ;
     @   ensures \result == MBED_ERROR_NONE   ;
     @   ensures ctx->ctrl_req_processing == \false;
-    @   assigns *ctx ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+
 
     @ behavior USB_DEVICE_STATE_ADDRESS_recipient_USB_REQ_RECIPIENT_ENDPOINT_endpoint_true:
     @   assumes ctx->state == USB_DEVICE_STATE_ADDRESS ;
@@ -376,7 +368,6 @@ err:
 
     @ behavior USB_DEVICE_STATE_CONFIGURED:
     @   assumes ctx->state == USB_DEVICE_STATE_CONFIGURED ;
-    @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors ;
@@ -385,24 +376,12 @@ err:
 */
 
 /*
-    FIXME : le assigns de USB_DEVICE_STATE_ADDRESS_recipient_USB_REQ_RECIPIENT_ENDPOINT_endpoint_true ne passent pas à cause de l'appel à send_data (qui n'est pas complet)
-       Certains assigns encore à faire : USB_DEVICE_STATE_ADDRESS_recipient_USB_REQ_RECIPIENT_ENDPOINT_endpoint_true et USB_DEVICE_STATE_ADDRESS_recipient_other
-
-        @   assigns usbotghs_ctx, *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(EP0) ,*r_CORTEX_M_USBOTG_HS_DOEPTSIZ(EP0), *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0),
-                *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[EP0].id), usbotghs_ctx.in_eps[EP0],
-                 usbotghs_ctx.in_eps[EP0].fifo[usbotghs_ctx.in_eps[EP0].fifo_idx] ;
-        @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(0) ;
-question pour eva pour faire un test sur des fonctions static?
-pour behavior USB_DEVICE_STATE_ADDRESS_recipient_USB_REQ_RECIPIENT_ENDPOINT_endpoint_true : je dois ajouter un ensures pour : return the recipient status (2 bytes, or wLength if smaller) ?
+    FIXME : switch (usbctrl_std_req_get_recipient(pkt)) : assigns ne passe pas, donc remplacement par switch (((pkt->bmRequestType) & 0x1F))
 */
 
-#if defined(__FRAMAC__)
-mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
-                                                      usbctrl_context_t *ctx)
-#else
+
 static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                                                       usbctrl_context_t *ctx)
-#endif/*__FRAMAC__*/
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] Std req: get status\n");
@@ -416,24 +395,19 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
         case USB_DEVICE_STATE_DEFAULT:
             /* This case is not forbidden by USB2.0 standard, but the behavior is
              * undefined. We can, for example, stall out. (FIXME) */
-            /*@ assert \separated(ctx,r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+            /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             /*request finish here */
             ctx->ctrl_req_processing = false;
             break;
         case USB_DEVICE_STATE_ADDRESS:
-            /*@ assert \separated(pkt,ctx,r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
-
-    //#if defined(__FRAMAC__)
-    //        if((((pkt->bmRequestType) & 0x1F) != USB_REQ_RECIPIENT_ENDPOINT && ((pkt->bmRequestType) & 0x1F) != USB_REQ_RECIPIENT_INTERFACE))
-    //            //FIXME : voir pq l'appel aux fonctions fait que le assign ne passe pas
-    //#else
+            /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
             if (usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_ENDPOINT &&
                 usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE)
-    //#endif/*!__FRAMAC__*/
             {
                 /* only interface or endpoint 0 allowed in ADDRESS state */
                 /* request error: sending STALL on status or data */
+                /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
                 usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                 /*request finish here */
                 ctx->ctrl_req_processing = false;
@@ -442,23 +416,23 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
             if ((pkt->wIndex & 0xf) != 0) {
                 /* only interface or endpoint 0 allowed in ADDRESS state */
                 /* request error: sending STALL on status or data */
-                /*@ assert \separated(ctx,r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+                /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
                 usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                 /*request finish here */
                 ctx->ctrl_req_processing = false;
                 goto err;
             }
             /* handling get_status() for other cases */
-    //#if defined(__FRAMAC__)
-    //          switch((pkt->bmRequestType) & 0x1F){
-    //#else
-              switch (usbctrl_std_req_get_recipient(pkt)) {
-    //#endif/*!__FRAMAC__*/
+            /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
+
+
+              //switch (usbctrl_std_req_get_recipient(pkt)) {  // assigns ne passe pas avec get_recipient
+              switch (((pkt->bmRequestType) & 0x1F)) {
                 case USB_REQ_RECIPIENT_ENDPOINT: {
                     /*does requested EP exists ? */
-                    uint8_t epnum = pkt->wIndex & 0xf; // epnum vaut 0, car if ((pkt->wIndex & 0xf) != 0) avant
+                    uint8_t epnum = pkt->wIndex & 0xf;  // epnum = 0 à cause du if avant
                     if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
-                        /*@ assert \separated(ctx,r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+                        /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
                         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                         /*request finish here */
                         ctx->ctrl_req_processing = false;
@@ -468,16 +442,16 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                     //bool dir_in = (pkt->wIndex >> 7) & 0x1;
                     /* return the recipient status (2 bytes, or wLength if smaller) */
                     uint8_t resp[2] = { 0 };
-
+                    /* @ assert \separated((uint8_t *)&resp[0..1],ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
                     usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
 
-                    /*@  assert \separated(ctx,r_CORTEX_M_USBOTG_HS_DIEPCTL(0),r_CORTEX_M_USBOTG_HS_DOEPCTL(0))   ;    */
+                    /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
                     usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
                     /* std req finishes at the oepint rise */
                     break;
                 }
                 default:
-                    /*@ assert \separated(ctx,r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+                    /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
                     usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                     goto err;
             }
@@ -491,6 +465,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
             /* this should never be reached with the is_std_requests_allowed() function */
             /*request finish here */
             ctx->ctrl_req_processing = false;
+            /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
     }
@@ -498,15 +473,11 @@ err:
     return errcode;
 }
 
-/*
-    spec qui sera à mettre à jour avec l'évolution de la fonction qui n'est pas encore définie lorsque les états sont OK
-*/
-
 /*@
     @ requires \valid(ctx) && \valid(pkt) ;
     @ requires \separated(ctx,pkt);
     @ assigns *ctx ;
-    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -633,7 +604,7 @@ err:
 
 /*@
     @ requires \valid(ctx) && \valid(pkt) ;
-    @ requires \separated(ctx,pkt);
+    @ requires \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000)));
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -646,7 +617,7 @@ err:
     @ behavior USB_DEVICE_STATE_DEFAULT_pktValue_not_null:
     @   assumes (ctx->state == USB_DEVICE_STATE_DEFAULT) ;
     @   assumes (pkt->wValue != 0) ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DCFG, *r_CORTEX_M_USBOTG_HS_DTXFSTS(0), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(0) ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   assigns *ctx;
     @   ensures ctx->ctrl_req_processing == false ;
     @   ensures \result == MBED_ERROR_NONE ;
@@ -657,7 +628,7 @@ err:
     @   assumes (pkt->wValue == 0) ;
     @   assigns *ctx;
     @   ensures ctx->ctrl_req_processing == false ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DTXFSTS(0), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(0) ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ behavior USB_DEVICE_STATE_ADDRESS_pktValue_not_null:
@@ -665,7 +636,7 @@ err:
     @   assumes (pkt->wValue != 0) ;
     @   assigns *ctx;
     @   ensures ctx->ctrl_req_processing == false ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DCFG, *r_CORTEX_M_USBOTG_HS_DTXFSTS(0), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(0) ;
+    @   assigns*((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ behavior USB_DEVICE_STATE_ADDRESS_pktValue_null:
@@ -673,12 +644,12 @@ err:
     @   assumes (pkt->wValue == 0) ;
     @   assigns *ctx;
     @   ensures ctx->ctrl_req_processing == false ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DTXFSTS(0), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(0) ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   ensures \result == MBED_ERROR_NONE && ctx->state ==  USB_DEVICE_STATE_DEFAULT ;
 
     @ behavior USB_DEVICE_STATE_CONFIGURED:
     @   assumes (ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   assigns *ctx;
     @   ensures ctx->ctrl_req_processing == false ;
     @   ensures \result == MBED_ERROR_NONE ;
@@ -704,18 +675,13 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
     /* This request is a Request assignment. This is a state automaton transition with
      * three different behaviors depending on the current state */
 
-    #if defined(__FRAMAC__)
-    //ctx->state = Frama_C_interval(6,8);
-    #endif/*__FRAMAC__*/
-
-
     switch (usbctrl_get_state(ctx)) {
         case USB_DEVICE_STATE_DEFAULT:
             if (pkt->wValue != 0) {
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_ADDRESS);  // Cyril : pas prouvé par wp à cause du frama-c interval pour pkt->value
                 /*@ assert ctx->state == USB_DEVICE_STATE_ADDRESS ; */
                 ctx->address = pkt->wValue;
-                /*@ assert \separated(ctx, r_CORTEX_M_USBOTG_HS_DCFG, r_CORTEX_M_USBOTG_HS_DTXFSTS(0), r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), r_CORTEX_M_USBOTG_HS_DSTS, r_CORTEX_M_USBOTG_HS_DIEPCTL(0)) ; */
+                /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                 usb_backend_drv_set_address(ctx->address);
             /*@  assert ctx->address == pkt->wValue ;  */
             }
@@ -727,22 +693,25 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
             if (pkt->wValue != 0) {
                 /* simple update of address */
                 ctx->address = pkt->wValue;
+                /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                 usb_backend_drv_set_address(ctx->address);
             } else {
                 /* going back to default state */
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_DEFAULT);
                 /*@ assert ctx->state == USB_DEVICE_STATE_DEFAULT ; */
             }
-            /*@ assert \separated(ctx, r_CORTEX_M_USBOTG_HS_DTXFSTS(0), r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), r_CORTEX_M_USBOTG_HS_DSTS, r_CORTEX_M_USBOTG_HS_DIEPCTL(0)); */
+            /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
             usb_backend_drv_send_zlp(0);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             /* This case is not forbidden by USB2.0 standard, but the behavior is
              * undefined. We can, for example, stall out. (FIXME) */
+            /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);   // Cyril : manque la gestion d'erreur
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
+            /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
     }
@@ -767,14 +736,17 @@ err:
     @ behavior USB_DEVICE_STATE_DEFAULT:
     @   assumes ctx->state == USB_DEVICE_STATE_DEFAULT ;
     @   ensures \result == MBED_ERROR_NONE ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)),usbotghs_ctx, usbotghs_ctx.in_eps[EP0];
 
     @ behavior USB_DEVICE_STATE_ADDRESS:
     @   assumes ctx->state == USB_DEVICE_STATE_ADDRESS ;
     @   ensures \result == MBED_ERROR_NONE ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)),usbotghs_ctx, usbotghs_ctx.in_eps[EP0];
 
     @ behavior USB_DEVICE_STATE_CONFIGURED:
     @   assumes ctx->state == USB_DEVICE_STATE_CONFIGURED ;
     @   ensures \result == MBED_ERROR_NONE ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)),usbotghs_ctx, usbotghs_ctx.in_eps[EP0];
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -782,7 +754,6 @@ err:
 */
 
 /*
-    TODO : les assigns ( mettre à jour quand les assigns seront mis dans send_data)
     FIXME: quel degré de détail pour ce que font les fonctions du driver?
 */
 
@@ -800,25 +771,31 @@ static mbed_error_t usbctrl_std_req_handle_get_configuration(usbctrl_setup_pkt_t
     switch (usbctrl_get_state(ctx)) {
         case USB_DEVICE_STATE_DEFAULT:
             resp[0] = 0;
+            /*@ assert \separated((uint8_t *)&resp,ctx, pkt, &usbotghs_ctx, (uint32_t *)(0x40040000 .. 0x40150000)); */
             usb_backend_drv_send_data((uint8_t *)&resp, 1, EP0);
             /* usb driver read status... */
+            /*@ assert \separated((uint8_t *)&resp,ctx, pkt, &usbotghs_ctx, (uint32_t *)(0x40040000 .. 0x40150000)); */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
             break;
         case USB_DEVICE_STATE_ADDRESS:
             resp[0] = 0;
+            /*@ assert \separated((uint8_t *)&resp,ctx, pkt, &usbotghs_ctx, (uint32_t *)(0x40040000 .. 0x40150000)); */
             usb_backend_drv_send_data((uint8_t *)&resp, 1, EP0);
             /* usb driver read status... */
+            /*@ assert \separated((uint8_t *)&resp,ctx, pkt, &usbotghs_ctx, (uint32_t *)(0x40040000 .. 0x40150000)); */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             resp[0] = 1; /* should be bConfigurationValue of the current config */
+            /*@ assert \separated((uint8_t *)&resp,ctx, pkt, &usbotghs_ctx, (uint32_t *)(0x40040000 .. 0x40150000)); */
             usb_backend_drv_send_data((uint8_t *)&resp, 1, EP0);
             /* usb driver read status... */
+            /*@ assert \separated((uint8_t *)&resp,ctx, pkt, &usbotghs_ctx, (uint32_t *)(0x40040000 .. 0x40150000)); */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
-
+            /*@ assert \separated((uint8_t *)&resp,ctx, pkt, &usbotghs_ctx, (uint32_t *)(0x40040000 .. 0x40150000)); */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             /*request finish here */
             ctx->ctrl_req_processing = false; // Cyril : je n'arrive jamais là, donc je ne peux pas assigner req_processing
@@ -832,9 +809,7 @@ err:
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx,pkt,
-     r_CORTEX_M_USBOTG_HS_DTXFSTS(0), r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), r_CORTEX_M_USBOTG_HS_DSTS,
-     r_CORTEX_M_USBOTG_HS_DIEPCTL(0), r_CORTEX_M_USBOTG_HS_DOEPCTL(0));
+    @ requires \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000)));
     @ ensures ctx->ctrl_req_processing == \false;
 
     @ behavior std_requests_not_allowed:
@@ -842,6 +817,7 @@ err:
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
     @   ensures \result == MBED_ERROR_INVSTATE ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)), *ctx ;
 
 
     @ behavior INVPARAM:
@@ -851,14 +827,15 @@ err:
     @   assumes ( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @   ensures ctx->state == USB_DEVICE_STATE_CONFIGURED ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)), *ctx;
 
     @ behavior OK:
     @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
     @   assumes !( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ) ;
-    @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
-    @   ensures ctx->state == USB_DEVICE_STATE_CONFIGURED ;
+    @   ensures is_valid_error(\result) ;
+    @   assigns conf_set, *((uint32_t *) (0x40040000 .. 0x40150000)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], *ctx ;
 
 
     @ complete behaviors ;
@@ -885,9 +862,6 @@ err:
      pour passer le variant de la boucle alors que je fais assigns *ctx
 
     pkt = pkt;  // cyril : la spec ne passe pas à cause de ça (@ assumes !( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ))
-
-    behavior OK: @   ensures ctx->state == USB_DEVICE_STATE_CONFIGURED ; ne passe pas, car les spec de la loop sont commentées tant que la fonction configure_endpoint n'a pas les assigns qui passent
-
 */
 
 #if defined(__FRAMAC__)
@@ -912,6 +886,8 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
 
     /* request is allowed, meaning that we are in ADDRESS state. We
      * can move along to CONFIGURED state and start nominal behavior from now on. */
+
+    /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))); */
     usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
     /*@ assert ctx->state == USB_DEVICE_STATE_CONFIGURED ; */
 
@@ -946,11 +922,13 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     /* activate endpoints... */
 
 
-    /* @
+    /*@
         @ loop invariant 0 <= iface <= max_iface ;
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), pkt) ;
-        @ loop assigns iface, *ctx;
+        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), pkt, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
+                                                     ((uint32_t *) (0x40040000 .. 0x40150000)));
+        @ loop assigns iface, errcode, *ctx, *((uint32_t *) (0x40040000 .. 0x40150000)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
+                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
         @ loop variant (max_iface - iface);
     */
 
@@ -958,21 +936,17 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
 
         uint8_t max_ep = ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;  // cyril : meme chose que pour max_iface, wp passe maintenant
 
-    /* @
+    /*@
         @ loop invariant 0 <= i <= max_ep ;
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
-        @ loop invariant \separated(pkt,ctx->cfg[curr_cfg].interfaces + (0..(max_iface-1)), &usbotghs_ctx ) ;
-        @ loop assigns i, *ctx ;
+        @ loop invariant \separated(ctx,pkt, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
+                                                     ((uint32_t *) (0x40040000 .. 0x40150000)));
+        @ loop assigns i, errcode, *ctx, *((uint32_t *) (0x40040000 .. 0x40150000)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
+                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
         @ loop variant (max_ep - i) ;
 
     */
-
-        /*
-        TODO : completer le loop assigns quand usb_backend_drv_configure_endpoint sera complètement spécifiée (il manque les assigns)
-
-        */
-
 
         for (uint8_t i = 0; i < max_ep; ++i) {
             usb_backend_drv_ep_dir_t dir;
@@ -983,12 +957,9 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
             }
            log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir);
 
-           /*
-				Cyril : pb avec usb_backend_drv_configure_endpoint : les assigns ne sont pas spécifiés (adresses du registre...) donc le loop assigns ne passe pas
-						Donc pour le moment, j'ai commenté cette fonction pour faire passer la boucle
-           */
-
-            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].type != USB_EP_TYPE_CONTROL) {
+           if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].type != USB_EP_TYPE_CONTROL) {
+                /*@ assert 0 <= ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num < USBOTGHS_MAX_OUT_EP ; */
+                /*@ assert \separated(ctx,pkt, &usbotghs_ctx, ((uint32_t *) (0x40040000 .. 0x40150000))); */
                 errcode = usb_backend_drv_configure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num,
                         ctx->cfg[curr_cfg].interfaces[iface].eps[i].type,
                         dir,
@@ -1006,16 +977,15 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
         }
 
     }
-
+    /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))); */
     usbctrl_configuration_set();  // Cyril : la fonction usbctrl_configuration_set() est définie dans un main.c, elle assigne conf_set à true
+    /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))); */
     usb_backend_drv_send_zlp(0);   // Cyril : il ne faut pas un errcode?
     /* handling standard Request */
 
-    #if defined(__FRAMAC__)
-    #else
+    /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))); */
     pkt = pkt;  // cyril : la spec ne passe pas à cause de ça (@ assumes !( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ))
     			// pour quel raison on fait ça?
-    #endif/*__FRAMAC__*/
 
     /*request finish here */
     ctx->ctrl_req_processing = false;
@@ -1024,7 +994,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     return errcode;
 
     err:
-    /*@ assert \separated(ctx,r_CORTEX_M_USBOTG_HS_DIEPCTL(0), r_CORTEX_M_USBOTG_HS_DOEPCTL(0)) ; */ // Cyril : important sinon frama peut penser que ctx est modifié par la fonction drv_stall
+    /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))); */
     usb_backend_drv_stall(0, USB_EP_DIR_OUT);
     /*request finish here */
     ctx->ctrl_req_processing = false;
@@ -1046,7 +1016,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt);
+    @ requires \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000)));
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -1273,6 +1243,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 goto err;
             }
             if (maxlength == 0) {  // Cyril : vu que pkt n'est pas modifié, on ne peut pas arriver ici avec le test avant le switch (test if ligne 1946)
+                /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                 errcode = usb_backend_drv_send_zlp(0);   // Cyril : code mort du coup, confirmé par EVA
                 /*request finish here */
                 ctx->ctrl_req_processing = false;
@@ -1285,8 +1256,10 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 }
                 log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)\n", maxlength, size);
                 if (maxlength >= size) {
+                    /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                     errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
                 } else {
+                    /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                     errcode = usb_backend_drv_send_data(&(buf[0]), maxlength, 0);
                     if (errcode != MBED_ERROR_NONE) {
                         log_printf("[USBCTRL] Error while sending data\n");
@@ -1297,7 +1270,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 }
             }
             /* read status .... */
-            /*@ assert \separated(ctx,pkt, r_CORTEX_M_USBOTG_HS_DIEPCTL(0), r_CORTEX_M_USBOTG_HS_DOEPCTL(0)) ; */
+            /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
             break;
         case USB_REQ_DESCRIPTOR_CONFIGURATION:
@@ -1310,6 +1283,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 goto err;
             }
             if (maxlength == 0) {  // Cyril : vu que pkt n'est pas modifié, on ne peut pas arriver ici avec le test avant le switch (test if ligne 1946)
+                /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                 errcode = usb_backend_drv_send_zlp(0);
                 /*request finish here */
                 ctx->ctrl_req_processing = false;
@@ -1323,8 +1297,10 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 }
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
                 if (maxlength > size) {
+                    /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                     errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
                 } else {
+                    /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                     errcode = usb_backend_drv_send_data(&(buf[0]), maxlength, 0);
                     /* should we not inform the host that there is not enough
                      * space ? Well no, the host, send again a new descriptor
@@ -1333,7 +1309,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 }
             }
             /* read status .... */
-            /*@ assert \separated(ctx,pkt, r_CORTEX_M_USBOTG_HS_DIEPCTL(0), r_CORTEX_M_USBOTG_HS_DOEPCTL(0)) ; */
+            /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
 
             /* it is assumed by the USB standard that the returned configuration is now active.
@@ -1349,14 +1325,17 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 goto err;
             }
             if (maxlength == 0) {    // Cyril : vu que pkt n'est pas modifié, on ne peut pas arriver ici avec le test avant le switch (test if ligne 1946)
+                /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                 errcode = usb_backend_drv_send_zlp(0);
                 /*request finish here */
                 ctx->ctrl_req_processing = false;
                 /*@ assert ctx->ctrl_req_processing == \false; */
             } else {
                 if (maxlength > size) {
+                    /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                     errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
                 } else {
+                    /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
                     errcode = usb_backend_drv_send_data(&(buf[0]), maxlength, 0);
                     /* should we not inform the host that there is not enough
                      * space ?
@@ -1443,7 +1422,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             /*request finish here */
             ctx->ctrl_req_processing = false;
             /*@ assert ctx->ctrl_req_processing == \false; */
-            /*@ assert \separated(ctx,pkt, r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+            /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         case USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG:
@@ -1459,7 +1438,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             /*request finish here */
             ctx->ctrl_req_processing = false;
             /*@ assert ctx->ctrl_req_processing == \false; */
-            /*@ assert \separated(ctx,pkt, r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+            /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         case USB_REQ_DESCRIPTOR_INTERFACE_POWER:
@@ -1475,7 +1454,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             /*request finish here */
             ctx->ctrl_req_processing = false;
             /*@ assert ctx->ctrl_req_processing == \false; */
-            /*@ assert \separated(ctx,pkt, r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+            /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         default:
@@ -1485,7 +1464,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
 
     return errcode;
 err:
-    /*@ assert \separated(ctx,pkt, r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0)) ; */
+    /*@ assert \separated(ctx,pkt, ((uint32_t *) (0x40040000 .. 0x40150000))) ; */
     usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
     return errcode;
 }
@@ -1518,7 +1497,7 @@ err:
     @   assumes ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
-    @   assigns *pkt, *ctx, *r_CORTEX_M_USBOTG_HS_DTXFSTS(0), *r_CORTEX_M_USBOTG_HS_DIEPTSIZ(0), *r_CORTEX_M_USBOTG_HS_DSTS, *r_CORTEX_M_USBOTG_HS_DIEPCTL(0) ;
+    @   assigns *pkt, *ctx, *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   ensures \result == MBED_ERROR_NONE &&  ctx->ctrl_req_processing == \false ;
 
     @ complete behaviors ;
@@ -1568,7 +1547,7 @@ err:
     @ requires \valid_read(pkt) && \valid(ctx);
     @ requires \separated(ctx,pkt);
     @ assigns *ctx ;
-    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @ ensures ctx->ctrl_req_processing == \false;
 
     @ behavior std_requests_not_allowed:
@@ -1615,10 +1594,6 @@ err:
 
 */
 
-/*
-    TODO : les assigns de trop bas niveaux
-
-*/
 
 static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
                                                        usbctrl_context_t *ctx)
@@ -1671,7 +1646,7 @@ err:
     @ requires \valid(ctx) && \valid(pkt) ;
     @ requires \separated(ctx,pkt);
     @ assigns *ctx ;
-    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -1789,7 +1764,7 @@ err:
     @ requires \valid(ctx) && \valid_read(pkt) ;
     @ requires \separated(ctx,pkt);
     @ assigns *ctx ;
-    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -1935,11 +1910,13 @@ err:
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt);
+    @ requires \separated(ctx,pkt,((uint32_t *) (0x40040000 .. 0x40150000)),&usbotghs_ctx);
 
     @ behavior USB_REQ_GET_STATUS:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_STATUS ;
-    @   ensures is_valid_error(\result);
+    @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)), *ctx ;
+    @   assigns usbotghs_ctx, usbotghs_ctx.in_eps[EP0] ;
 
     @ behavior USB_REQ_CLEAR_FEATURE:
     @   assumes  pkt->bRequest ==  USB_REQ_CLEAR_FEATURE ;
@@ -1999,8 +1976,6 @@ err:
             des fonctions non ?)
 
     TODO : les assigns, mais ça sera fait à la fin quand les assigns de toutes les fonctions seront faits
-            il reste :
-                    -
 
 */
 
@@ -2046,7 +2021,7 @@ static inline mbed_error_t usbctrl_handle_std_requests(usbctrl_setup_pkt_t *pkt,
             break;
         default:
             log_printf("[USBCTRL] Unknown std request %d\n", pkt->bRequest);   // cyril : si on arrive ici, on a quand meme MBED_ERROR_NONE. Est-ce que c'est le comportement attendu?
-            /*@ assert \separated(ctx,pkt,&usbotghs_ctx);  */
+            /*@ assert \separated(ctx, pkt, &usbotghs_ctx, (uint32_t *)(0x40040000 .. 0x40150000)); */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
     }
@@ -2110,12 +2085,6 @@ err:
  * this function is a dispatcher between the various registered personalities
  */
 
-/*
-    @ assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id), *r_CORTEX_M_USBOTG_HS_DOEPCTL(ep_id) ;
-    @ ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_NONE ||  \result == MBED_ERROR_BUSY ;
-
-*/
-
 /*@
 
     @ requires \valid(pkt) && \valid(ctx);
@@ -2130,7 +2099,7 @@ err:
     @ behavior no_iface:
     @   assumes (ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
     @   assumes (((pkt->wIndex) & 0xff) - 1 ) >= ctx->cfg[ctx->curr_cfg].interface_num ;  // condition pour is_interface_exists : iface_idx >= ctx->cfg[ctx->curr_cfg].interface_num
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   ensures \result == MBED_ERROR_NOTFOUND || \result == MBED_ERROR_UNKNOWN ;
 
     @ behavior handler_not_found :
@@ -2155,7 +2124,6 @@ err:
 /*
     CYRIL : cette fonction est une fonction static inline, mais elle n'est appelée par aucune autre fonction...
     comment faire pour l'utiliser alors?
-    ici se trouve handle_class_requests
 
 */
 
@@ -2260,7 +2228,7 @@ err:
 /*@
     @ requires \valid(pkt) && \valid(ctx) ;
     @ requires \separated(ctx,pkt);
-    @ assigns *ctx, *pkt, *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @ assigns *ctx, *pkt, *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @ ensures \result == MBED_ERROR_UNKNOWN ;
 */
 
@@ -2291,13 +2259,13 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
 
     @ behavior bad_pkt:
     @   assumes pkt == \null ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0) ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior bad_ctx:
     @   assumes pkt != \null ;
     @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0), GHOST_idx_ctx ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)), GHOST_idx_ctx ;
     @   ensures \result == MBED_ERROR_UNKNOWN ;
 
     @ behavior USB_REQ_TYPE_STD:
@@ -2327,7 +2295,7 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
     @   assumes !(((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;
     @   assumes !((((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_CLASS) || (((pkt->bmRequestType) & 0x1F) == USB_REQ_RECIPIENT_INTERFACE)) ;
     @   assigns *pkt, ctx_list[0..(GHOST_num_ctx-1)] ;  // cyril : je dois laisser ctx_list[0..(num_ctx-1)], *ctx_list n'est pas validé par WP
-    @   assigns *r_CORTEX_M_USBOTG_HS_DIEPCTL(EP0), *r_CORTEX_M_USBOTG_HS_DOEPCTL(EP0), GHOST_idx_ctx ;
+    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)), GHOST_idx_ctx ;
     @   ensures \result == MBED_ERROR_UNKNOWN ;
 
     @ complete behaviors ;
