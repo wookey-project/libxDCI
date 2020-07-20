@@ -967,8 +967,8 @@ int Frama_C_interval(int min, int max)
 void test_fcn_usbctrl(){
 
 
-    uint32_t dev_id = Frama_C_interval(0,RAND_UINT_32-1) ;
-    uint32_t size = Frama_C_interval(0,RAND_UINT_32-1) ;
+    uint32_t dev_id = Frama_C_interval(0,65535) ;
+    uint32_t size = Frama_C_interval(0,65535) ;
     uint32_t handler ;
     uint8_t ep = Frama_C_interval(0,255);
     uint8_t iface = Frama_C_interval(0,MAX_INTERFACES_PER_DEVICE-1);
@@ -976,8 +976,10 @@ void test_fcn_usbctrl(){
     uint8_t EP_type = Frama_C_interval(0,3);
     uint8_t EP_dir = Frama_C_interval(0,1);
     uint8_t USB_class = Frama_C_interval(0,17);
-    uint32_t USBdci_handler = Frama_C_interval(0,RAND_UINT_32-1) ;
+    uint32_t USBdci_handler = Frama_C_interval(0,65535) ;
     usb_device_trans_t transition = Frama_C_interval(0,MAX_TRANSITION_STATE-1) ;
+    usb_device_state_t current_state = Frama_C_interval(0,9);
+    usbctrl_request_code_t request = Frama_C_interval(0x0,0xc);
 
 /*
     def d'une nouvelle interface pour test de la fonction usbctrl_declare_interface
@@ -993,7 +995,12 @@ void test_fcn_usbctrl(){
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
-    usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
+
+    usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
+
+    usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep};
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
@@ -1022,6 +1029,7 @@ void test_fcn_usbctrl(){
 
     usbctrl_declare_interface(ctxh1, &iface_1) ;
     usbctrl_declare_interface(ctxh1, &iface_2);
+    usbctrl_declare_interface(ctxh1, &iface_3);
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);
     usbctrl_is_interface_exists(ctx1, iface);
@@ -1053,6 +1061,7 @@ void test_fcn_usbctrl(){
     usbctrl_get_handler(ctx2, &handler);
     usbctrl_declare_interface(ctxh2, &iface_1) ;
     usbctrl_declare_interface(ctxh2, &iface_2);
+    usbctrl_declare_interface(ctxh2, &iface_3);
     usbctrl_get_interface(ctx2, iface);
 
     usbctrl_is_interface_exists(ctx2, iface);
@@ -1094,9 +1103,7 @@ void test_fcn_usbctrl(){
     usbctrl_std_req_get_dir(&pkt) ;
     usbctrl_handle_reset(dev_id);
 
-    usbctrl_std_req_get_type(&pkt) ;
-    usbctrl_handle_vendor_requests(&pkt, ctx1) ;
-    usbctrl_handle_unknown_requests(&pkt, ctx1) ;
+    usbctrl_next_state(current_state,request);  // requires is_valid_state && is_valid_request : pas de test d'erreur sur les entrées du coup
 
     /*
     usbctrl_handle_std_requests(&pkt, ctx1) ;
