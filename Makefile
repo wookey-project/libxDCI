@@ -183,7 +183,6 @@ frama-c-parsing-concat:
 frama-c-eva:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
 	            -absolute-valid-range 0x40040000-0x400150000 \
-	            -memexec-all \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
 	            -warn-right-shift-negative \
@@ -196,63 +195,56 @@ frama-c-eva:
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 1000 \
+		    -eva-auto-loop-unroll 500 \
 		    -eva-slevel 500 \
 		    -eva-slevel-function usbctrl_get_descriptor:12000 \
 		    -eva-slevel-function usbotghs_send_data:1000 \
 		    -eva-slevel-function usbotghs_endpoint_stall:1000 \
 		    -eva-slevel-function usbotghs_endpoint_set_nak:1000 \
-		    -eva-plevel 300 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain \
 		    -eva-bitwise-domain \
 		    -eva-equality-through-calls-function usbctrl_start_device \
-		    -eva-equality-through-calls-function usbctrl_handle_reset \
-		    -eva-equality-through-calls-function usbctrl_get_state \
 		    -eva-equality-through-calls-function usbctrl_is_valid_transition \
-  			-wp-dynamic \
 		    -eva-split-return auto \
-		    -eva-partition-history 10 \
+		    -eva-partition-history 3 \
 		    -eva-use-spec class_get_descriptor \
 		    -eva-use-spec usbctrl_reset_received \
-		    -eva-use-spec usbotghs_configure \
+		    -eva-use-spec class_rqst_handler \
 		    -eva-log a:frama-c-rte-eva.log \
 			-save framac/results/frama-c-rte-eva.session
 
 frama-c:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
-	            -absolute-valid-range 0x40040000-0x400150000 \
-	            -no-frama-c-stdlib \
-	            -memexec-all \
-	            -warn-left-shift-negative \
-	            -warn-right-shift-negative \
-	            -warn-signed-downcast \
-	            -warn-signed-overflow \
-	            -warn-unsigned-downcast \
-	            -warn-unsigned-overflow \
-				-kernel-msg-key pp \
-				-cpp-extra-args="-nostdinc -I framac/include" \
+	        -absolute-valid-range 0x40040000-0x400150000 \
+	        -no-frama-c-stdlib \
+	        -warn-left-shift-negative \
+	        -warn-right-shift-negative \
+	        -warn-signed-downcast \
+	        -warn-signed-overflow \
+	        -warn-unsigned-downcast \
+	        -warn-unsigned-overflow \
+			-kernel-msg-key pp \
+			-cpp-extra-args="-nostdinc -I framac/include" \
 		    -rte \
 		    -eva \
 		    -eva-warn-undefined-pointer-comparison none \
-		    -eva-auto-loop-unroll 1000 \
+		    -eva-auto-loop-unroll 500 \
 		    -eva-slevel 500 \
 		    -eva-slevel-function usbctrl_get_descriptor:12000 \
 		    -eva-slevel-function usbotghs_send_data:1000 \
 		    -eva-slevel-function usbotghs_endpoint_stall:1000 \
 		    -eva-slevel-function usbotghs_endpoint_set_nak:1000 \
-		    -eva-plevel 300 \
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain \
 		    -eva-bitwise-domain \
 		    -eva-equality-through-calls-function usbctrl_start_device \
 		    -eva-equality-through-calls-function usbctrl_is_valid_transition \
-  			-wp-dynamic \
 		    -eva-split-return auto \
 		    -eva-partition-history 10 \
 		    -eva-use-spec class_get_descriptor \
 		    -eva-use-spec usbctrl_reset_received \
-		    -eva-use-spec usbotghs_configure \
+		    -eva-use-spec class_rqst_handler \
 		    -eva-log a:frama-c-rte-eva.log \
    		    -then \
    		    -wp \
@@ -270,6 +262,7 @@ frama-c:
 #-eva-slevel-function usbctrl_declare_interface:300000 \
 #-eva-equality-through-calls all \
 # -from-verify-assigns \
+#-eva-use-spec usbotghs_configure \
 
 frama-c-gui:
 	frama-c-gui -load $(SESSION)

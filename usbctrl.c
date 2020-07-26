@@ -63,7 +63,6 @@ volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/
 
 /*@
-    @ requires 0 <= dev_id < RAND_UINT_32 ;
     @   ensures GHOST_num_ctx == num_ctx ;
 
     @ behavior bad_ctxh:
@@ -306,11 +305,6 @@ end:
 
     @ complete behaviors ;
     @ disjoint behaviors ;
-*/
-
-/*
-	FIXME : behavior not_found : j'ai du rajouter assigns *handler pour que ça passe, mais normalement, c'est assigns \nothing...
-
 */
 
 mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
@@ -722,6 +716,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].handler = iface->eps[0].handler ;
        ctx->cfg[iface_config].interfaces[iface_num].rqst_handler = iface->rqst_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].class_desc_handler = iface->class_desc_handler ;
+       ctx->cfg[iface_config].interfaces[iface_num].eps[0].poll_interval = iface->eps[0].poll_interval ;
 
     #else
         memcpy((void*)&(ctx->cfg[iface_config].interfaces[iface_num]), (void*)iface, sizeof(usbctrl_interface_t));
@@ -934,22 +929,68 @@ err:
  * Support for Frama-C testing
  */
 
-//@ assigns Frama_C_entropy_source \from Frama_C_entropy_source;
-void Frama_C_update_entropy(void) {
-  Frama_C_entropy_source = Frama_C_entropy_source;
+//@ assigns Frama_C_entropy_source_8 \from Frama_C_entropy_source_8;
+void Frama_C_update_entropy_8(void) {
+  Frama_C_entropy_source_8 = Frama_C_entropy_source_8;
 }
 
-/*@ requires order: min <= max;
-    assigns \result \from min, max, Frama_C_entropy_source;
-    assigns Frama_C_entropy_source \from Frama_C_entropy_source;
+//@ assigns Frama_C_entropy_source_16 \from Frama_C_entropy_source_16;
+void Frama_C_update_entropy_16(void) {
+  Frama_C_entropy_source_16 = Frama_C_entropy_source_16;
+}
+
+//@ assigns Frama_C_entropy_source_32 \from Frama_C_entropy_source_32;
+void Frama_C_update_entropy_32(void) {
+  Frama_C_entropy_source_32 = Frama_C_entropy_source_32;
+}
+
+/*@ requires order: 0 <= min <= max <= 255;
+    assigns \result \from min, max, Frama_C_entropy_source_8;
+    assigns Frama_C_entropy_source_8 \from Frama_C_entropy_source_8;
     ensures result_bounded: min <= \result <= max ;
  */
 
-int Frama_C_interval(int min, int max)
+uint8_t Frama_C_interval_8(uint8_t min, uint8_t max)
 {
-  int r,aux;
-  Frama_C_update_entropy();
-  aux = Frama_C_entropy_source;
+  uint8_t r,aux;
+  Frama_C_update_entropy_8();
+  aux = Frama_C_entropy_source_8;
+  if ((aux>=min) && (aux <=max))
+    r = aux;
+  else
+    r = min;
+  return r;
+}
+
+/*@ requires order: 0 <= min <= max <= 65535;
+    assigns \result \from min, max, Frama_C_entropy_source_16;
+    assigns Frama_C_entropy_source_16 \from Frama_C_entropy_source_16;
+    ensures result_bounded: min <= \result <= max ;
+ */
+
+uint16_t Frama_C_interval_16(uint16_t min, uint16_t max)
+{
+  uint16_t r,aux;
+  Frama_C_update_entropy_16();
+  aux = Frama_C_entropy_source_16;
+  if ((aux>=min) && (aux <=max))
+    r = aux;
+  else
+    r = min;
+  return r;
+}
+
+/*@ requires order: 0 <= min <= max <= 4294967295;
+    assigns \result \from min, max, Frama_C_entropy_source_32;
+    assigns Frama_C_entropy_source_32 \from Frama_C_entropy_source_32;
+    ensures result_bounded: min <= \result <= max ;
+ */
+
+uint32_t Frama_C_interval_32(uint32_t min, uint32_t max)
+{
+  uint32_t r,aux;
+  Frama_C_update_entropy_32();
+  aux = Frama_C_entropy_source_32;
   if ((aux>=min) && (aux <=max))
     r = aux;
   else
@@ -967,50 +1008,51 @@ int Frama_C_interval(int min, int max)
 void test_fcn_usbctrl(){
 
 
-    uint32_t dev_id = Frama_C_interval(0,65535) ;
-    uint32_t size = Frama_C_interval(0,65535) ;
+    uint32_t dev_id = (uint32_t)Frama_C_interval_32(0,4294967295) ;
+    uint32_t size = Frama_C_interval_32(0,4294967295) ;
     uint32_t handler ;
-    uint8_t ep = Frama_C_interval(0,255);
-    uint8_t iface = Frama_C_interval(0,MAX_INTERFACES_PER_DEVICE-1);
-    uint8_t ep_number = Frama_C_interval(0,MAX_EP_PER_INTERFACE);
-    uint8_t EP_type = Frama_C_interval(0,3);
-    uint8_t EP_dir = Frama_C_interval(0,1);
-    uint8_t USB_class = Frama_C_interval(0,17);
-    uint32_t USBdci_handler = Frama_C_interval(0,65535) ;
-    usb_device_trans_t transition = Frama_C_interval(0,MAX_TRANSITION_STATE-1) ;
-    usb_device_state_t current_state = Frama_C_interval(0,9);
-    usbctrl_request_code_t request = Frama_C_interval(0x0,0xc);
+    uint8_t ep = Frama_C_interval_8(0,255);
+    uint8_t iface = Frama_C_interval_8(0,MAX_INTERFACES_PER_DEVICE-1);
+    uint8_t ep_number = Frama_C_interval_8(0,MAX_EP_PER_INTERFACE);
+    uint8_t EP_type = Frama_C_interval_8(0,3);
+    uint8_t EP_dir = Frama_C_interval_8(0,1);
+    uint8_t USB_class = Frama_C_interval_8(0,17);
+    uint32_t USBdci_handler = Frama_C_interval_32(0,4294967295) ;
+    usb_device_trans_t transition = Frama_C_interval_8(0,MAX_TRANSITION_STATE-1) ;
+    usb_device_state_t current_state = Frama_C_interval_8(0,9);
+    usbctrl_request_code_t request = Frama_C_interval_8(0x0,0xc);
+    uint8_t interval = Frama_C_interval_8(0,255);
 
 /*
     def d'une nouvelle interface pour test de la fonction usbctrl_declare_interface
     Déclaration d'une structure usb_rqst_handler_t utilisée dans les interfaces, qui nécessite aussi une structure usbctrl_setup_pkt_t
 */
 
-    uint8_t RequestType = Frama_C_interval(0,255);
-    uint8_t Request = Frama_C_interval(0,0xd);
-    uint16_t Value = Frama_C_interval(0,65535);
-    uint16_t Index = Frama_C_interval(0,65535);
-    uint16_t Length = Frama_C_interval(0,65535);
+    uint8_t RequestType = Frama_C_interval_8(0,255);
+    uint8_t Request = Frama_C_interval_8(0,0xd);
+    uint16_t Value = Frama_C_interval_16(0,65535);
+    uint16_t Index = Frama_C_interval_16(0,65535);
+    uint16_t Length = Frama_C_interval_16(0,65535);
 
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
     usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
     usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep};
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval};
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
-
-
     usbctrl_context_t *ctx1 = NULL;
     usbctrl_context_t *ctx2 = NULL;
-    usbctrl_context_t ctx_test = { .dev_id = 8, .address= 2};
+
     uint32_t ctxh1=0;
     uint32_t ctxh2=0;
+
+
 
     ///////////////////////////////////////////////////
     //        premier context
@@ -1029,7 +1071,7 @@ void test_fcn_usbctrl(){
 
     usbctrl_declare_interface(ctxh1, &iface_1) ;
     usbctrl_declare_interface(ctxh1, &iface_2);
-    usbctrl_declare_interface(ctxh1, &iface_3);
+    //usbctrl_declare_interface(ctxh1, &iface_3);  // Cyril : le temps de calcul augmente exponentiellement avec une 3ème interface, à cause de la fonction usbctrl_get_descriptor (toutes les boucles...)
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);
     usbctrl_is_interface_exists(ctx1, iface);
@@ -1041,11 +1083,9 @@ void test_fcn_usbctrl(){
     //@ assert GHOST_num_ctx == num_ctx ;
 
     if(ctx1 != NULL){
-        ctx1->state = Frama_C_interval(0,9); // pour EVA, pour avoir tous les états possibles
+        ctx1->state = Frama_C_interval_8(0,9); // pour EVA, pour avoir tous les états possibles
             usbctrl_is_valid_transition(ctx1->state,transition,ctx1);
             usbctrl_handle_class_requests(&pkt,ctx1) ;
-            usbctrl_handle_reset(6);
-
     }
 
 
@@ -1056,12 +1096,11 @@ void test_fcn_usbctrl(){
     usbctrl_declare(7, &ctxh2);
     usbctrl_initialize(ctxh2);
     //@ assert GHOST_num_ctx == num_ctx ;
-    usbctrl_get_handler(&ctx_test, &handler);
     usbctrl_get_context(7, &ctx2);
     usbctrl_get_handler(ctx2, &handler);
     usbctrl_declare_interface(ctxh2, &iface_1) ;
     usbctrl_declare_interface(ctxh2, &iface_2);
-    usbctrl_declare_interface(ctxh2, &iface_3);
+    //usbctrl_declare_interface(ctxh2, &iface_3);
     usbctrl_get_interface(ctx2, iface);
 
     usbctrl_is_interface_exists(ctx2, iface);
@@ -1070,17 +1109,16 @@ void test_fcn_usbctrl(){
     usbctrl_start_device(ctxh2) ;
     // @ assert GHOST_num_ctx == num_ctx ;
 
+    /*@ assert ctx2 != 0 ; */
      usb_device_state_t state = usbctrl_get_state(ctx2);
      /*@ assert state == ctx2->state ; */
 
     usbctrl_stop_device(ctxh2) ;
 
     if(ctx2 != NULL){
-        ctx2->state = Frama_C_interval(0,9); // pour EVA, pour avoir tous les états possibles
+        ctx2->state = Frama_C_interval_8(0,9); // pour EVA, pour avoir tous les états possibles
         usbctrl_is_valid_transition(ctx2->state,transition,ctx2);
         usbctrl_handle_class_requests(&pkt,ctx2) ;
-        usbctrl_handle_reset(7);
-
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -1090,13 +1128,8 @@ void test_fcn_usbctrl(){
     ctx_list[0].ctrl_req_processing = true;  // pour atteindre un cas avec EVA
     usbctrl_handle_inepevent(dev_id, size, ep);
 
-
-
-    usbotghs_ctx.out_eps[0].state = Frama_C_interval(0,9); // pour EVA, pour avoir tous les états possibles, mais que pour les ep pour lesquels il n'y a pas de RTE dans  usbotghs_ctx.out_eps[ep]
+    usbotghs_ctx.out_eps[0].state = Frama_C_interval_8(0,9); // pour EVA, pour avoir tous les états possibles, mais que pour les ep pour lesquels il n'y a pas de RTE dans  usbotghs_ctx.out_eps[ep]
     usbctrl_handle_outepevent(dev_id, size, ep);
-    //usbctrl_handle_outepevent(dev_id, size, 3 );
-
-    //usbctrl_handle_outepevent(dev_id, size, ep);
     usbctrl_handle_earlysuspend(dev_id) ;
     usbctrl_handle_usbsuspend(dev_id);
     usbctrl_handle_wakeup(dev_id) ;
@@ -1104,35 +1137,10 @@ void test_fcn_usbctrl(){
     usbctrl_handle_reset(dev_id);
 
     usbctrl_next_state(current_state,request);  // requires is_valid_state && is_valid_request : pas de test d'erreur sur les entrées du coup
-
-    /*
-    usbctrl_handle_std_requests(&pkt, ctx1) ;
-    usbctrl_std_req_handle_get_status(&pkt,ctx1);
-    usbctrl_std_req_handle_clear_feature(&pkt,ctx1);
-    usbctrl_std_req_handle_set_feature(&pkt,ctx1);
-    usbctrl_std_req_handle_set_address(&pkt,ctx1);
-    usbctrl_std_req_handle_get_descriptor(&pkt,ctx1);
-    usbctrl_std_req_handle_set_descriptor(&pkt,ctx1);
-    usbctrl_std_req_handle_get_configuration(&pkt,ctx1);
-
-	usbctrl_setup_pkt_t pkt_0 = { .bmRequestType = RequestType, .bRequest = Request, .wValue = 0, .wIndex = Index, .wLength = Length }; // pour rentrer dans INVPARAM
-	usbctrl_std_req_handle_set_configuration(&pkt,ctx1);
-
-    usbctrl_std_req_handle_get_interface(&pkt,ctx1);
-    usbctrl_std_req_handle_set_interface(&pkt,ctx1);
-    usbctrl_std_req_handle_synch_frame(&pkt,ctx1);
-    */
-
-
-    usbctrl_handle_requests(&pkt, dev_id) ;  // fonction qui appelle bcp de fonction, EVA prend bcp de temps du coup
+    //usbctrl_handle_requests(&pkt, dev_id) ;
+    usbctrl_handle_requests_switch(&pkt, dev_id) ;  // fonction qui appelle bcp de fonction, EVA prend bcp de temps du coup
    	// c'est l'appel à usbctrl_handle_std_requests qui appelle notamment usbctrl_std_req_handle_get_descriptor qui augmente le temps de calcul (x10...)
    	// car usbctrl_std_req_handle_get_descriptor est appelé 5 fois...donc 2 contexte, ça fait 10 fois en tout, et il y a 12000 états dans get descriptor
-/*
-    ctx_test : context different de ctx_list, pour trigger certains cas dans get_handler
-*/
-
-    usbctrl_get_handler(&ctx_test, &handler);  // pour tester behavior not_found
-
 }
 
 /*
@@ -1144,34 +1152,28 @@ void test_fcn_usbctrl(){
 
 void test_fcn_usbctrl_erreur(){
 
-/*
-	j'ai un pb de garbled mix avec ctx_list...du coup ça fait plein d'erreur
-
-*/
-
-
-    uint32_t dev_id = Frama_C_interval(0,RAND_UINT_32-1) ;
-    uint32_t size = Frama_C_interval(0,RAND_UINT_32-1) ;
-    uint32_t ctxh = Frama_C_interval(0,MAX_USB_CTRL_CTX-1);
-    uint32_t handler = Frama_C_interval(0,RAND_UINT_32-1);
-    uint8_t ep = Frama_C_interval(0,255);
-    uint8_t iface = Frama_C_interval(0,MAX_INTERFACES_PER_DEVICE-1);
-    uint8_t ep_number = Frama_C_interval(0,MAX_EP_PER_INTERFACE);
-    uint8_t EP_type = Frama_C_interval(0,3);
-    uint8_t EP_dir = Frama_C_interval(0,1);
-    uint8_t  USB_class = Frama_C_interval(0,17);
-    uint32_t USBdci_handler = Frama_C_interval(0,RAND_UINT_32-1) ;
+    uint32_t dev_id =(uint32_t) Frama_C_interval_32(0,4294967295) ;
+    uint32_t size = Frama_C_interval_32(0,4294967295) ;
+    uint32_t ctxh = Frama_C_interval_32(0,4294967295);
+    uint32_t handler = Frama_C_interval_32(0,4294967295);
+    uint8_t ep = Frama_C_interval_8(0,255);
+    uint8_t iface = Frama_C_interval_8(0,MAX_INTERFACES_PER_DEVICE-1);
+    uint8_t ep_number = Frama_C_interval_8(0,MAX_EP_PER_INTERFACE);
+    uint8_t EP_type = Frama_C_interval_8(0,3);
+    uint8_t EP_dir = Frama_C_interval_8(0,1);
+    uint8_t  USB_class = Frama_C_interval_8(0,17);
+    uint32_t USBdci_handler = Frama_C_interval_32(0,4294967295) ;
 
 /*
     def d'une nouvelle interface pour test de la fonction usbctrl_declare_interface
     Déclaration d'une structure usb_rqst_handler_t utilisée dans les interfaces, qui nécessite aussi une structure usbctrl_setup_pkt_t
 */
 
-    uint8_t RequestType = Frama_C_interval(0,255);
-    uint8_t Request = Frama_C_interval(0,255);
-    uint16_t Value = Frama_C_interval(0,65535);
-    uint16_t Index = Frama_C_interval(0,65535);
-    uint16_t Length = Frama_C_interval(0,65535);
+    uint8_t RequestType = Frama_C_interval_8(0,255);
+    uint8_t Request = Frama_C_interval_8(0,255);
+    uint16_t Value = Frama_C_interval_16(0,65535);
+    uint16_t Index = Frama_C_interval_16(0,65535);
+    uint16_t Length = Frama_C_interval_16(0,65535);
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
@@ -1180,6 +1182,11 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = NULL,
                                    .rqst_handler = NULL, .class_desc_handler = NULL};
+
+/*
+    ctx_test : context different de ctx_list, pour trigger certains cas dans get_handler
+*/
+    usbctrl_context_t ctx_test = { .dev_id = 8, .address= 2};
 
     /*
         usbctrl_declare : cas d'erreur - pointeur ctxh null
@@ -1265,6 +1272,7 @@ void test_fcn_usbctrl_erreur(){
     */
 
     usbctrl_get_handler(bad_ctx, &handler);
+    usbctrl_get_handler(&ctx_test, &handler);  // pour tester behavior not_found
 
 
     /*
@@ -1319,10 +1327,10 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_handle_class_requests : test avec get_handler qui renvoie error not found (donc un contexte différent de ctx_list )
 */
 usbctrl_context_t ctx2 = ctx_list[0] ;
-ctx2.state = Frama_C_interval(0,9);
+ctx2.state = Frama_C_interval_8(0,9);
 usbctrl_handle_class_requests(&pkt, &ctx2);
 
-usbctrl_handle_requests(NULL, dev_id);  // pointeur null, les autres erreurs ne sont pas atteignables..
+usbctrl_handle_requests_switch(NULL, dev_id);  // pointeur null, les autres erreurs ne sont pas atteignables..
 
 /*
     usbctrl_std_req_handle_get_descriptor : je n'arrive pas à aller dans tous les cas d'erreur (maxlength == 0 ou get_descriptor != error_none )

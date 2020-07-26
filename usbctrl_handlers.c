@@ -156,26 +156,50 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
     @ complete behaviors ;
     @ disjoint behaviors ;
 
+
+    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) && 
+              !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
+              ==> (\result == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID) ;
+
+    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) && 
+              (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
+              ==> (\result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM) ;
+
 */
+
+
+/* @
+    @ requires \separated(((uint32_t *) (0x40040000 .. 0x40150000)),&ctx_list[0..(GHOST_num_ctx-1)],&GHOST_idx_ctx,&usbotghs_ctx);
+    @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
+    @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
+    @ ensures !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ==> \result == MBED_ERROR_INVPARAM  ;
+    @ ensures (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && ctx_list[i].state == USB_DEVICE_STATE_ATTACHED ) 
+                  ==> (\result == MBED_ERROR_INVSTATE) ;
+    @ ensures ((\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && i == GHOST_idx_ctx) && 
+              (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
+              ==> (\result == MBED_ERROR_NONE) ;
+*/
+
 
 mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 {
 
     mbed_error_t       errcode = MBED_ERROR_NONE;
-    dev_id = dev_id;
+    //dev_id = dev_id;
     usbctrl_context_t *ctx = NULL;
     log_printf("[USBCTRL] Handling reset\n");
     /* TODO: support for multiple drivers in the same time.
     This requires a driver table with callbacks or a preprocessing mechanism
     to select the corresponding driver API. While the libctrl is not yet fully
     operational, we handle only usbotghs driver API */
-    dev_id = dev_id;
+    
+    //dev_id = dev_id;
 
     log_printf("[USBCTRL] reset: get context for dev_id %d\n", dev_id);
     if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] reset: no ctx found!\n");
         /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
-        /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
+        /* @ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
@@ -183,9 +207,9 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
     /*@ assert ctx->state == ctx_list[GHOST_idx_ctx].state ; */
 
-    /*@ assert ctx != 0 ; */
+    /*@ assert ctx != 0 ; */  // Cyril : sans ça, impossible de prouver que state == ctx->state
     usb_device_state_t state = usbctrl_get_state(ctx);
-    /*@ assert state == ctx->state ; */  // Cyril : pas validé par WP, je ne comprends pas pq...
+    /*@ assert state == ctx->state ; */
 
  beforeif:
     /* resetting directly depends on the current state */
@@ -208,98 +232,98 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     /*@ assert state == ctx_list[GHOST_idx_ctx].state ; */
     /*@ assert !(state == USB_DEVICE_STATE_ATTACHED || state == USB_DEVICE_STATE_SUSPENDED_POWER || state == USB_DEVICE_STATE_INVALID) ; */
 
-    log_printf("[USBCTRL] reset: execute transition from state %d\n", state);
+ //   log_printf("[USBCTRL] reset: execute transition from state %d\n", state);
     /* handling RESET event depending on current state */
-    switch (state) {
-        case USB_DEVICE_STATE_POWERED:
+ //   switch (state) {
+ //       case USB_DEVICE_STATE_POWERED:
             /* initial reset of the device, set EP0 FIFO. Other EPs FIFO
              * are handled at SetConfiguration & SetInterface time */
             /* as USB Reset action reinitialize the EP0 FIFOs (flush, purge and deconfigure) they must
              * be reconfigure for EP0 here. */
-            /*@ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_POWERED ; */
-            log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+            /* @ assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_POWERED ; */
+            //log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
+            //errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
 
 
-            if (errcode != MBED_ERROR_NONE) {
-                goto err;
-            }
+            //if (errcode != MBED_ERROR_NONE) {
+            //    goto err;
+            //}
             /* control pipe recv FIFO is ready to be used */
-            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-            break;
-        case USB_DEVICE_STATE_SUSPENDED_DEFAULT:
+            //ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+            //break;
+        //case USB_DEVICE_STATE_SUSPENDED_DEFAULT:
             /* awake from suspended state, back to default */
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            if (errcode != MBED_ERROR_NONE) {
-                goto err;
-            }
+          //  errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+          //  if (errcode != MBED_ERROR_NONE) {
+          //      goto err;
+          //  }
             /* control pipe recv FIFO is ready to be used */
-            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+           // ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
 
-            break;
-        case USB_DEVICE_STATE_SUSPENDED_ADDRESS:
+            //break;
+        //case USB_DEVICE_STATE_SUSPENDED_ADDRESS:
             /* awake from suspended state, back to address */
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            if (errcode != MBED_ERROR_NONE) {
-                goto err;
-            }
+          //  errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+          //  if (errcode != MBED_ERROR_NONE) {
+          //      goto err;
+          //  }
             /* control pipe recv FIFO is ready to be used */
-            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+            //ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
 
-            break;
-        case USB_DEVICE_STATE_SUSPENDED_CONFIGURED:
+          //  break;
+        //case USB_DEVICE_STATE_SUSPENDED_CONFIGURED:
             /* awake from suspended state, back to configured */
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            if (errcode != MBED_ERROR_NONE) {
-                goto err;
-            }
+          //  errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+          //  if (errcode != MBED_ERROR_NONE) {
+          //      goto err;
+          //  }
             /* control pipe recv FIFO is ready to be used */
-            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-            break;
-        case USB_DEVICE_STATE_DEFAULT:
+          //  ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+          //  break;
+        //case USB_DEVICE_STATE_DEFAULT:
             /* going back to default... meaning doing nothing */
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            if (errcode != MBED_ERROR_NONE) {
-                goto err;
-            }
+          //  errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+          //  if (errcode != MBED_ERROR_NONE) {
+          //      goto err;
+          //  }
             /* control pipe recv FIFO is ready to be used */
-            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-            break;
-        case USB_DEVICE_STATE_ADDRESS:
+          //  ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+          //  break;
+        //case USB_DEVICE_STATE_ADDRESS:
             /* going back to default */
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            if (errcode != MBED_ERROR_NONE) {
-                goto err;
-            }
+          //  errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+          //  if (errcode != MBED_ERROR_NONE) {
+          //      goto err;
+          //  }
             /* control pipe recv FIFO is ready to be used */
-            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-            ctx->address = 0;
-            usb_backend_drv_set_address(0);
-            break;
-        case USB_DEVICE_STATE_CONFIGURED:
+          //  ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+          //  ctx->address = 0;
+          //  usb_backend_drv_set_address(0);
+          //  break;
+        //case USB_DEVICE_STATE_CONFIGURED:
             /* INFO: deconfigure any potential active EP of current config is automatically
              * done by USB OTG HS core at reset */
 
             /* going back to default */
-            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
-            if (errcode != MBED_ERROR_NONE) {
-                goto err;
-            }
+          //  errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
+          //  if (errcode != MBED_ERROR_NONE) {
+          //      goto err;
+          //  }
             /* control pipe recv FIFO is ready to be used */
-            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+          //  ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
             /* when configured, the upper layer must also be reset */
-            ctx->address = 0;
-            usb_backend_drv_set_address(0);
-            usbctrl_reset_received();
-            break;
-        default:
+            //ctx->address = 0;
+            //usb_backend_drv_set_address(0);
+            //usbctrl_reset_received();
+            //break;
+        //default:
             /* this should *not* happend ! this is not standard. */
-            usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
-            errcode = MBED_ERROR_INVSTATE;
-            goto err;
-            break;
+          //  usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
+          //  errcode = MBED_ERROR_INVSTATE;
+          //  goto err;
+          //  break;
 
-    }
+    //}
     /* Switching to state targeted by the automaton, Depending on the current
      * state.
      * This action is generic thinks to the automaton and can be executed out
@@ -493,9 +517,6 @@ err:
 */
 
 /*
-    Pour faire passer la spec, j'ai du faire deux points d'entrée dans usbctrl.c : le premier avec ep = 0 et l'état qui varie entre 0 et 9
-    																				le 2ème avec ep qui varie, sans me soucier de l'état de usbotghs
-
     TODO :  assigns pour behavior state_USB_BACKEND_DRV_EP_STATE_SETUP_size_8 : en attente des assigns de usbctrl_handle_requests
 
             state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_not_0 : possiblité de plus préciser ce behavior, mais ça dépend de ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep
@@ -543,7 +564,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                     setup_packet[5] << 8 | setup_packet[4],
                     setup_packet[7] << 8 | setup_packet[6]
                 };
-                errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
+                errcode = usbctrl_handle_requests_switch(&formated_pkt, dev_id);
                 usb_backend_drv_ack(EP0, USB_EP_DIR_OUT);
                 return errcode;
             } else {

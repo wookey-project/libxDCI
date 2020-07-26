@@ -96,7 +96,7 @@ __INLINE uint16_t get_reg16_value( uint16_t * reg, uint16_t mask,
 
 /*@
     @ requires \valid(reg);
-    @ assigns *reg ;    
+    @ assigns *reg ;
 
     @ behavior bad_pos:
     @   assumes (pos > 31) ;
@@ -116,7 +116,7 @@ __INLINE uint16_t get_reg16_value( uint16_t * reg, uint16_t mask,
     @ disjoint behaviors ;
 */
 
-// (*reg & ~mask) | ((value << pos) & mask) : je n'arrive pas à faire le ensure *reg pour behavior mask_other
+// cyril (*reg & ~mask) | ((value << pos) & mask) : je n'arrive pas à faire le ensure *reg pour behavior mask_other
 
 __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
                               uint32_t mask, uint8_t pos)
@@ -129,9 +129,9 @@ __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
     if (mask == 0xFFFFFFFF) {
         (*reg) = value;
     } else {
-        tmp = read_reg_value(reg);
-        tmp &= ~mask; 
-        tmp |= (value << pos) & mask;
+        (uint32_t)tmp = read_reg_value(reg);
+        (uint32_t)tmp &= ~mask;
+        (uint32_t)tmp |= ((uint32_t)(value << pos)) & mask; // cyril : RTE unsigned downcast, faux négatif que je n'arrive pas à prouver
         write_reg_value(reg, tmp);
     }
 

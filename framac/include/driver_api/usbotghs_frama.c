@@ -489,13 +489,13 @@ uint32_t usbotghs_get_ep_mpsize(void)
     @ behavior not_configured:
     @   assumes &usbotghs_ctx != \null ;
     @   assumes ep_id < USBOTGHS_MAX_IN_EP ;
-    @   assumes ((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false)); // Cyril : il faut tenir compte de la variable CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE...
+    @   assumes ((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == 0)); // Cyril : il faut tenir compte de la variable CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE...
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
     @ behavior set_fifo_error:
     @   assumes &usbotghs_ctx != \null ;
     @   assumes ep_id < USBOTGHS_MAX_IN_EP ;
-    @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false));
+    @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == 0));
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck != 0)  ;
     @   ensures \old(usbotghs_ctx) ≡ usbotghs_ctx;
     @   ensures \result == MBED_ERROR_INVSTATE ;  // Cyril invparam atteint dans usbotghs_set_xmit_fifo si non configuré, cas traité avant
@@ -503,7 +503,7 @@ uint32_t usbotghs_get_ep_mpsize(void)
     @ behavior fifo_no_error:
     @   assumes &usbotghs_ctx != \null ;
     @   assumes ep_id < USBOTGHS_MAX_IN_EP ;
-    @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == \false));
+    @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == 0));
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck == 0)  ;
     @   ensures \result == MBED_ERROR_BUSY || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
 
@@ -694,6 +694,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
         errcode = usbotghs_write_epx_fifo(ep->mpsize, ep);
         /*@ assert ep == &usbotghs_ctx.in_eps[ep_id] ; */
         goto err;  // Cyril : ajout du errcode =
+        // cyril : est-ce que ce goto est normal? je tombe tout le temps dedans...
     }
 
     /*
@@ -714,7 +715,6 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
             @ loop variant (residual_size - fifo_size);
        */
     //PMO loop assigns pas errcode
-    //Cyril : attention pour les assigns, in_eps car CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE == 1, sinon out_eps. Comment en tenir compte?
     while (residual_size >= fifo_size) {
         /*@
 	       @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
@@ -1786,16 +1786,16 @@ end:
     @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)), usbotghs_ctx;
 
     @ behavior not_configured:
-    @   assumes (usbotghs_ctx.out_eps[epid].configured == \false) ;
+    @   assumes ((usbotghs_ctx.out_eps[epid].configured == \false) || (usbotghs_ctx.out_eps[epid].mpsize == 0))  ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior bad_size:
-    @   assumes !(usbotghs_ctx.out_eps[epid].configured == \false) ;
+    @   assumes !((usbotghs_ctx.out_eps[epid].configured == \false) || (usbotghs_ctx.out_eps[epid].mpsize == 0)) ;
     @   assumes size == 0 ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior ok:
-    @   assumes !(usbotghs_ctx.out_eps[epid].configured == \false) ;
+    @   assumes !((usbotghs_ctx.out_eps[epid].configured == \false) || (usbotghs_ctx.out_eps[epid].mpsize == 0)) ;
     @   assumes size != 0 ;
     @   ensures \result == MBED_ERROR_NONE ;
 
@@ -1811,6 +1811,8 @@ mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid)
     usbotghs_ep_t*      ep;
     mbed_error_t        errcode = MBED_ERROR_NONE;
 
+// cyril : RTE ici si epid trop grand
+
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
         /* reception is done ON out_eps in device mode */
         ep = &(ctx->out_eps[epid]);
@@ -1818,12 +1820,13 @@ mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid)
         /* reception is done IN out_eps in device mode */
         ep = &(ctx->in_eps[epid]);
 #endif
-   //  ep->configured = true ; // CYRIL : ajout car je ne sais pas où se fait la configuration en réalité (pour EVA)
         // Cyril : question pour philippe, probleme si ep->configured pas initialisé (rte_mem_access)
-    if (!ep->configured) {
+        // Cyril : ajout de || !ep->mpsize (sinon unsigned downcast avec ep->mpsize - 1) et division par 0 aussi
+    if (!ep->configured || !ep->mpsize ) {
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
+
     if (size == 0) {
         printf("[USBOTG] try to set FIFO of size 0\n");
         errcode = MBED_ERROR_INVPARAM;
@@ -1854,7 +1857,7 @@ mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid)
         /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid) <= (uint32_t *)0x40150000 ; */
         set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), pktcount, USBOTG_HS_DOEPTSIZ_PKTCNT_Msk(epid), USBOTG_HS_DOEPTSIZ_PKTCNT_Pos(epid));
         /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid) <= (uint32_t *)0x40150000 ; */
-        set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), size, USBOTG_HS_DOEPTSIZ_XFRSIZ_Msk(epid), USBOTG_HS_DOEPTSIZ_XFRSIZ_Pos(ep));
+        set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), size, USBOTG_HS_DOEPTSIZ_XFRSIZ_Msk(epid), USBOTG_HS_DOEPTSIZ_XFRSIZ_Pos(epid)); // cyril : ep ici avant, epid plutot
     } else {
         /* for EP0, the IP is not able to handle more than 64 bytes per
          * transfer. As a consequence, even for bigger transfers (e.g. 4K)
@@ -2258,20 +2261,22 @@ err:
 
 void test_fcn_driver_eva(){
 
-    uint8_t ep_id = Frama_C_interval(0,255);
-    uint8_t ep_num = Frama_C_interval(0,255);
-    uint8_t dir8 = Frama_C_interval(0,255);
-    uint8_t dst = Frama_C_interval(0,255);
-    uint32_t size = Frama_C_interval(0,65534);  // Cyril : voir comment mettre sur 32 bits
-    uint8_t fifo = Frama_C_interval(0,255);
-    uint32_t fifo_idx = Frama_C_interval(0,65535); // Cyril : voir comment mettre sur 32 bits
-    uint32_t fifo_size = Frama_C_interval(0,65535); // Cyril : voir comment mettre sur 32 bits
+    uint8_t ep_id = Frama_C_interval_8(0,255);
+    uint8_t ep_num = Frama_C_interval_8(0,255);
+    uint8_t dir8 = Frama_C_interval_8(0,255);
+    uint8_t dst = Frama_C_interval_8(0,255);
+    uint32_t size = Frama_C_interval_32(0,4294967295);
+    uint8_t fifo = Frama_C_interval_8(0,255);
+    uint32_t fifo_idx = Frama_C_interval_32(0,4294967295);
+    uint32_t fifo_size = Frama_C_interval_32(0,4294967295);
+    usbotghs_epx_mpsize_t size_ep = Frama_C_interval_8(0,3);
 
     uint8_t src = 1 ;
 
-    usbotghs_ep_dir_t dir = Frama_C_interval(0,1);
-    usbotghs_ep_type_t type = Frama_C_interval(0,3);
-    usbotghs_ep_state_t state = Frama_C_interval(0,9) ;
+    usbotghs_ep_dir_t dir = Frama_C_interval_8(0,1);
+    usbotghs_ep_type_t type = Frama_C_interval_8(0,3);
+    usbotghs_ep_state_t state = Frama_C_interval_8(0,9) ;
+    usbotghs_dev_mode_t mode = Frama_C_interval_8(0,1);
 
     usbotghs_global_stall() ;
     usbotghs_endpoint_set_nak(ep_id, dir) ;
@@ -2289,10 +2294,21 @@ void test_fcn_driver_eva(){
     usbotghs_get_ep_state(ep_id, dir) ;
 
     uint8_t resp[1024] = { 0 };
-    //usb_backend_drv_send_data((uint8_t *)&resp, size, EP0);
+
+    usbotghs_ctx.in_eps[0].mpsize = Frama_C_interval_16(0,65535); // tentative pour entrer dans while(residual_size >= size), mais à revoir
+    usbotghs_ctx.in_eps[0].fifo_lck = 1 ; // pour avoir une erreur dans xmit_fifo dans send_data
+    usb_backend_drv_send_data((uint8_t *)&resp, size, EP0);
+    usb_backend_drv_send_data((uint8_t *)&resp, size, 8);   // pour entrer dans un cas d'erreur (je n'arrive pas à généraliser ep)
     usbotghs_send_zlp(ep_id);
     usbotghs_txfifo_flush(ep_id);
-	usb_backend_drv_configure_endpoint(ep_id,type,dir,size,USB_BACKEND_EP_ODDFRAME,&handler_ep);
+	usb_backend_drv_configure_endpoint(ep_id,type,dir,64,USB_BACKEND_EP_ODDFRAME,&handler_ep);
+    usb_backend_drv_configure_endpoint(ep_id,type,dir,128,USB_BACKEND_EP_ODDFRAME,&handler_ep);
+    usb_backend_drv_configure_endpoint(ep_id,type,dir,512,USB_BACKEND_EP_ODDFRAME,&handler_ep);
+    usb_backend_drv_configure_endpoint(ep_id,type,dir,1024,USB_BACKEND_EP_ODDFRAME,&handler_ep);
+    usbotghs_configure(mode, & usbctrl_handle_inepevent,& usbctrl_handle_outepevent);
+    usbotghs_set_recv_fifo((uint8_t *)&resp, size, 0);
+    //usbotghs_set_recv_fifo((uint8_t *)&resp, size, 1);  //Cyril : erreur dans set_reg_value (integer unsigned downcast, fausse alarme je pense)
+
 }
 
 

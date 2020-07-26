@@ -44,7 +44,12 @@
  * here. To differenciate DFU from FW mode, -DMODE_DFU is passed for DFU profile
  * compilation units */
 # if defined(MODE_DFU)
+
+#if defined(__FRAMAC__)
+#  define CONFIG_USBCTRL_MAX_CFG                4
+#else
 #  define CONFIG_USBCTRL_MAX_CFG                CONFIG_USBCTRL_DFU_MAX_CFG
+#endif/*__FRAMAC__*/
 #  define CONFIG_USBCTRL_MAX_CTX                CONFIG_USBCTRL_DFU_MAX_CTX
 #  define CONFIG_USR_LIB_USBCTRL_DEBUG          CONFIG_USR_LIB_USBCTRL_DFU_DEBUG
 #  define CONFIG_USR_LIB_USBCTRL_DEV_PRODUCTID  CONFIG_USR_LIB_USBCTRL_DFU_DEV_PRODUCTID
@@ -65,6 +70,9 @@
     \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
 */
 
+/* @ lemma u32_and_is_u32:
+    \forall uint32_t s, uint8_t m; 0<= m <=30 ==> 0 <= (s << m) <= 4294967295 ;
+*/
 
 /*@ predicate is_valid_error(mbed_error_t i) =
     i == MBED_ERROR_NONE ||
@@ -90,14 +98,30 @@
     i == USBOTG_HS_EP_DIR_IN || i == USBOTG_HS_EP_DIR_OUT;
 */
 
-extern volatile int Frama_C_entropy_source __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
+extern volatile uint8_t Frama_C_entropy_source_8 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
+extern volatile uint16_t Frama_C_entropy_source_16 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
+extern volatile uint32_t Frama_C_entropy_source_32 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
 
-/*@ requires order: min <= max;
-    assigns \result \from min, max, Frama_C_entropy_source;
-    assigns Frama_C_entropy_source \from Frama_C_entropy_source;
+/*@ requires order: 0 <= min <= max <= 255;
+    assigns \result \from min, max, Frama_C_entropy_source_8;
+    assigns Frama_C_entropy_source_8 \from Frama_C_entropy_source_8;
     ensures result_bounded: min <= \result <= max ;
  */
-int Frama_C_interval(int min, int max);
+uint8_t Frama_C_interval_8(uint8_t min, uint8_t max);
+
+/*@ requires order: 0 <= min <= max <= 65535;
+    assigns \result \from min, max, Frama_C_entropy_source_16;
+    assigns Frama_C_entropy_source_16 \from Frama_C_entropy_source_16;
+    ensures result_bounded: min <= \result <= max ;
+ */
+uint16_t Frama_C_interval_16(uint16_t min, uint16_t max);
+
+/*@ requires order: 0 <= min <= max <= 4294967295;
+    assigns \result \from min, max, Frama_C_entropy_source_32;
+    assigns Frama_C_entropy_source_32 \from Frama_C_entropy_source_32;
+    ensures result_bounded: min <= \result <= max ;
+ */
+uint32_t Frama_C_interval_32(uint32_t min, uint32_t max);
 
 #define usb_backend_drv_declare usbotghs_declare
 #define usb_backend_drv_get_speed usbotghs_get_speed
@@ -125,12 +149,7 @@ int Frama_C_interval(int min, int max);
 */
 
 mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
-                                       usbctrl_setup_pkt_t *packet)
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-    return errcode;
-}
-
+                                       usbctrl_setup_pkt_t *packet);
 /*
 
     introduction des fonctions définies seulement pour passer FramaC sur les pointeurs de fonctions + usbctrl_reset_received (utilisée une fois dans usbctrl_handle_resets)
