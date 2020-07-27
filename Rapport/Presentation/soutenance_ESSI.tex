@@ -1,0 +1,741 @@
+\documentclass[french]{beamer}
+
+% Vos informations personnelles
+\input{informations_soutenance_ESSI.tex}
+
+\title[Vérification formelle de la bibliothèque USBctrl de wookey]{\sujet}
+\author[Cyril Debergé]{\auteur}
+\institute[LSL/LAM]{Stage réalisé au sein de l'ANSSI (SDE/DST/LSL)\\[2mm] Encadré
+par \directeurs}
+\date[\datesoutenance]{}
+
+% La mise en forme du document
+\input{preambule_soutenance_ESSI.tex}
+
+%macro pour schéma frama
+\input{macros.tex}
+\usepackage{tikz}
+\usepackage{pgfkeys}
+\usetikzlibrary{arrows,automata,positioning}
+\usetikzlibrary{mindmap,trees,shadows}
+
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+\titlepage
+\end{frame}
+
+\begin{frame}
+\frametitle{Plan de la présentation}
+\tableofcontents
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Objectifs du stage}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}[t] % [t] pour aligner le transparent en haut (c par defaut)
+\frametitle{Objectifs du stage}
+
+% Vérification formelle de la bibliothèque USBctrl de Wookey:
+% \begin{itemize}
+% \item<1-> \uncover<2->{Preuve de l'absence de run time errors (RTE)}
+% \item<2-> \uncover<3->{Preuve fonctionnelle de la bibliothèque}
+% \end{itemize}
+
+
+% \bigskip
+
+
+% \uncover<4>{Objectif : garantie des fonctions de sécurité assurée par la bibliothèque}
+% \begin{itemize}
+% 	\item<1->\uncover<5> {Confidentialité}
+% 	\item<2->\uncover<6> {Intégrité}
+% 	\item<3->\uncover<7> {Disponiblité}
+% \end{itemize}
+% % avec only, le texte ne se voit pas dans les affichages precedents
+
+
+ Vérification formelle de la bibliothèque USBctrl de WooKey:
+ \begin{itemize}
+ \item Preuve de l'absence de run time errors (RTE)
+ \item Preuve fonctionnelle de la bibliothèque
+ \end{itemize}
+
+ \bigskip
+
+Objectifs :
+\begin{itemize}
+	\item Garantie des fonctions de sécurité assurées par la bibliothèque USBctrl :
+ 		\begin{itemize}
+ 			\item Confidentialité
+ 			\item Intégrité
+ 			\item Disponiblité
+ 		\end{itemize}
+ 	\item Développer une méthodologie d'analyse avec Frama-C, reproduisible sur d'autres codes
+ \end{itemize}
+ % avec only, le texte ne se voit pas dans les affichages precedents
+% méthodologie d'analyse sur du code réel, reproduisible pour d'autres codes (reproduire ce travail le plus possible) : EVA + WP : tout est automatisé (si modif des greffons, quelques annotations à modifier ou options à modifier)
+% revoir le terme automatisé je pense
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section[Bibliothèque USBctrl]{Présentation de la bibliothèque USBctrl de WooKey}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Présentation du projet WooKey}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[t] % [t] pour aligner le transparent en haut (c par defaut)
+\frametitle{Projet WooKey}
+
+Projet Wookey:
+\begin{itemize}
+	\item Clé USB chiffrante sécurisée
+	\item Projet open source et open Hardware
+	\item Nombreuses propriétés de sécurité :
+		\begin{itemize}
+			\item Défense en profondeur
+			\item Architecture modulaire (cloisonement des différents modules)
+			\item Mise à jour logicielle sécurisée
+			\item Utilisation de la cryptographie
+			\item Deux facteurs d'authentification
+		\end{itemize}
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[t] % [t] pour aligner le transparent en haut (c par defaut)
+\frametitle{Architecture de WooKey}
+
+\begin{center}
+ \includegraphics[height=6cm]{images/architecture_wookey.png}
+\end{center}
+
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Présentation de la bibliothèque USBctrl}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+
+\begin{center}
+ \includegraphics[height=6cm]{images/schema_usbctrl.png}
+\end{center}
+
+\begin{itemize}
+	\item \tiny Bibliothèque écrite en langage C
+	\item \tiny Responsable du contrôle de la couche USB 2.0, en espace utilisateur (réponses aux sollications de l'hôte, gestion de la phase de négociation entre l'hôte et le périphérique)
+	\item \tiny Gérer la machine à états de l'USB 2.0, sans nécessiter d'actions complexes de la part des couches plus élevées du périphérique
+	\item \tiny Abstraction du driver USB pour permettre une portabilité complète, quelque soit la classe USB du périphérique
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+
+Machine à états de l'USB 2.0
+
+\begin{center}
+ \includegraphics[height=6cm]{images/machine_etat_USB2.0.png}
+\end{center}
+
+\end{frame}
+
+% \begin{block}{Le titre du bloc}
+% Et son contenu
+% \end{block}
+
+% \bigskip
+% \bigskip
+
+% \begin{itemize}[<+->]
+% \item une \'enum\'eration...
+% \item ... qui appara\^it...
+% \item ... petit \`a petit
+% \end{itemize}
+
+%RTE : erreur lors de l'exécution : plantage ou comportement inatendu (undefined behavior) : tous les crash ou tous les undefined behavior selon les standard du C (implementation defined + comportement suspect (en plus dans notre cas avec les options de compil))
+
+\begin{frame}
+
+Architecture de la bibliothèque :
+\begin{itemize}
+	\item  5 fichiers, un peu plus de 2000 lignes de code (standards c90, c99 et c11):  % vrai code
+		\begin{itemize}
+			\item Déclaration du contexte USB, des interfaces, des endpoints % endpoint à traduire
+			\item Gestion des requètes provenant de l'hôte ou du périphérique
+			\item Gestion des différents états de l'USB 2.0
+			%\item gestion de la configuration des différentes interfaces USB déclarées par le périphérique
+		\end{itemize}
+	\item 2 drivers USB actuellement codés dans WooKey : full speed et high speed (interface à travers des alias dans la bibliothèque USBctrl)
+\end{itemize}
+
+\end{frame}
+% \begin{exampleblock}{Un bloc d'exemple}
+% Et son contenu
+% \end{exampleblock}
+
+% \pause
+
+% \bigskip
+
+% \begin{alertblock}{Et un bloc important}
+% Apr\`es une pause
+% \end{alertblock}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section[Méthodes formelles]{La vérification formelle d'un code}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Définition et objectifs}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+%\frametitle{Slide 6}
+
+
+\begin{block}{Définition}
+    \rightskip=0pt\leftskip=0pt
+    Raisonnement rigoureux, à l'aide de logique mathématique, sur des programmes informatiques afin de démontrer leur validité par rapport à une certaine propriété
+\end{block}
+
+\bigskip
+
+\begin{block}{Objectif}
+    \rightskip=0pt\leftskip=0pt
+    Avoir la preuve que, quelle que soit l’entrée fournie au programme, si elle respecte une propriété donnée, alors le programme fera ce qui est attendu
+\end{block}
+
+\bigskip
+
+Notions importantes:
+\begin{itemize}
+	\item Complétude : Absence de faux positif (sous approximation) % quand on trouve quelque chose, c'est forcément une erreur
+	\item Correction : Absence de faux négatif (sur approximation) % toutes les erreurs sont trouvées
+\end{itemize}
+
+% Les mathématiques pourront prouver que le programme ne peut avoir que les comportements qui sont spécifiés et que les erreurs d’exécution n’en font pas partie, par exemple.
+
+
+
+
+% \begin{columns} % c, t ou b pour l'alignement vertical
+
+% \column[t]{0.5\linewidth}
+% Ici, du texte illustr\'e par l'image incluse dans la colonne de droite par
+% exemple.
+
+% \column[t]{0.5\linewidth}
+% Et ici du texte accompagnant l'image.
+
+% \begin{center}
+% \includegraphics[height=2cm]{images/logoANSSI.png}
+% \end{center}
+% \end{columns}
+
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Frama-C}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+\frametitle{Présentation de Frama-C}
+
+Frama-C (Framework for modular analysis of C programs)  :
+\begin{itemize}
+	\item Plate-forme open-source, modulaire et collaborative dédiée à l'analyse du langage C
+	\item Plate-forme développée par le CEA-LIST et l'INRIA
+	\item Analyse statique et dynamique
+	\item Utilisation en ligne de commandes ou à l'aide d'une interface graphique
+	\item Complétude (analyse dynamique) et / ou correction (Greffons EVA, WP...)
+\end{itemize}
+
+% collabo : un greffon peut utiliser les résultats d'un autre greffon
+
+%Absences de RTE, vérification fonctionnelle du code \\
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Greffons open-source du CEA}
+
+
+ %(il manque une légende) + accentuation EVA + WP
+ % reprendre la macro.tex
+
+\begin{center}
+    \begin{adjustbox}{width=\textwidth, totalheight=\textheight-0\baselineskip-0\baselineskip,keepaspectratio}
+      \includegraphics{images/greffons_frama2.png}
+    \end{adjustbox}
+\end{center}
+
+%\fcfig
+
+
+\end{frame}
+
+% il manque RTE (ajout d'annotation automatique) : ou alors j'en parle pas, mais dans les greffons je le mets plus en avant : plutot ça
+
+\begin{frame}
+\frametitle{Greffon EVA}
+
+EVA (Evolved Value Analysis):
+\begin{itemize}
+	\item Analyse statique et automatique du code, à l'aide d'une interprétation abstraite
+	\item Estimation des valeurs possibles des différentes variables présentes dans le code
+	\item Détection des RTE potentielles (accès mémoire invalides, variables non initialisées , divisions par 0...)
+	\item Nécessite un point d'entrée dans le code analysé
+\end{itemize}
+
+\bigskip
+
+Schéma d'analyse :
+
+% mais meme avec correction, on peut se foire si l'entrée est pas assez large
+% evolved : avant value analysis, maintenant on a les domaines en plus , donc version évoluée d'un précédent greffon
+
+\begin{center}
+ \includegraphics[height=3.2cm]{images/schema_analyse_eva.png}
+\end{center}
+
+
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Greffon WP}
+
+WP (Weakest Precondition):
+\begin{itemize}
+	\item Preuve mathématique des propriétés fonctionnelles du code analysé (exemple de propriété fonctionnelle : absence de RTE)
+	\item Génère des conditions de vérification vérifiées à l'aide de prouveurs automatiques externes à l'outil Frama-C
+	\item Modulaire : analyse fonction par fonction
+	\item Basé sur la logique de Hoare :
+		\begin{itemize}
+			\item $\left\{Pre\right\}$ P $\left\{Post\right\}$ : Si Pre est satisfait et P termine alors Post est satisfait après exécution de P (correction partielle)
+			\item $[Pre] P [Post]$ : Si Pre est satisfait alors P termine et Post est satisfait après exécution (correction totale : objectif de WP)
+			\item Plus faible précondition Pre :  propriété Pre la plus simple qui doit être valide avant P de telle manière que Post est vérifié après P
+		\end{itemize}
+\end{itemize}
+
+
+\end{frame}
+
+% propriété fonctionnelle : vitesse du train, absence de RTE c'est aussi une propriété (en plus d'EVA parce que des fois EVA seul ne suffit pas)
+% correction totale : si tu termines pas, il peut pas statuer (d'où importance des annotations de boucle)
+
+\begin{frame}
+\frametitle{Schéma d'analyse}
+
+\begin{center}
+ \includegraphics[height=6cm]{images/schema_analyse_WP.png}
+\end{center}
+
+Analyse modulaire, qui part des fonctions élémentaires (les feuilles) vers les fonctions complexes (les branches)
+
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section[Utilisation de Frama-C]{Stratégie d'utilisation de Frama-C dans le cadre de ce stage}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+\frametitle{Stratégie d'analyse mise en oeuvre}
+
+%mettre une légende : input, greffon, condition, input non obligatoire (changer la couleur pour celui là)
+
+\begin{center}
+ \includegraphics[height=7cm]{images/strategie_analyse.png}
+\end{center}
+
+\end{frame}
+
+\begin{frame}
+\frametitle{Stratégie d'analyse mise en oeuvre}
+
+Avantage d'une telle stratégie :
+\begin{itemize}
+	\item L'utilisation d'EVA permet de garantir l'absence de RTE  pour des propriétés simples
+	\item WP permet de garantir l'absence de RTE pour des propriétés plus complexes (par exemple, terminaison correcte de la fonction)
+	\item WP utilise les résultats d'EVA pour ses obligations de preuve
+	\item Résultats obtenus plus "forts" qu'avec une utilisation séparée des deux greffons
+\end{itemize}
+
+Contraintes :
+\begin{itemize}
+	\item Modifier le moins possible le code de la bibliothèque USBctrl et son architecture (sauf correction du code)
+	\item Utiliser la version open source des greffons (être le plus reproduisible possible)
+\end{itemize}
+
+% \begin{columns} % c, t ou b pour l'alignement vertical
+
+% \column[t]{0.5\linewidth}
+% Ici, du texte illustr\'e par l'image incluse dans la colonne de droite par
+% exemple.
+
+% \column[t]{0.5\linewidth}
+% Et ici du texte accompagnant l'image.
+
+% \begin{center}
+% \includegraphics[height=2cm]{images/logoANSSI.png}
+% \end{center}
+% \end{columns}
+
+\end{frame}
+
+
+
+% \begin{columns} % c, t ou b pour l'alignement vertical
+
+% \column[t]{0.5\linewidth}
+% Ici, du texte illustr\'e par l'image incluse dans la colonne de droite par
+% exemple.
+
+% \column[t]{0.5\linewidth}
+% Et ici du texte accompagnant l'image.
+
+% \begin{center}
+% \includegraphics[height=2cm]{images/logoANSSI.png}
+% \end{center}
+% \end{columns}
+
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \section{Retour d'expérience Frama-C}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%  \begin{frame}
+%  \frametitle{Slide 14}
+
+%  Montée en compétence nécessaire sur EVA, WP et ACSL avant de commencer l'analyse de la lib USBctrl
+
+
+%  \begin{itemize}
+%  	\item Outil complexe (multi analyse, plein de greffon), avec de nombreuses options d'utilisation (pas toujours documentées dans les différents manuel de Frama et des greffons...)
+%  	\item Spécifications en ACSL(ANSI/ISO C Specification Language), avec une syntaxe proche du C (intéret pour le dev de monter en comp rapidement)
+%  	\item Tutoriels présents sur internet ( \url{https://zestedesavoir.com/}, \url{http://blog.frama-c.com/})
+%  	\item Pour ACSL: ACSL by Example, document présentant de nombreux exemples d'utilisation d'ACSL, à différents niveaux de complexité (mis à jour à chaque nouvelle version de Frama-C)
+%  \end{itemize}
+%  % \begin{columns} % c, t ou b pour l'alignement vertical
+
+%  % \column[t]{0.5\linewidth}
+%  % Ici, du texte illustr\'e par l'image incluse dans la colonne de droite par
+%  % exemple.
+
+%  % \column[t]{0.5\linewidth}
+%  % Et ici du texte accompagnant l'image.
+
+%  % \begin{center}
+%  % \includegraphics[height=2cm]{images/logoANSSI.png}
+%  % \end{center}
+%  % \end{columns}
+
+% l'outil évolue vite, des fois plus vite que la doc associée + communauté active + 2 release par an
+% outil ancien, avec des greffons utilisés au niveau industriel (du vrai code)
+
+%  \end{frame}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \section[Analyse du code]{Travail d'analyse réalisé avec Frama-C}
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Parsing du code}
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ \begin{frame}
+
+ \justifyit Parsing de la bibliothèque avec Frama-C afin de s'assurer que FramaC dispose de l'ensemble des fichiers pour pouvoir analyser le code
+
+ \bigskip
+
+ \justifyit Ajout de la libc de wookey + fichiers du driver + fichiers de configuration de la lib USBctrl : Analyse réalisée dans une configuration particulière
+
+
+ \end{frame}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Analyse avec EVA}
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ \begin{frame}
+ \frametitle{Analyse avec EVA}
+
+ L'analyse avec EVA doit tenir compte en particulier de deux paramètres importants:
+ \begin{itemize}
+ 	\item  	\justifyit La précision de l'analyse : EVA doit disposer de suffisamment de "carburant" pour analyser sans trop d'approximation les boucles et les structures conditionnelles (switch, if/else...)
+ 		\begin{itemize}
+ 			\item \justifyit Précision paramétrable à travers les options d'EVA : unroll loop et slevel en particulier. Plus ces paramètres sont élevés, plus la précision est importante, mais plus le temps de calcul augmente
+ 			\item \justifyit Le post-traitement des logs d'EVA et l'utilisation de l'interface graphique permet de vérifier que la précision atteinte est satisfaisante
+ 		\end{itemize}
+ \end{itemize}
+
+\end{frame}
+
+ \begin{frame}
+ \frametitle{Analyse avec EVA}
+
+ L'analyse avec EVA doit tenir compte en particulier de deux paramètres importants:
+ \begin{itemize}
+ 	\item Le taux de couverture du code : pour avoir confiance dans les résultats obtenus par EVA, il est nécessaire que tout le code soit analysé
+ 			\begin{itemize}
+ 			\item \justifyit Création d'un point d'entrée dans le code pour Frama-C : une fonction main, qui appelle les différentes fonctions de la lib USB après avoir initialisé le contexte d'appel de chaque fonction
+ 			\item \justifyit Nécessité de créer plusieurs contextes d'appels des différentes fonctions de la bibliothèque USB et du driver pour couvrir les cas d'erreur (sinon, en condition nominale, EVA n'y rentre pas). Exemple, appel d'une fonction avec un pointeur null
+ 		\end{itemize}
+
+ \end{itemize}
+
+ \end{frame}
+
+% quand EVA emet un warning, il considère que le warning n'existe plus dans la suite de l'analyse : il coupe la propagation du chemin avec l'erreur
+% taux de couverture important : mauvais paramétrage des outils si une fonction sur 30 est analysée
+
+ \begin{frame}
+ \frametitle{Analyse avec EVA}
+
+ Résultats obtenus et travail à faire :
+ \begin{itemize}
+ 	\item Taux de couverture quasiment intégral de la lib USB et du driver :
+ 		\begin{itemize}
+ 			\item \justifyit Toutefois, tous les embranchements possibles ne sont pas encore analysés par EVA : certains embranchements dépendent de l'état du driver et de la lib (au sein de la machine à état de l'USB 2.0) ou de cas d'erreurs pas encore testés.
+ 		\end{itemize}
+
+ 	\item Une dizaine de RTE découverts, dans la bibliothèque USBctrl et dans le driver :
+ 		\begin{itemize}
+ 			\item Débordements de tableaux
+ 			\item Débordements d'entier non signés
+ 			\item Division par 0
+ 			\item accès mémoire invalide
+ 			\item Variables non ititialisées
+ 		\end{itemize}
+ 	\item RTE patchées, à l'exception d'une RTE dans le driver
+ \end{itemize}
+
+
+ \end{frame}
+
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Analyse avec WP}
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ \begin{frame}[containsverbatim]
+ \frametitle{Analyse avec WP}
+
+% mettre avant vérification formelle (mettre valeur abs ou swap)
+
+ \justifyit L'analyse du code avec WP nécessite de définir le contrat de l'ensemble des fonctions de la bibliothèque USBctrl ainsi que pour certaines fonctions du driver
+ % correction totale pour WP, donc garantir la terminaison de chaque fonction pour avancer dans son analyse
+
+\begin{lstlisting}[frame=single]
+/*@
+  requires INT_MIN < val;
+  ensures \result >= 0;
+  ensures (val >= 0 ==> \result == val) &&
+          (val < 0 ==> \result == -val);
+  assigns \nothing ;
+*/
+int abs(int val){
+  if(val < 0) return -val;
+  return val;
+}
+\end{lstlisting}
+
+ \end{frame}
+
+ \begin{frame}
+ \frametitle{Analyse avec WP}
+
+ Travail réalisé :
+ \begin{itemize}
+% faire bilan quantitatif
+ \item environ 4/5 des fonctions de la lib USBctrl spécifiées totalement : 34 fonctions sur 40
+ \item \justifyit sans compter la spécification des effets de bord (les adresses mémoires potentiellement modifiées par les fonctions), 38 fonctions sur 40 sont spécifiées
+ \item \justifyit Pour les fonctions du driver appelées par la bibliothèque USB, il en reste 4 à spécifier totalement, sur 16
+
+% faire un graphique pour les problèmes qui restent? gif pour mur du marathon (95% vite, puis les derniers %)
+% un camembert?
+
+ \end{itemize}
+
+ \end{frame}
+
+  \begin{frame}
+  \frametitle{Analyse avec WP}
+
+  Plusieurs problématiques soulevées pour terminer de spécifier la bibliothèque USBctrl :
+ \begin{itemize}
+ 	\item Gérer les variables statiques quand elles sont utilisées dans les spécifications des fonctions
+ 	\item Gérer les variables volatiles
+ 	\item Niveau de détail des spécifications et portabilité de l'analyse
+ 	\item Gérer certains cast, qui rendent l'analyse de WP incorrecte
+ \end{itemize}
+
+ \end{frame}
+
+%  \begin{frame}
+%  \frametitle{Slide 21}
+% % avec parcimonie et en faisant très attention, quand on est obligé : ne pas modifier la sémantique du code
+%  Plusieurs problématiques soulevées pour terminer de spécifier la bibliothèque USBctrl :
+%  \begin{itemize}
+%  	\item Les variables statiques:
+%  		\begin{itemize}
+%  			\item variables uniquement accessibles par les fonctions du fichier dans lequel elles sont définies
+%  			\item Utilisation de variables statiques à des fins de défense en profondeur (limite de la visibilité de ces variables)
+%  			\item Problème : FramaC n'a pas de visibilité sur ces variables en dehors du fichier dans lequel elles sont définies. Donc si les spécifications de fonctions externes à ce fichier nécessitent ces variables pour définir leur comportement, ce n'est pas possible.
+%  			\item Solution actuelle : utilisation de variables "ghost" : ce sont des variables uniquement visibles pour framaC, définies en ACSL. Si une variable ghost est définie pour chaque variable statique, il est possible de "suivre" la variable statique à l'aide de la variable ghost. C'est celle-ci qui sera utilisée pour les spécifications
+%  		\end{itemize}
+
+%  \end{itemize}
+
+%  \end{frame}
+
+
+%  \begin{frame}
+%  \frametitle{Slide 22}
+
+%  Plusieurs problématiques soulevées pour terminer de spécifier la bibliothèque USBctrl :
+%  \begin{itemize}
+%  	\item Les variables volatiles:
+%  		 \begin{itemize}
+%  		 	\item Variables pouvant être modifiées par un moyen extérieur au programme (par exemple interraction avec le HW).
+%  		 	\item Permet également d'indiquer au compilateur de ne pas optimiser ces variables
+%  		 	\item Pour FramaC, une variable volatile peut donc prendre toutes les valeurs possibles.
+%  		 	\item Conséquences pour les spécifications : impossibilité de faire une postcondition sur une variable volatile (post condition jamais validée par WP)
+%  		 	\item Réflexions en cours pour traiter ces variables:
+%  		 		\begin{itemize}
+%  		 			\item Trier les variables volatiles en distinguant celles qui tiennent compte du HW de celles qui sont définies à des fins de non optimisation
+%  		 			\item Pour celles qui doivent tenir compte du matériel, variables à conserver et il faut réfléchir à ce qu'on souhaite prouver
+%  		 		\end{itemize}
+
+%  		\end{itemize}
+
+%  \end{itemize}
+
+%  \end{frame}
+
+
+%  \begin{frame}
+%  \frametitle{Slide 23}
+
+%  Plusieurs problématiques soulevées pour terminer de spécifier la bibliothèque USBctrl :
+%  \begin{itemize}
+%  	\item Le niveau de détail des spécifications :
+%  		\begin{itemize}
+%  			\item  Spécifications assez générales pour le moment (par exemple, postcondition sur le code d'erreur retourné par une fonction)
+%  			\item Est-ce qu'il est nécessaire d'ajouter des post-conditions pour certaines fonctions? (par exemple, dans état doit-être la stack USB à la sortie de la fonction? Quelle est la valeur d'une variable?)
+%  			\item Certaines fonctions du driver écrivent dans des registres dont les adresses sont codées en dur, ces adresses apparaissant par conséquent dans les spécifications (adresse mémoire modifiée par la fonction)
+%  				\begin{itemize}
+%  					\item Ces adresses apparaissent donc dans les spécifications de la lib USBctrl
+%  					\item Conséquence : on a gagné en précision, mais perdu en portabilité...(adresses mémoires dépendant du driver et du matériel)
+%  				\end{itemize}
+%  			\item Travail à faire pour réfléchir à ces deux points :
+%  				\begin{itemize}
+%  					\item Quelles sont les post-conditions importantes à faire apparaître?
+%  					\item Est-il possible d'avoir un compromis précision / portabilité? ou doit on faire deux jeux de spec : une précise, une portable?
+%  				\end{itemize}
+
+%  		\end{itemize}
+
+%  \end{itemize}
+
+%  \end{frame}
+
+%  \begin{frame}
+%  \frametitle{Slide 24}
+
+
+% 1% cast, il gère, mais il s'assoit sur la soundness
+%  Plusieurs problématiques soulevées pour terminer de spécifier la bibliothèque USBctrl :
+%  \begin{itemize}
+%  	\item La gestion des cast :
+%  		\begin{itemize}
+%  			\item Dans quelques fonctions, présence de cast de type $uint_8 *$ en $uint32_t *$, ou en struct $*$
+%  			\item Cast utilisés pour ? (se faire expliquer par PTh)
+%  			\item Problème :
+%  				\begin{itemize}
+%  					\item WP ne parvient pas à déterminer les adresses mémoires modifiées à la suite d'un tel cast  (donc spécification imprécise)
+%  					\item RTE pour EVA dans un cas
+%  				\end{itemize}
+%  			\item Pas encore de réflexion avancée pour résoudre ce problème
+%  			\item Toutefois, cela ne joue que sur une fonction de la lib USB et une fonction du driver
+%  		\end{itemize}
+
+%  \end{itemize}
+
+%  \end{frame}
+
+
+% \begin{columns} % c, t ou b pour l'alignement vertical
+
+% \column[t]{0.5\linewidth}
+% Ici, du texte illustr\'e par l'image incluse dans la colonne de droite par
+% exemple.
+
+% \column[t]{0.5\linewidth}
+% Et ici du texte accompagnant l'image.
+
+% \begin{center}
+% \includegraphics[height=2cm]{images/logoANSSI.png}
+% \end{center}
+% \end{columns}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{frame}
+\huge
+
+\begin{center}
+Merci de votre attention.
+
+\vspace{1cm}
+
+Questions ?
+\end{center}
+\end{frame}
+
+
+\end{document}
+
+
+
+

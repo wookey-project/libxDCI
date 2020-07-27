@@ -1,0 +1,489 @@
+\section{Caractéristiques générales de la plateforme Frama-C}
+
+La vérification formelle, présentée dans le chapitre précédent, peut être réalisée à l'aide de plusieurs outils qui dépendent du langage de programmation à analyser. Dans le cadre de ce stage, le langage de programmation à analyser étant le C, la plateforme Frama-C (Framework for modular analysis of C programs) a été utilisée.
+\newline
+\noindent
+\ Frama-C est une plate-forme open-source, modulaire et collaborative dédiée à l'analyse du langage C. Frama-C rassemble plusieurs techniques d'analyse dans un seul cadre, sous forme de greffons (l'architecture de Frama-C est présentée dans le chapitre \ref{Architecture}). Frama-C est développé par le Laboratoire de sûreté des logiciels du CEA-LIST ainsi que par l'équipe de recherche Toccata de l'INRIA.
+% faire un glossaire à la fin
+\\
+\noindent Les analyses réalisées avec Frama-C peuvent être statiques (sans exécution de code) ou dynamiques (avec exécution de code). Au cours de ce stage, seules des analyses statiques formelles ont été réalisées. Par ailleurs, il est important de noter que pour ces analyses, l'objectif de Frama-C est de fournir des garanties quant à l'absence d'erreur lors de l'exécution du code \footnote{dans le reste de ce rapport, ces erreurs seront nommées RTE, pour run time errors} en prévenant l'utilisateur à chaque fois qu'une erreur est susceptible de se produire \footnote{ce qui peut conduire à l’émission de faux positifs que l'utilisateur doit analyser}, ainsi qu'à l'absence de déviation par rapport aux spécifications fonctionnelles du code.
+
+\subsection{Architecture de Frama-C}\label{Architecture}
+
+Comme précisé en début de chapitre, Frama-C est modulaire. Cela signifie que les différents modules, aussi appelés greffons, sont connectés à une plateforme centrale, le noyau. Chaque greffon permet d'analyser et /ou d'annoter le code source, analyses et annotations qui peuvent être utilisées par d'autres greffons dans d'autres analyses.
+\\
+\noindent
+Frama-C est installé avec des greffons de base, open-source, développés et maintenus par le CEA-LIST. Néanmoins, des greffons supplémentaires peuvent être fournis, par le CEA-LIST ou par des développeurs externes au projet Frama-C (par exemple par des industriels), et installés séparément du noyau. Cela signifie que Frama-C n'est pas limité au jeu d'analyses initialement installé. Les greffons peuvent par ailleurs collaborer entre eux, en se servant des analyses réalisées par d'autres greffons.
+\\
+\noindent
+La figure suivante représente les greffons open-source développés par le CEA-LIST, et illustre la complexité et la puissance de la plateforme Frama-C.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=16cm]{images/greffons_frama2.png}
+\caption{Greffons open-source du CEA}
+\label{Greffons open-source du CEA}
+\end{figure}
+
+\newpage
+
+Les greffons utilisés dans le cadre de ce stage sont EVA (Evolved Value Analysis) et WP (Weakest Precondition). Ces deux greffons sont présentés dans des chapitres ci-dessous (respectivement les chapitres \ref{EVA} et \ref{WP}). Néanmoins, avant d'expliquer leur fonctionnement et leur utilité, il est nécessaire de présenter le langage de spécification utilisé par Frama-C et ses greffons.
+
+%Ce kernel fournit quelque fonctionnalités à l'ensemble des greffons, par exemple une vision normalisée du code à analyser sous forme d'un arbre syntaxique. En informatique, un arbre de la syntaxe abstraite ou ASA (abstract syntax tree, ou AST, en anglais) est un arbre dont les nœuds internes sont marqués par des opérateurs et dont les feuilles (ou nœuds externes) représentent les opérandes de ces opérateurs. Autrement dit, généralement, une feuille est une variable ou une constante.
+
+
+%The kernel provides a core set of features (basically the normalizedAST of the program) and allows plugins to work together either in a parallel or serial way. Each plugin performs a precise analysis and/or an annotation of the source code available for the next analyses.
+
+
+%In computer science, an abstract syntax tree (AST), or just syntax tree, is a tree representation of the abstract syntactic structure of source code written in a programming language. Each node of the tree denotes a construct occurring in the source code. The syntax is "abstract" in the sense that it does not represent every detail appearing in the real syntax, but rather just the structural or content-related details
+
+
+\subsection{Interface graphique}\label{Interface graphique}
+
+Frama-C peut s'utiliser en ligne de commandes ou à l'aide d'une interface graphique. Il est possible d'utiliser cette interface graphique, installée par défaut, afin d'effectuer des analyses avec Frama-C ou afin de visualiser le résultat des analyses réalisées en ligne de commandes.
+Néanmoins, l'utilisation de Frama-C en ligne de commandes présente l'avantage de permettre l'utilisation des nombreuses options de Frama-C et de ses greffons. C'est pourquoi, dans ce stage, Frama-C a été utilisé en ligne de commandes pour effectuer les analyses, l'interface graphique permettant de visualiser les résultats obtenus.
+\newline
+\newline
+\noindent
+A travers l'interface graphique, il est possible de :
+\begin{itemize}
+	\item naviguer dans les différents fichiers composant le code source à analyser, fonction par fonction ;
+	\item visualiser,  le cas échéant, les annotations automatiques ajoutées lors de l'analyse du programme informatique ;
+	\item visualiser les résultats de la vérification formelle ;
+	\item examiner les avertissements et les alarmes générés lors de l'analyse ;
+	\item relancer l'analyse après la modification du code source, les options de Frama-C définies lors de la première analyse étant conservées.
+\end{itemize}
+
+\noindent La figure suivante présente un exemple d'utilisation de l'interface graphique sur le code source analysé lors de ce stage.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=18cm]{images/interface_commentee_gimp.png}
+\caption{Interface graphique de Frama-C}
+\label{Interface graphique de Frama-C}
+\end{figure}
+\newpage
+La visualisation des résultats à l'aide de l'interface graphique est très claire:
+\begin{itemize}
+	\item un point vert signifie que la propriété est valide : "surely valid : verified (inclunding all of its dependencies)" ;
+	\item un point orange signifie que Frama-C n'est pas capable de déterminer si la propritété est valide ou fausse : "Unknown : a verification has been attempted, but without conclusion". Il est important de noter que dans ce cas, cette hypothèse sera considérée comme valide dans la suite de l'analyse, ce qui amaène au point suivant ;
+	\item un point vert et orange signifie que la propriété est valide, mais qu'elle dépend néanmoins de propriétés qui n'ont pas pu être prouvées : "valid under hypotheses : verified (but has dependencies with unknown status) ". Cela signifie que la propriété n'est en réalité pas validée, car la non vérification de certaines propriétés ne permet pas d'avoir confiance dans la propriété principale ;
+	\item un point rouge signifie que la propriété est invalide : "invalid under hypotheses : refuted".
+\end{itemize}
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=16cm]{images/interface_bullet.png}
+\caption{Visualisation des résultats de preuve avec l'interface graphique}
+\label{Visualisation des résultats de preuve avec l'interface graphique}
+\end{figure}
+
+\newpage
+
+
+\section{ACSL}\label{ACSL}
+
+\subsection{Présentation}
+Comme expliqué dans les paragraphes précédents, la vérification formelle peut nécessiter de spécifier le code source, c'est à dire de décrire le comportement attendu du code afin de vérifier que le code respecte bien ce comportement.
+\\
+\noindent
+Dans le cadre de Frama-C, ces spécifications doivent s'écrire dans un langage particulier, dont la syntaxe est proche de celle du langage de programmation C: le langage ACSL (ANSI/ISO C Specification Language).
+\newline
+\noindent Les spécifications écrites en ACSL peuvent être automatiquement manipulées par des outils de vérification formelle, de la même manière qu'un langage de programmation est manipulé par un compilateur, par opposition à des commentaires informels qui ne peuvent être utiles qu'aux humains. De plus, le langage ACSL est compris par les différents greffons de Frama-C.
+\\
+\noindent
+Le langage ACSL est très souple et permet d'écrire des propriétés élémentaires, par exemple "cette fonction nécessite un pointeur valide en entrée", aussi bien que des propriétés plus complexes, par exemple "cette fonction nécessite une liste chaînée non vide d'entiers en entrée, et retourne l'entier le plus grand en sortie".
+\\
+\noindent
+Le langage ACSL présente les caractéristiques principales suivantes:
+\begin{itemize}
+	\item utilisation d'expressions écrites en C. En particulier, la syntaxe des expressions booléennes est identiques à celle du C ;
+	\item annotations délimitées par $ //@ $ pour une annotation sur une ligne, ou $ /*@  */ $ pour un bloc d'annotations (annotations semblables aux commentaires en C, avec l'ajout du signe @ pour introduire des spécifications ACSL) ;
+	\item utilisation du typage du langage C (int, float, double etc..), ainsi qu'utilisation de types ACSL plus généraux (types Z et R, pour les entiers et les réels) ;
+	\item existence de prédicats \footnote{Un prédicat est une propriété pouvant être vraie ou fausse} et de fonctions logiques \footnote{Les fonctions logiques permettent de décrire des fonctions mathématiques qui, contrairement aux prédicats, permettent de renvoyer différents types} pré-implémentés pour exprimer des propriétés souvent utiles en C. Par exemple, pour manipuler les pointeurs, il est possible d'utiliser avec ACSL les prédicats suivants :
+	\begin{itemize}
+		\item \SLASH valid(p) : pointeur p non null, accessible en lecture et en écriture ;
+		\item \SLASH valid\_read(p) : pointeur p non null, accessible en lecture seulement ;
+		\item \SLASH separated(p,q) : les pointeurs p et q ne partagent pas la même adresse mémoire.
+	\end{itemize}
+\end{itemize}
+
+\subsection{Utilisations d'ACSL avec Frama-C}
+
+Les principales utilisations d'ACSL avec Frama-C sont les suivantes:
+\begin{itemize}
+	\item annotations automatiques dans le code source analysé lors de l'utilisation de certains greffons. Ces annotations sont visibles lors de l'utilisation de l'interface graphique, le code source n'étant pas modifié. Un exemple d'ajout d'annotations est le suivant :
+
+\begin{lstlisting}
+/*@ assert rte: mem_access: \valid(a); */
+  *a = (unsigned char)1;
+\end{lstlisting}
+
+Cette annotation signifie que l'adresse mémoire du pointeur "a" doit être valide avant son assignation. \footnote{assert P est interprété par Frama-C comme : vérifie que la propriété P est vraie au moment où l'assertion est utilisée}
+
+\item ajout d'annotations à des fins de débogage ou pour permettre à certains greffons de vérifier le code analysé, en utilisant par exemple des assertions ;
+\item définitions de contrats de fonction afin de spécifier le comportement de la fonction qui devra être vérifié par Frama-C. Les contrats de fonction, utilisés durant ce stage avec WP, sont décrits dans le paragraphe \ref{contrats}.
+
+\end{itemize}
+
+\section{EVA}\label{EVA}
+
+\subsection{Présentation et objectifs}
+
+EVA (Evolved Value Analysis) est le premier greffon de Frama-C utilisé au cours de ce stage. EVA a pour objectif d'analyser automatiquement le code, à l'aide d'une analyse des valeurs par interprétation abstraite, afin d'estimer les valeurs possibles des différentes variables présentes dans le code source et de détecter les RTE potentielles (accès mémoire invalide, variables non initialisées , division par 0...)
+EVA réalisant une analyse statique, les valeurs possibles des variables sont déterminés sans exécuter le code en réalisant une sur-approximation du code source. Des alarmes et avertissements sont par ailleurs émis pour chaque opération invalide présente dans le code ainsi que pour les annotations ACSL invalides. La sur-approximation du code source permet au greffon de prouver avec un haut degré de confiance l'absence d'erreurs lors de l'exécution du code en garantissant l'absence de faux-négatifs (EVA est correct, dans le sens défini au chapitre précédent).
+Enfin, l'utilisation d'EVA ne se limite pas à la seule détection des RTE. En effet, EVA permet aussi de trouver le cas échéant des portions de code mort qui peuvent être dues à des erreurs de programmation (par exemple, une condition jamais atteinte à cause d'un test erroné quelques lignes plus tôt dans le code).
+\newline
+\noindent
+L'utilisation d'EVA nécessite un point d'entrée dans le code pour commencer l'analyse du code. Cela signifie que le code analysé nécessite une fonction d'entrée (par exemple une fonction main, mais ce n'est pas obligatoire) à partir de laquelle les différentes fonctions à analyser seront appelées et dans laquelle les différentes variables du programme seront initialisées.
+
+\subsection{Gestion des boucles}
+L'analyse réalisée par EVA doit être la plus précise possible pour garantir l'absence d'erreurs lors de l'exécution du code analysé. Une difficulté consiste à analyser les boucles (boucles for et boucles while) présentes dans le code à analyser. En effet, l'analyse par défaut réalisée par EVA produit souvent des résultats approximatifs car sans annotation spécifique, EVA ne peut pas déterminer le nombre d'itérations des boucles. Il est par conséquent nécessaire d'améliorer la précision de l'analyse des boucles :
+
+\begin{itemize}
+	\item en indiquant à EVA le nombre maximal d'itérations dans une boucle. Cela permet à EVA d'analyser chaque itération indépendamment les unes des autres, mais a pour inconvénient d'augmenter le temps de calcul lorsque le nombre d'itération est important. Il est possible de traiter chaque boucle en les annotant séparément (//@ loop unroll 10 ;  par exemple) ou en utilisant une option d'EVA qui fixe un nombre maximal d'itération pour l'ensemble du code à analyser (-eva-auto-loop-unroll 10 par exemple) ;
+	\item en indiquant à EVA le nombre maximal d'états du code qu'il est possible de conserver en mémoire avant de devoir fusionner certains états. Par exemple, si le code présente une boucle de 10 itérations, comprenant une condition if / else, alors il faut indiquer à EVA de prendre en compte 20 états différents (2 états possibles pour chaque itération de la boucle). Ce traitement peut se faire de manière générique, en utilisant l'option -eva-slevel n (n représentant le nombre maximal d'états différents), ou par fonction -eva-slevel-function f:n, afin d'analyser plus finement le code tout en conservant un temps de calcul correct. L'utilisation de slevel permet également de remplacer l'utilisation de "unroll" ;
+	\item en annotant chaque boucle à l'aide d'invariant (structure ACSL), ce qui permet d'indiquer à EVA une propriété valide avant l'entrée dans la boucle, pendant chaque itération et à la sortie de la boucle. L'utilisation d'invariant permet limiter l'approximation réalisée par EVA lors de l'analyse de la boucle. Un exemple d'annotation est le suivant :  //@ loop invariant  $ 0 \leq i \leq 10 $ ;
+\end{itemize}
+
+Le traitement des boucles par EVA dans le cadre de ce stage est détaillé dans le chapitre \ref{optionsEVA}.
+
+\subsection{Utilisation de l'interface graphique}
+
+A l'aide de l'interface graphique, il est possible de visualiser les valeurs possibles de chacune des variables du code source analysé à l'aide du greffon EVA, comme illustré dans la figure suivante :
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=16cm]{images/interface_EVA_gimp.png}
+\caption{Utilisation d'EVA dans l'interface graphique}
+\label{Utilisation d'EVA dans l'interface graphique}
+\end{figure}
+
+\newpage
+
+Dans cet exemple, la variable size peut prendre l'ensemble des valeurs possibles en 0 et 65534.
+Cette propriété de l'interface graphique est très utile lors de la navigation dans le code source pour visualiser l'évolution des différentes variables, notamment à des fins de débogage.
+
+\section{WP}\label{WP}
+
+\subsection{Présentation et objectifs}
+
+Le greffon WP (Weakest Precondition) est utilisé afin d'obtenir la preuve mathématique des propriétés du code analysé :
+\begin{itemize}
+	\item des propriétés simples, comme l'absence de RTE ;
+	\item des propriétés plus complexes, commes des propriétés de sécurité (ici mettre exemple) ou des propriétés fonctionelles (ici mettre exemple)
+\end{itemize}
+WP est modulaire, c'est à dire qu'il est utilisé fonction par fonction dans Frama-C (à la différence d'EVA, qui nécessite un ou plusieurs points d'entrée dans le code pour le parcourir). WP utilise les spécifications du code à analyser afin de générer des conditions de vérification, qui sont elles mêmes vérifiées à l'aide de prouveurs automatiques externes à l'outil Frama-C (Cf. \ref{prouveurs}). Si l'ensemble des conditions de vérification est prouvé, cela signifie que le programme respecte sa spécification. Il est important de noter l'importance de spécifier correctement le code : si les spécifications sont fausses, incomplètes ou trop générales, alors le respect de ces spécifications ne permet pas de garantir les propriétés fonctionnelles du code.
+
+% EVA : tous les chemins possibles (et meme plus) et certaines propriétés globale sur le trajet (vitesse, temps max), mais pas tous les chemins passés avec précision : nombre de chemins, nombre d'heure etc (intervalle de certaines données)
+
+%WP plus fin : si tu veux mettre max x heures, tu dois passer par là. Il va coupler les infos (infos + locales) : relation entre les propriétés (vitesse, temps, chemin) : raisonnement hors obstacle (hors rte) : eva voit les obstacles
+
+%Rigorous, mathematical proof of semantic properties of a programfunctional properties safety:
+%all memory accesses are valid,
+%no arithmetic overflow,
+%no division by zero, . . .
+%termination
+
+\subsection{Logique de Hoare et plus faible précondition}\label{logique de Hoare}
+
+Avant de détailler le fonctionnement de WP, il est nécessaire d'expliquer ce qu'est la logique de Hoare.
+\\
+\noindent
+Dans la logique de Hoare, un programme est considéré comme un transformateur d’états (un état étant représenté par les valeurs de l'ensemble des variables du programme). L'exécution d'un programme, ou d'une fonction du programme, a pour effet de transformer un état initial en un état final. La spécification d’un programme s’effectuera en formulant des propriétés sur ces deux états. En résumé, la logique de Hoare permet de décrire l'évolution d'un programme.
+\\
+\noindent
+La logique de Hoare est utilisée afin de fournir un outil de vérification formelle des programmes sans les exécuter (analyse statique) et de décrire rigoureusement la sémantique des langages de programmation.
+\\
+\noindent
+La logique de Hoare permet d'introduire une notion importante, le triplet de Hoare, ainsi que deux définitions associées. Un triplet de Hoare est composé du programme P, de la pré-condition Pre (aussi nommée prédicat) et de la post-condition Post. Pre et Post sont des formules logiques représentant des propriétés sur les variables du programme.
+\\
+\noindent
+Le triplet de Hoare $\left\{Pre\right\}$ P $\left\{Post\right\}$ a la signification suivante : Si Pre est satisfait et P termine alors Post est satisfait après exécution de P. On parle dans ce cas de correction partielle.
+\\
+\noindent
+Le triplet de Hoare [Pre] P [Post] a la signification suivante : Si Pre est satisfait alors P termine et Post est satisfait après exécution. On parle de correction totale.
+\newline
+\newline
+\noindent
+L'utilisation de la logique de Hoare peut s'illustrer à travers l'exemple des contrats d'assurance :
+\begin{itemize}
+	\item Les préconditions sont les primes payées par l'assuré
+	\item Le programme P correspond à l'événement pour lequel le contrat d'assurance a été souscrit
+	\item Les post-conditions sont les garanties apportées par l'assureur
+\end{itemize}
+
+Le greffon WP utilise la méthode de "plus faible précondition" pour garantir les propriétés fonctionnelles d'un programme.  D'un point de vue mathématiques, WP permettant d'obtenir une correction totale du code et en utilisant le triplet de Hoare suivant : [Pre] P [Post], cela signifie qu'à partir d'une annotation du code à analyser, par exemple une assertion Post après un état P, la plus faible précondition Pre est la propriété Pre la plus simple qui doit être valide avant P de telle manière que Post est vérifié après P. Cette procédure est définie par induction \footnote{est-ce que j'explique en une phrase le principe d'un raisonnement par induction (raisonnement par récurrence ?) } sur le système de preuve. Il est important de noter que WP cherche à fournir une correction totale du code analysé. Ce point sera notamment détaillé dans le chapitre \ref{Boucles WP} relatif au traitement des boucles avec WP.
+
+
+%D'un point de vue mathématique, la définition de la plus faible précondition : étant donné une postcondition Q et un programme C, on cherche à établir le plus grand ensemble d'états de départ licites pour que l'exécution de C mène à des états inclus dans Q.
+
+%Définition 2.2.1(correction partielle). Le triplet de Hoare suivant {P} prog {Q} est vrai si pour tout état initial vérifiant P, si l’exécution de progse termine, alors Q est vraie après l’exécution deprog. Ondit que le programmeprogestpartiellement correctpar rapport àPetQ.La correction totale s’écrit avec des〈〉(parfois avec des[ ]) : Définition 2.2.2(correction totale).
+%Le triplet de Hoare suivant〈P〉prog〈Q〉est vrai si pour tout état initial  de prog vérifiant  P, prog se  termine  et  Q  est  vraie  après  l’exécution  deprog.  On  dit  que  le programme prog est totalement correct par rapport à P et Q.
+%. Il n'y a pas de liaison précise entre l'état antérieur à l'état postérieur, mais une simple description de l'ensemble des états antérieurs et des états postérieurs, par des prédicats. Cette intuition de transformateur de prédicats est formalisée par la notion de triplet de Hoare : { P } C { Q } {\displaystyle \{P\}\;C\;\{Q\}} \{P\}\;C\;\{Q\} où P et Q sont des prédicats et C est un programme.
+
+%Le prédicat P, nommé précondition, décrit l'ensemble des états en entrée de la portion de programme C, tandis que le prédicat Q, nommé postcondition, caractérise un ensemble d'états après transformation par le code C.
+
+%La logique de Hoare fournit alors un ensemble de règles pour raisonner sur les triplets de Hoare, il s'agit donc d'un ensemble de règles de déduction constituant un système logique. Ces règles permettent donc de répondre à la question informelle suivante : « Si je connais les évolutions de l'état sur des petits bouts de code, que puis-je dire sur les évolutions réalisées par des codes plus grands qui utilisent ces petits bouts de codes ? ».
+
+%La méthode de Hoare met en place un formalisme logique permettant de raisonner sur la correction des programmes informatiques. Elle est fondée sur la syntaxe en ce sens que la correction d'un programme est décrite et démontrée par induction (récurrence) sur la structure du programme : à chaque règle syntaxique de construction d'un programme correspond une règle de la logique de Hoare. Elle a deux utilisations :  (sémantique axiomatique).
+
+\subsection{Contrats de fonction}\label{contrats}
+
+Les contrats de fonction sont le coeur de la vérification formelle réalisée à l'aide du greffon WP de Frama-C. Les contrats de fonction, définis en langage ACSL, permettent de définir les conditions d'exécution d'une fonction. Ces contrats comportent deux parties :
+
+\begin{itemize}
+	\item Une ou plusieurs préconditions : les conditions supposées vraies en entrée de la fonction (conditions sur les variables, sur l'état de la mémoire (validité des pointeurs par exemple)). La preuve que celles-ci sont effectivement validées n’interviendra qu’aux points où la fonction est appelée ;
+	\item Une ou plusieurs post-conditions : les conditions qui doivent être validées en sortie de la fonction (conditions sur la valeur de retour, sur l'état de la mémoire)
+\end{itemize}
+
+\noindent
+Les préconditions de fonctions sont introduites par la clause requires et les postconditions par la clause ensures. Un exemple de contrat de fonction est le suivant:
+
+\begin{lstlisting}
+#include <limits.h>
+
+/*@
+  	requires INT_MIN < val;
+  	ensures (val >= 0 ==> \result == val) &&
+          (val < 0 ==> \result == -val);
+*/
+int abs(int val){
+  if(val < 0) return -val;
+  return val;
+}
+\end{lstlisting}
+
+Dans cet exemple, la fonction spécifiée est une fonction qui retourne la valeur absolue d'un entier. La précondition porte sur la valeur minimale de l'entier qui doit être supérieure à INT\_MIN (valeur définie dans le fichier limits.h) afin de ne pas avoir de débordement d'entier. La postcondition est simplement que le résultat soit égal à la valeur de l'entier s'il est positif ou nul, ou égal à son opposé s'il est strictement négatif. \footnote{ \SLASH result est une construction ACSL utilisée dans les spécifications afin de désigner le résultat d'une fonction}
+\newline
+\newline
+\noindent
+Les contrats de fonction permettent également de spécifier les effets de bords autorisés, c'est à dire de spécifier les variables et structures non locales qui sont modifiés par la fonction. Cette spécification se fait à l'aide de la clause assigns (qui est également une clause de postcondition). La clause assigns est très importante car, par défaut, WP considère qu’une fonction a le droit de modifier n’importe quel élément en mémoire. Il est donc nécessaire de déterminer les éléments qu'une fonction peut modifier afin d'avoir un contrat de fonction représentant de manière la plus précise possible son comportement. De la même manière, lorsque la fonction n'a aucun effet de bord, alors la clause assigns \SLASH nothing indique que la fonction ne modifie aucun élément en dehors des variables locales.
+\newline
+\noindent
+L'exemple suivant illustre un contrat de fonction avec une clause assigns:
+
+\begin{lstlisting}
+/*@
+  requires \valid(a) && \valid(b);
+  assigns  *a, *b ;
+  ensures  \old(*a) < \old(*b)  ==> *a == \old(*b) && *b == \old(*a) ;
+  ensures  \old(*a) >= \old(*b) ==> *a == \old(*a) && *b == \old(*b) ;
+*/
+void max_ptr(int* a, int* b){
+  if(*a < *b){
+    int tmp = *b ;
+    *b = *a ;
+    *a = tmp ;
+  }
+}
+\end{lstlisting}
+
+\noindent Pour cette fonction, qui échange 2 valeurs pointées quand la valeur pointée par a est inférieure à celle pointée par b, le contrat de fonction spécifie que :
+\begin{itemize}
+	\item les pointeurs a et b sont supposés valides en entrée de fonction ;
+	\item si *a < *b, les valeurs pointées sont interverties \footnote{la structure \SLASH old dans les specifications ACSL permet de faire référence à la valeur initiale d'un pointeur avant qu'il ne soit modifié. } ;
+	\item si *a >= *b, les pointeurs ne sont pas modifiés ;
+	\item seuls les pointeurs a et b sont modifiés par la fonction (assigns *a, *b).
+\end{itemize}
+
+\noindent Enfin, les contrats de fonction permettent également de spécifier le comportement d'une fonction plus finement, notamment lorsque l'état de sortie d'une fonction dépend fortement des conditions d'entrée dans la fonction. Un cas typique est un test sur un pointeur : si le pointeur est NULL ou pas, le comportement de la fonction sera totalement différent. Ce cas peut être spécifié dans les contrats de fonction à l'aide du mot clé behavior, dont la structure est la suivante :
+
+\begin{lstlisting}
+/*@
+  behavior cpt1:
+  	assumes Pre_1;
+  	assigns ... ;
+  	ensures Post_1;
+
+  behavior cpt2:
+  	assumes Pre_2;
+  	assigns ... ;
+  	ensures Post_2;
+
+ ...
+
+*/
+
+\end{lstlisting}
+
+\noindent Les comportements servent à spécifier les différents cas pour les postconditions.  Chaque comportement a un nom. Pour un comportement donné, les différentes hypothèses à propos de l’entrée de la fonction sont introduites à l’aide du mot clé assumes. Les postconditions sont enfin introduites à l'aide du mot clé ensures.
+Il est également possible de vérifier le fait que les comportements sont disjoints (pour garantir le déterminisme) avec disjoint behaviors et complets (pour garantir que toutes les entrées possibles sont couvertes) avec complete behaviors. La vérification que les comportements sont complets et disjoints est en réalité très importante à vérifier lors de la spécification des fonctions lors du vérification de leurs comportements.
+
+
+Le contrat de fonction de la valeur absolue devient ainsi, en utilisant les comportements et en ajoutant une clause assigns:
+\begin{lstlisting}
+#include <limits.h>
+
+/*@
+  	requires INT_MIN < val;
+
+  	behavior positif:
+  		assumes val >= 0 ;
+  		assigns \nothing ;
+  		ensures \result == val ;
+
+  	behavior negatif:
+  		assumes val < 0 ;
+  		assigns \nothing ;
+  		ensures \result == -val ;
+
+  	complete behaviors;
+  	disjoint behaviors;
+*/
+
+int abs(int val){
+  if(val < 0) return -val;
+  return val;
+}
+\end{lstlisting}
+
+
+
+% penser aux contrats d'assurance pour illustrer : respect des conditions d'entrées pour être assurés
+
+\subsection{Les boucles}\label{Boucles WP}
+
+La spécification des fonctions à l'aide des contrats de fonction est certes essentielle lors de l'utilisation de WP, mais elle ne suffit pas lorsque les fonctions contiennent des boucles. En effet, Pour prouver la correction totale d’un programme (telle que définie dans le chapitre \ref{logique de Hoare}, il faut d’une part prouver sa correction partielle, et d’autre part garantir la terminaison du code et donc s’assurer que les boucles s’arrêtent nécessairement lorsque les pré-conditions sont vérifiées.
+\\
+\noindent
+Pour ce faire, l'utilisation de WP requiert donc, pour chacune des boucles présentes dans les fonctions que l'on souhaite prouver, d'exprimer :
+
+\begin{itemize}
+	\item une propriétée vérifiée avant l'entrée dans la boucle, à chaque itération de la boucle et en sortie de boucle. Cette propriété s'appelle un invariant de boucle, et s'introduit en ACSL à l'aide de loop invariant ;
+	\item de même que pour les contrats de fonctions, les effets de bord de la boucle, à l'aide de loop assigns (comme pour les contrats de fonction, il sera nécessaire d'indiquer l'ensemble des éléments exterieurs à la boucle mais modifiés à l'intérieur de celle-ci) ;
+	\item une expression fonction des variables du programme, positive lorsqu’on entre dans la boucle et qui décroît strictement à chaque itération de la boucle. Cette expression, appelée variant et introduite à l'aide d'un loop variant, constituera la condition d'arrêt de la boucle.
+
+\end{itemize}
+
+\noindent L'exemple suivant illustre la spécification d'une boucle pour l'utilisation de WP :
+
+\begin{lstlisting}
+
+int main(){
+  int i = 0;
+  int h = 42;
+
+  /*@
+    loop invariant 0 <= i <= 30;
+    loop assigns i;
+    loop variant 30 - i;
+  */
+  while(i < 30){
+    ++i;
+  }
+}
+\end{lstlisting}
+
+Dans cet exemple, la propriété qui doit être vérifiée avant, pendant et après la boucle est $ 0 \leq i \leq 30 $. La variable i étant modifiée à chaque itération, loop assigns i est nécessaire pour prouver le comportement de la boucle. Enfin, la condition d'arrêt de la boucle est  la valeur loop variant $ 30 - i$ positive à l'entrée de la boucle et qui décroit strictement à chaque itération de la boucle.
+\\
+\noindent
+Nous disposons maintenant avec les contrats de fonction et la spécification des boucles de l'ensemble des éléments permettant d'analyser un code avec WP afin de vérifier ses propriétés fonctionnelles. Toutefois, le calcul de la plus faible précondition avec WP n'est qu'une étape préliminaire à cette vérification, comme nous allons le voir dans le chapitre suivant.
+
+\subsection{Utilisation de prouveurs externes avec WP}\label{prouveurs}
+
+WP calcule la plus faible précondition à partir des spécifications définies dans un contrat de fonction. Une fois ce calcul réalisé, des obligations de preuves sont générées par WP.
+\\
+\noindent Les obligations de preuves générées par WP contiennent :
+\begin{itemize}
+	\item les suppositions données dans les spécifications et celles déduites par WP dans son calcul de plus faible précondition ;
+	\item les propriétés qui sont à vérifier.
+\end{itemize}
+
+\noindent  Les obligations de preuve sont transformés en une formule logique puis transmises à des prouveurs automatiques externes l'outil Frama-C pour les résoudre. Toutefois, avant d’envoyer cette formule aux prouveurs, WP utilise le module Qed (interne au greffon WP) afin de simplifier les obligations de preuve lorsque c'est possible. Dans certains cas, ces simplifications sont suffisantes pour rendre triviales les obligations de preuve, qui sont donc directement satisfaites et non transmises aux prouveurs.
+\\
+\noindent Il existe de nombreux prouveurs automatiques. Dans le cadre de ce stage les prouveurs suivants ont été utilisés  :
+
+\begin{itemize}
+	\item Alt-Ergo (version 2.30), développé à l'INRIA et maintenu actuellement par OcamlPro ;
+	\item CVC4 (Cooperating Validity Checker), développé par l'université de Stanford ;
+	\item Z3, développé par Microsoft Research et le MIT.
+\end{itemize}
+
+\noindent Ces différents prouveurs sont utilisés à travers la plateforme why-3, externe elle aussi à Frama-C et développé par l'INRIA, l'université de Paris-Saclay et le CNRS.
+
+
+
+
+
+%The WP plug-in is distributed with the Frama-C platform. However, it also requires the Why-3 platform and you should install at least one external prover in order to fulfill proof obligations. An easy choice is to install the Alt-Ergo theorem prover originally developed at inria and now by OcamlPro 1 . When using the Opam package manager, these tools are automatically installed with Frama-C. See the documentation of Why-3 to install other provers.
+
+%Following this thesis, a new tool called Why was developed. It takes as input an imperative program and a specification that this program is expected to fulfil. It produces on one hand a set of verification conditions (VCs): logical formulas which have to be proved in the Coq system ; and on the other hand a Coq-term which contains a functional translation of the imperative program and a proof of correctness of this program based on the VCs. It was early remarked that this tool was independent of Coq, because the VCs can be validated in other interactive tools or with automatic provers. This multi-prover architecture is a powerful feature of Why: it spreads this technology well beyond the Coq community.
+
+
+%Why3 is a platform for deductive program verification. It provides a rich language for specification and programming, called WhyML, and relies on external theorem provers, both automated and interactive, to discharge verification conditions. (See the list of supported provers below.) Why3 comes with a standard library of logical theories (integer and real arithmetic, Boolean operations, sets and maps, etc.) and basic programming data structures (arrays, queues, hash tables, etc.). A user can write WhyML programs directly and get correct-by-construction OCaml programs through an automated extraction mechanism. WhyML is also used as an intermediate language for the verification of C, Java, or Ada programs.
+
+
+
+
+
+%CVC4 is an efficient open-source automatic theorem prover for satisfiability modulo theories (SMT) problems. It can be used to prove the validity (or, dually, the satisfiability) of first-order formulas in a large number of built-in logical theories and their combination. CVC4 is the fourth in the Cooperating Validity Checker family of tools (CVC, CVC Lite, CVC3) but does not directly incorporate code from any previous version. A joint project of Stanford University and U Iowa, CVC4 aims to support the features of CVC3 and SMT-LIBv2 while optimizing the design of the core system architecture and decision procedures to take advantage of recent engineering and algorithmic advances. CVC4 is intended to be an open and extensible SMT engine. It can be used as a stand-alone tool or as a library, with essentially no limit on its use for research or commercial purposes (see license). To contribute to CVC4, please refer to our contribution guidelines.
+
+
+\subsection{Utilisation de l'interface graphique}
+
+De la même manière qu'avec EVA, il est possible d'utiliser WP en lignes de commande ou à travers l'interface graphique.
+
+Comme précisé dans le chapitre \ref{Interface graphique}, l'interface graphique permet d'abord de visualiser le résultat des preuves avec WP :
+
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=18cm]{images/interface_bullet.png}
+\caption{Visualisation du résultat de WP avec l'interface graphique}
+\label{Visualisation du résultat de WP avec l'interface graphique}
+\end{figure}
+
+\newpage
+
+Dans cet exemple, toutes les preuves n'ont pas été satisfaites (bullets orange et vert/orange).
+\\
+\noindent
+L'utilisation de l'interface graphique permet par ailleurs de relancer l'analyse de WP et des prouveurs automatiques sur certains contrats de fonction ou partie de contrats de fonction (vérification des effets de bord (clause assigns) ou des postconditions (clause ensures) par exemple. Les options utilisées en ligne de commande pour lancer la première preuve sont conservées, cela permet donc de travailler sur la preuve d'une fonction sans devoir relancer l'analyse de l'ensemble du code source. Il est toutefois possible de modifier quelques options de WP dans l'interface graphique (les prouveurs automatiques utilisés, le temps de calcul maximal pour chaque preuve (timeout), le modèle mémoire\footnote{le modèle mémoire est expliqué plus en détail dans le chapitre \ref{options pour WP} relatif aux options de WP dans le cadre de ce stage}), comme le montre la figure ci-dessous :
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=18cm]{images/options_wp_GUI.png}
+\caption{Options de WP avec l'interface graphique}
+\label{Options de WP avec l'interface graphique}
+\end{figure}
+
+\newpage
+
+\noindent Enfin, l'interface graphique rend également possible une analyse fine du résultat des preuves, avec l'onglet "WP Goals" comme montré dans la figure ci-dessous :
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=16cm]{images/visualisation_preuves_wp_GUI}
+\caption{Visualisation des résultats des preuves avec l'interface graphique}
+\label{Visualisation des résultats des preuves avec l'interface graphique}
+\end{figure}
+
+\newpage
+
+\noindent Cet onglet permet de visualiser l'ensemble des résultats des preuves pour une fonction ou une assertion. Les preuves satisfaites sont identifiées par une bullet verte positionné soit au niveau du module Qed soit pour différents prouveurs automatiques quand ceux-ci ont été utilisés. Quand une preuve n'est pas satisfaite (dans l'exemple de la figure, une assertion n'a pas été prouvée), les prouveurs n'ayant pas pu satisfaire la preuve sont identifiés. Il est possible d'examiner en détail la preuve ayant échouée \footnote{toutefois, l'analyse des preuves est relativement complexe et difficile à exploiter} :
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=18cm]{images/details_preuve_wp_GUI.png}
+\caption{Exemple d'une preuve non satisfaite}
+\label{Exemple d'une preuve non satisfaite}
+\end{figure}
+
+\newpage
+
+\section{Stratégie d'utilisation de Frama-C}\label{strategie}
+
+Frama-C est un outil modulaire, présentant de nombreuses fonctionnalités de par ses nombreux greffons et les options associées à ceux-ci. Plusieurs stratégies d'analyse sont possibles (en lignes de commande, avec l'interface graphique, en utilisant en parallèle les différents greffons ou au contraire en les utilisant successivement...).
+
+Dans le cadre de ce stage, la stratégie d'analyse mise en place est la suivante :
+
+\begin{itemize}
+	\item dans un premier temps, Frama-C est lancé sans greffon (avec simplement le noyau) en ligne de commande, afin de parser le code source à analyser. Cela permet de vérifier que Frama-C est capable de parcourir l'ensemble du code source à analyser y compris les fichiers inclus dans le code lors du préprocessing ;
+	\item dans un deuxième temps, le greffon EVA est utilisé, d'abord avec les options par défaut puis en raffinant au fur et à mesure de façon à gagner en précision. L'objectif est d'avoir un taux de couverture maximal avec EVA de façon à détecter le plus de RTE possibles. Les RTE détectées sont corrigés avant de passer à l'étape suivante ;
+	\item dans un dernier temps, à la suite de l'analyse réalisé avec EVA, le greffon WP est utilisé afin de vérifier les spécifications fonctionnelles du code à analyser, en s'aidant du résultat de l'analyse effectuée avec EVA. En effet, WP ne génère pas d'obligation de preuve pour vérifier l'absence de RTE. WP suppose au contraire que le code ne comprend pas de RTE. L'utilisation d'EVA avant WP permet de pallier à ce problème et d'être sûr que l'analyse de WP porte sur un code ne comprenant pas de RTE\footnote{pour rappel, l'analyse d'EVA se base sur une sur-approximation du code ce qui garantit l'absence de faux négatifs dans le code à analyser - analyse correcte d'EVA} et les assertions validés par EVA (assertions automatiques ou assertions ajoutées manuellement) peuvent être utilisées par WP et par les prouveurs automatiques afin de satisfaire les obligations de preuve de WP.
+\end{itemize}
+
+La figure suivante résume la stratégie d'utilisation de Frama-C mise en œuvre dans ce stage :
+
+\input{fichiers/strategie_frama2.tex}

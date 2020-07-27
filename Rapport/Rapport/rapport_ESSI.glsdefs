@@ -1,0 +1,7 @@
+\ifglsentryexists{<mot à utiliser pour appeler le terme du glossaire>}{}%
+{%
+\gls@defglossaryentry{<mot à utiliser pour appeler le terme du glossaire>}%
+{%
+%
+}%
+}%

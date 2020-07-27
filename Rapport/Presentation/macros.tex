@@ -1,0 +1,1377 @@
+\lstdefinelanguage{ASN1}
+{
+otherkeywords={=,:,\{,\}},
+morekeywords=[1]{DEFINITIONS,AUTOMATIC,TAGS,BEGIN,END,%
+SEQUENCE,OF,CHOICE,ENUMERATED,SIZE,OPTIONAL,WITH,COMPONENTS,SET},%
+keywordstyle = [2]{\color{teal}},
+keywordstyle = [3]{\color{cyan}},
+keywordstyle = [4]{\color{blue}},
+morekeywords=[2]{=,:},
+morekeywords=[3]{\{,\}},
+morekeywords=[4]{NULL,OCTET,BIT,STRING,INTEGER,REAL,BOOLEAN,OBJECT,IDENTIFIER,PrintableString,UTCTime,UTF8String},%
+commentstyle=\itshape,%
+morecomment=[l]{--},%
+}
+
+\lstdefinelanguage{cmd}
+{
+keywordstyle = {\color{black}},
+%frame=single,
+framerule=0pt,
+backgroundcolor={\color{white}},
+}
+
+\newenvironment<>{myblock}[1]{%
+  \setbeamertemplate{blocks}[rounded][shadow=false]
+  \setbeamercolor{block title}{fg=white,bg=anssibleu!70}%
+  \setbeamercolor{block body alerted}{fg=black,bg=white}
+  \begin{block}#2{#1}}{\end{block}}
+
+\newenvironment<>{myblockr}[1]{%
+  \setbeamertemplate{blocks}[rounded][shadow=false]
+  \setbeamercolor{block title}{fg=white,bg=rougel!70}%
+  \setbeamercolor{block body alerted}{fg=black,bg=white}
+  \begin{block}#2{#1}}{\end{block}}
+
+\newcommand{\colorbitbox}[3]{%
+\rlap{\bitbox{#2}{\color{#1}\rule{\width}{\height}}}%
+\bitbox{#2}{#3}}
+
+
+
+\newcommand\certif{
+\begin{tikzpicture}[overlay,remember picture,rotate=0,transform shape,
+node distance = 0mm,
+  start chain = going right,
+     N/.style = {draw,
+                 minimum width=5 cm,
+                 outer sep=0pt,
+                 text height=1.5ex, text depth=0.5ex,
+                 on chain},
+                        ]
+\onslide<1>{
+%---
+\node (n11) [fill=gray!50,N=15,right] at (0,-2)        {Version};
+%---
+\node (n21) [N=15,
+      below=of n11]    {Certificate serial number};
+%---
+\node (n31) [N=15,
+      below=of n21, fill=gray!5]    {Signature algorithm identifier};
+%---
+\node (n33) [N=30, below=of n31, fill=gray!10]  {Issuer};
+%---
+\node (n34) [N=30, below=of n33, fill=gray!20]  {Validity period};
+%---
+\node (n41) [N=30, below=of n34, minimum height=.5cm, fill=gray!30]    {Subject};
+%---
+\node (n51) [N=30, below=of n41, minimum height=.5cm, fill=gray!40]    {Subjet public key information};
+%---
+\node (n61) [N=30, below=of n51, minimum height=.5cm, fill=gray!10]    {Issuer unique ID};
+%---
+\node (n71) [N=30, below=of n61, minimum height=.5cm, fill=gray!30]    {Subject unique ID};
+%---
+\node (n81) [N=30, below=of n71, minimum height=.5cm, fill=gray!60]    {Extensions};
+%---
+\node (n91) [N=30, below=of n81, minimum height=.5cm, fill=anssibleu!30, yshift=-.2cm]    {Signature CA};
+%----------------
+\node (00) [xshift=0cm, above=1mm of n11.north] {\textbf{Certificat X.509}};
+%---
+\draw[latex-latex, dashed] ([xshift=.2cm+.5cm]n11.north east) -- node[sloped, anchor=center, above] {Version 1} ([xshift=.2cm+.5cm]n51.north east);
+\draw[latex-latex, dashed] ([xshift=.8cm+.5cm]n11.north east) -- node[sloped, anchor=center, above] {Version 2} ([xshift=.8cm+.5cm]n81.north east);
+\draw[latex-latex, dashed] ([xshift=1.4cm+.5cm]n11.north east) -- node[sloped, anchor=center, above] {Version 3} ([xshift=1.4cm+.5cm, yshift=.2cm]n91.north east);
+%
+\tikzset{
+    position label/.style={
+       below = 3pt,
+       text height = 1.5ex,
+       text depth = 1ex
+    },
+   braceabove/.style={
+     decoration={brace},
+     decorate
+   },
+   bracebelow/.style={
+     decoration={brace, mirror},
+     decorate
+   }
+}
+\draw [bracebelow,decoration={raise=1ex}] ([xshift=0cm]n11.north west) -- node [sloped, anchor=center, above, yshift=.0cm, xshift=-.05cm] (sig) {} ([xshift=0cm]n81.south west);
+\path[-latex] (n91.west) edge[bend left=70] node [left, align=center] {RSA\\DSA\\ECDSA} ([xshift=-.5cm,yshift=-.1cm]sig);
+%\path[-latex, thick] (n33.east) edge[bend right=-35] (sig2);
+%\draw[decoration={raise=.5ex,text along path,
+%      text={on decrypted data},text align={center}},decorate]  (n33.east) to [bend right=-35] (sig2);
+%
+%\draw [bracebelow,decoration={raise=1ex}, thick] ([xshift=0cm]n11.north west) -- node [sloped, anchor=center, above, yshift=-.2cm, xshift=-.1cm] (hmac1) {} ([xshift=0cm]n41.south west);
+%\path[-latex, thick] (n51.west) edge[bend right=-60] node [left] {} (hmac1);
+}
+    \end{tikzpicture}
+}
+
+\newcommand\fcfig{
+  \scalebox{.7}{
+\begin{tikzpicture}[
+  x=1mm,y=1mm,
+  edge from parent path={[draw,ultra thick, densely dashed]
+      (\tikzparentnode\tikzparentanchor) -- (\tikzchildnode\tikzchildanchor)},
+  concept/.style={rectangle, rounded corners, minimum height=0mm},
+  opensource/.style={draw=black, thick, solid}
+  ]
+%
+\node[onslide=<{3-}>{opacity=.2},concept] {\textit{Plug-ins}}
+% verification
+child[onslide=<{3,5,6}>{opacity=1},onslide=<{4}>{opacity=.2},grow=120 clockwise, concept/.append, level distance=28mm]
+{node[concept,fill=red!20] { \textbf{\textsc{Verification }}}
+  child[onslide=<{6}>{opacity=1},onslide=<{4,5}>{opacity=.2}, grow=30 clockwise, concept/.append, level distance=23mm]
+  { node[concept,fill=red,opensource] (wpnode) { WP$^1$ } }
+  child[onslide=<{3,5}>{opacity=1},onslide=<{4,6}>{opacity=.2},grow=140 clockwise, concept/.append, level distance=23mm]
+  { node[concept,fill=red,opensource] (evanode) { EVA$^1$ } }
+  child[onslide=<{3-}>{opacity=.2},onslide=<{4-}>{opacity=.2},grow=95 clockwise, concept/.append, level distance=22mm]
+  { node[concept,fill=red!20,opensource] { E-ACSL$^2$ }}
+}
+% expressivité
+child[onslide=<{3,4}>{opacity=1},onslide=<{5,6}>{opacity=.2},grow=-30 clockwise, concept/.append, level distance=45mm]
+{node[concept,fill=green!20] { \textbf{\textsc{Expressivite}} }
+  child[onslide=<{3-}>{opacity=.2},grow=-95 clockwise, concept/.append, level distance=10mm]
+  { node[concept,opensource,fill=green!20] { Clang$^3$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=-20 clockwise, concept/.append, level distance=22mm]
+  { node[concept,opensource,fill=green!20] { Aora\"i$^4$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=0 clockwise, concept/.append, level distance=24mm]
+  { node[concept,opensource,fill=green!20] { RPP$^4$ } }
+  child[onslide=<{3,4}>{opacity=1},onslide=<{5,6}>{opacity=.2},grow=20 clockwise, concept/.append, level distance=24mm]
+  { node[concept,opensource,fill=green] (rtenode)  { RTE$^1$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=100 clockwise, concept/.append, level distance=20mm]
+  { node[concept,opensource, fill=green!20] { Variadic$^3$ } }
+}
+% simplification
+child[onslide=<{3-}>{opacity=.2},grow=-120 clockwise, concept/.append, level distance=15mm]
+{node[concept,fill=orange!20] { \textbf{\textsc{Simplification}} }
+  child[onslide=<{3-}>{opacity=.2},grow=-38 clockwise, concept/.append, level distance=20mm]
+  { node[concept,opensource,fill=orange!20] { Constfold$^2$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=-185 clockwise,concept/.append, level distance=30mm]
+  { node[concept,opensource,fill=orange!20] { SecuritySlicing$^4$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=-160 clockwise,concept/.append, level distance=26mm]
+  { node[concept,opensource, fill=orange!20] { Slicing$^2$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=-120 clockwise, concept/.append, level distance=20mm]
+  { node[concept,opensource,fill=orange!20] { Sparecode$^2$ } }
+}
+% understanding
+child[onslide=<{3-}>{opacity=.2},grow=35 clockwise, concept/.append, level distance=40mm]
+{node[concept,fill=brown!20] { \textbf{\textsc{Comprehension}} }
+  child[onslide=<{3-}>{opacity=.2},grow=95 clockwise, concept/.append, level distance=15mm]
+  { node[concept,opensource,fill=brown!20] { Metrics$^2$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=132 clockwise, concept/.append, level distance=29mm]
+  { node[concept,opensource,fill=brown!20] { Nonterm$^3$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=0 clockwise, concept/.append, level distance=40mm]
+  { node[concept,opensource,fill=brown!20] { Callgraph \& Users$^1$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=-15 clockwise, concept/.append, level distance=40mm]
+  { node[concept,opensource,fill=brown!20] { Occurrence$^1$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=-35 clockwise, concept/.append, level distance=35mm]
+  { node[concept,opensource,fill=brown!20] { Obfuscator$^1$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=25 clockwise,concept/.append, level distance=23mm]
+  { node[concept, opensource,fill=brown!20] { From \& InOut$^1$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=-60 clockwise, concept/.append, level distance=18mm]
+  { node[concept,opensource,fill=brown!20] { Impact$^3$ } }
+  child[onslide=<{3-}>{opacity=.2},grow=-115 clockwise, concept/.append, level distance=15mm]
+  { node[concept,opensource,fill=brown!20] { Scope$^1$ } }
+}
+%
+% support
+child[onslide=<{3-}>{opacity=.2},grow=175 clockwise, concept/.append, level distance=40mm]
+{node[concept,fill=cyan!20] { \textbf{\textsc{Support}} }
+  child[onslide=<{3-}>{opacity=.2},grow=155 clockwise, concept/.append, level distance=20mm]
+  { node[concept,fill=cyan!20] { \textit{Pre}}
+    child[onslide=<{3-}>{opacity=.2},grow=120 clockwise, concept/.append, level distance=22mm]
+    { node[concept,opensource,fill=cyan!20] { Postdominators$^2$ } }
+    child[onslide=<{3-}>{opacity=.2},grow=143 clockwise, concept/.append, level distance=20mm]
+    { node[concept,opensource,fill=cyan!20] { Pdg$^2$ } }
+    child[onslide=<{3-}>{opacity=.2},grow=70 clockwise,concept/.append, level distance=10mm]
+    { node[concept, opensource,fill=cyan!20] { Loop$^3$ } }
+  }
+  child[onslide=<{3-}>{opacity=.2},grow=190 clockwise, concept/.append, level distance=20mm]
+  { node[concept,fill=cyan!20] { \textit{Post}}
+    child[onslide=<{3-}>{opacity=.2},grow=214 clockwise, concept/.append, level distance=15mm]
+    { node[concept,opensource,fill=cyan!20] { Report$^2$ } }
+  }
+}
+;
+% Maturity level
+\node[onslide=<{3-}>{opacity=.2}] at  (100,-18) {%
+  $
+  \begin{tabular}{l}
+    $^1$ Industrial usage \\
+    $^2$ Industrial case study \\
+    $^3$ CEA internal case study \\
+    $^4$ Prototype \\
+  \end{tabular}
+$
+};
+
+% Explanations
+\onslide<4>{
+\node[overlay, anchor=center,black,fill=yellow!10,draw=anssibleu, rotate=10,rounded corners,
+                inner sep=10pt, scale=.8, minimum height=2cm] (evaexpl) at ($(rtenode.south)+(0cm, -1cm)$)
+               {
+                 \begin{minipage}{6cm}
+                   \begin{center}
+                     \textbf{  1. {\color{rougel} Automatic} annotations (RTE)}
+                   \end{center}  
+                 \end{minipage}
+               };
+\node[star,star points=8, fill=black, scale=.8] at (evaexpl.north east) {\color{white}\textbf{!}};
+\node[star,star points=8, fill=black, scale=.8] at (evaexpl.north west) {\color{white}\textbf{!}};
+}
+\onslide<5>{
+\node[overlay, anchor=center,black,fill=yellow!10,draw=anssibleu, rotate=10,rounded corners,
+                inner sep=10pt, scale=.8, minimum height=2cm] (evaexpl) at ($(evanode.south)+(0cm, -1cm)$)
+               {
+                 \begin{minipage}{6cm}
+                   \begin{center}
+                     \textbf{{\color{anssibleu}  2. Value analysis} \\ {\color{rougel} Automatic} verification (RTE)}
+                   \end{center}  
+                 \end{minipage}
+               };
+\node[star,star points=8, fill=black, scale=.8] at (evaexpl.north east) {\color{white}\textbf{!}};
+\node[star,star points=8, fill=black, scale=.8] at (evaexpl.north west) {\color{white}\textbf{!}};
+}
+\onslide<6>{
+\node[overlay, anchor=center,black,fill=yellow!10,draw=anssibleu, rotate=10,rounded corners,
+                inner sep=10pt, scale=.8, minimum height=2cm] (wpexpl) at ($(wpnode.south)+(0cm, -1cm)$)
+               {
+                 \begin{minipage}{6cm}
+                   \begin{center}
+                     \textbf{{\color{anssibleu} 3. Deductive verification} \\ Properties proofs \\{\color{rougel}Additional manual} annotations}
+                   \end{center}
+                 \end{minipage}
+                };
+\node[star,star points=8, fill=black, scale=.8] at (wpexpl.north east) {\color{white}\textbf{!}};
+\node[star,star points=8, fill=black, scale=.8] at (wpexpl.north west) {\color{white}\textbf{!}};
+}
+
+\end{tikzpicture}
+}
+}
+
+\newcommand\asnfig{
+\scalebox{.8}{
+\begin{tikzpicture}
+\onslide<1-2>{
+\node[yshift=0cm] (certif) {\certif};
+}
+\onslide<2->{
+  \node[draw=black, fill=anssibleu!50,  onslide=<{4-}>{opacity=.4},yshift=-5cm] (tag) {\texttt{02}};
+  \node[draw=black, fill=rougel!50, anchor=west, onslide=<{3,5-}>{opacity=.4},] (length) at (tag.east) {\texttt{01}};
+  \node[draw=black, fill=gray!50, anchor=west,  onslide=<{3,4}>{opacity=.4},] (value) at (length.east) {\texttt{02}};
+  \node[anchor=west] (legend) at (value.east) {\texttt{INTEGER} (value '$2$' encoded on three bytes)};
+  \node[fill=gray!50,dashed,minimum width=5 cm,outer sep=0pt,text height=1.5ex, text depth=0.5ex, draw, xshift=1.0cm, yshift=2cm] (version) at (tag.north) {Version 3, value = '$2$'};
+  \draw[dashed] (tag.north west) -- (version.south west);
+  \draw[dashed] (value.north east) -- (version.south east);
+  \node[] at ([yshift=1cm]length.north) {\textbf{ASN.1 DER}};
+}
+\node[] (bytefield) at ([xshift=2cm,yshift=-2cm]tag.south) {
+\begin{bytefield}[bitwidth=0.11111\linewidth]{8}
+\onslide<3->{
+\bitheader{0-7}
+\\
+}
+% \onslide<3->{
+% \begin{rightwordgroup}{\color{anssibleu}Tag}
+% \colorbitbox{anssibleu!50}{2}{Class=\texttt{0}} \colorbitbox{anssibleu!50}{1}{Type=\texttt{0}} \colorbitbox{anssibleu!50}{5}{Tag number = \texttt{2}}
+% \end{rightwordgroup}
+% \\
+% }
+\onslide<4->{
+\begin{rightwordgroup}{\color{rougel}Length}
+\colorbitbox{rougel!50}{8}{Length field = \texttt{01}}
+\end{rightwordgroup}
+\\
+}
+\onslide<5->{
+\begin{rightwordgroup}{\color{gray}Value}
+\colorbitbox{gray!50}{8}{Value field = \texttt{02}}
+\end{rightwordgroup}
+\\
+}
+\end{bytefield}
+};
+\onslide<3>{
+\draw[-latex, draw=anssibleu, dashed, thick] (tag.south) -- ([yshift=-.5cm]tag.south) -- (bytefield.north west) -- ([yshift=-.6cm]bytefield.north west) -- ([yshift=-.6cm, xshift=.3cm]bytefield.north west);
+}
+\onslide<4>{
+\draw[-latex, draw=rougel, dashed, thick] (length.south) -- ([yshift=-.5cm]length.south) -- (bytefield.north west) -- ([yshift=-1.1cm]bytefield.north west) -- ([yshift=-1.1cm, xshift=.3cm]bytefield.north west);
+}
+\onslide<5>{
+\draw[-latex, draw=gray, dashed, thick] (value.south) -- ([yshift=-.5cm]value.south) -- (bytefield.north west) -- ([yshift=-1.8cm]bytefield.north west) -- ([yshift=-1.8cm, xshift=.3cm]bytefield.north west);
+}
+\end{tikzpicture}
+}
+}
+
+
+\newcommand\hab{
+\scalebox{.8}{
+\begin{tikzpicture}[overlay,remember picture,rotate=0,transform shape,
+node distance = 0mm,
+  start chain = going right,
+     N/.style = {draw,
+                 minimum width=5 cm,
+                 outer sep=0pt,
+                 text height=1.5ex, text depth=0.5ex,
+                 on chain},
+                        ]
+\onslide<1->{
+%---
+\node (n11) [onslide=<{2}>{opacity=.2}, fill=gray!50,N=15,right] at (0,-2)        {};
+\draw[onslide=<{2}>{opacity=.2}, fill=green!20] ([xshift=-.2cm, yshift=.5cm]n11.north west) -- ([xshift=.2cm, yshift=.5cm]n11.north east) -- ([xshift=.2cm, yshift=-.2cm]n11.south east) -- ([xshift=-.2cm, yshift=-.2cm]n11.south west) -- ([xshift=-.2cm, yshift=.5cm]n11.north west); 
+\node[onslide=<{2}>{opacity=.2}] (labelefuse) at ([xshift=2.5cm, yshift=.25cm]n11.north west) {eFuse};
+
+%---
+\node (n21) [onslide=<{2}>{opacity=.2}, N=15,
+      below=of n11, yshift=-.8cm, draw=none]    {};
+%---
+\node (n31) [onslide=<{2}>{opacity=.2}, N=15,
+      below=of n21,yshift=-.8cm,draw=none]    {};
+%---
+\node (n33) [onslide=<{2}>{opacity=.2}, N=30, below=of n31, yshift=-.8cm, draw=none]  {};
+
+\draw[onslide=<{2}>{opacity=.2}, fill=anssibleu!10, dashed] (n21.north west) -- (n21.north east) -- ([yshift=-.5cm]n33.south east) -- ([yshift=-.5cm]n33.south west) -- (n21.north west); 
+
+%---
+\node (n11) [onslide=<{2}>{opacity=.2}, fill=gray!50,N=15,right] at (0,-2)        {SHA-256(SRK)};
+%---
+\node (n21) [onslide=<{2}>{opacity=.2}, N=15,
+      below=of n11, yshift=-.8cm, fill=gray!30]    {SRK (RSA-2048)};
+%---
+\node (n31) [N=15,
+      below=of n21, fill=gray!5, yshift=-.8cm]    {X.509 certificate};
+%---
+\node (n33) [onslide=<{2}>{opacity=.2}, N=30, below=of n31, fill=gray!10, yshift=-.8cm]  {User-defined \textit{Boot loader}};
+
+%\draw[latex-latex, dashed] ([xshift=.2cm+.5cm]n11.north east) -- node[sloped, anchor=center, above] {Version 1} ([xshift=.2cm+.5cm]n51.north east);
+%\draw[latex-latex, dashed] ([xshift=.8cm+.5cm]n11.north east) -- node[sloped, anchor=center, above] {Version 2} ([xshift=.8cm+.5cm]n81.north east);
+%\draw[latex-latex, dashed] ([xshift=1.4cm+.5cm]n11.north east) -- node[sloped, anchor=center, above] {Version 3} ([xshift=1.4cm+.5cm, yshift=.2cm]n91.north east);
+%
+\tikzset{
+    position label/.style={
+       below = 3pt,
+       text height = 1.5ex,
+       text depth = 1ex
+    },
+   braceabove/.style={
+     decoration={brace},
+     decorate
+   },
+   bracebelow/.style={
+     decoration={brace, mirror},
+     decorate
+   }
+}
+
+\node[minimum height=2cm, minimum width=2.5cm, draw=black, rounded corners, fill=gray!20] (bootrom) at ([xshift=-4cm]n21.west) {BootROM};
+\draw[onslide=<{2}>{opacity=.2}, thick, -latex, color=rougel] (n11.south) -- node[onslide=<{2}>{opacity=.2}, anchor=center, xshift=1.2cm, yshift=-.1cm] {\color{rougel}check \textit{digest}} (n21);
+\draw[onslide=<{2}>{opacity=.2}, thick, -latex, color=rougel] (n21.south) -- node[onslide=<{2}>{opacity=.2}, anchor=center, xshift=2.0cm, yshift=.0cm] {\color{rougel}check signature (X.509)} (n31);
+\draw[onslide=<{2}>{opacity=.2}, thick, -latex, color=rougel] (n31.south) -- node[onslide=<{2}>{opacity=.2}, anchor=center, xshift=1.4cm, yshift=.0cm] {\color{rougel}check signature} (n33);
+\path[onslide=<{2}>{opacity=.2}, thick, -latex, color=rougel] (bootrom.east) edge[bend right=-30] (n11.west);
+
+\draw [onslide=<{2}>{opacity=.2}, braceabove,decoration={raise=1ex}, thick] ([xshift=2cm]n21.north east) -- node [sloped, anchor=center, above, yshift=.3cm, xshift=0cm] (image) {Provided Image} ([xshift=2cm, yshift=-.5cm]n33.south east);
+
+\only<2>{
+\path[thick, -latex, color=rougel] (bootrom.east)  edge[bend right=30] (n31.west);
+\draw[decoration={raise=.6ex,text along path,
+      text={parse certificate},text align={center}, text color=rougel},decorate]  (bootrom.east) to [bend right=30] (n31.west);
+
+\node[overlay, anchor=center,black,fill=yellow!10,draw=rougel, rotate=10,rounded corners,
+                inner sep=10pt, scale=.8] (warning) at ($(bootrom.south)+(6.8cm, 0cm)$)
+               {
+                 \begin{minipage}{6cm}
+                   \begin{center}
+                    \textbf{{\color{anssibleu}X.509 parsing before check}\\ + \\ {\color{rougel}Stack overflow in ASN.1} \\ = \\ Pre-authentification attack payload!
+                    }
+                   \end{center}
+                 \end{minipage}
+                };
+\node[star,star points=8, fill=rougel, scale=.8] at (warning.north east) {\color{white}\textbf{!}};
+\node[star,star points=8, fill=rougel, scale=.8] at (warning.north west) {\color{white}\textbf{!}};
+
+}
+
+%\path[-latex] (n91.west) edge[bend left=70] node [left] {} ([xshift=-.5cm,yshift=-.1cm]sig);
+%\path[-latex, thick] (n33.east) edge[bend right=-35] (sig2);
+%\draw[decoration={raise=.5ex,text along path,
+%      text={on decrypted data},text align={center}},decorate]  (n33.east) to [bend right=-35] (sig2);
+%
+%\draw [bracebelow,decoration={raise=1ex}, thick] ([xshift=0cm]n11.north west) -- node [sloped, anchor=center, above, yshift=-.2cm, xshift=-.1cm] (hmac1) {} ([xshift=0cm]n41.south west);
+%\path[-latex, thick] (n51.west) edge[bend right=-60] node [left] {} (hmac1);
+}
+    \end{tikzpicture}
+}
+}
+
+
+\newcommand\langageC{
+\scalebox{.6}{
+\begin{tikzpicture}
+	      \node [] (PCB) at (0,0) {};
+              \node [xshift=-6cm, yshift=3cm, circle, fill=yellow!10, draw=anssibleu, very thick, inner sep=4pt, scale=1.5]  (c99) at (PCB.south) {\color{anssibleu}\bf\texttt{C99}};
+              \node [xshift=-3.5cm, yshift=5cm, circle, fill=yellow!10, draw=rougel, very thick, inner sep=4pt, scale=1.3]  (malloc) at (PCB.south) {\color{rougel}\bf\texttt{malloc}};
+              \node [xshift=-1cm, yshift=3cm, circle, fill=yellow!10, draw=anssibleu, very thick, inner sep=2pt, scale=1.2, text width=1.8cm, align=center]  (typage) at (PCB.south) {\color{anssibleu}\bf\texttt{u8, u16\\ u32}};
+              \node [xshift=1.5cm, yshift=5cm, circle, fill=yellow!10, draw=rougel, very thick, inner sep=4pt, scale=1.3,  align=center]  (vla) at (PCB.south) {\color{rougel}\bf\texttt{VLA}};
+              \node [xshift=4cm, yshift=3cm, circle, fill=yellow!10, draw=anssibleu, very thick, inner sep=4pt, text width=2cm, align=center, scale=.9]  (pointeurs) at (PCB.south) {\color{anssibleu}\bf\texttt{simple\\function\\pointers}};
+              \node [xshift=6.5cm, yshift=5cm, circle, fill=yellow!10, draw=rougel, very thick, inner sep=0pt, scale=1.3,  text width=1.3cm, align=center]  (float) at (PCB.south) {\color{rougel}\bf\texttt{float \\ types}};
+              \node [xshift=9cm, yshift=3cm, circle, fill=yellow!10, draw=anssibleu, very thick, inner sep=4pt, text width=2cm, align=center, scale=.9]  (const) at (PCB.south) {\color{anssibleu}\bf\texttt{qualifiers \\ static, const, etc.}};
+              \node [xshift=11.5cm, yshift=5cm, circle, fill=yellow!10, draw=rougel, very thick, inner sep=4pt, text width=2cm, align=center, scale=.9]  (dep) at (PCB.south) {\color{rougel}\bf\texttt{external\\dependencies}};
+              \node [xshift=14cm, yshift=3cm, circle, fill=yellow!10, draw=rougel, very thick, inner sep=4pt, text width=2cm, align=center, scale=.9]  (cycl) at (PCB.south) {\color{rougel}\bf\texttt{cyclomatic\\complexity}};
+              \newcommand{\Cross}{$\mathbin{\tikz [x=1.4ex,y=1.4ex,line width=.03ex, rougel] \draw (0,0) -- (.8,.8) (0,.8) -- (.8,0);}$}%
+              \draw (malloc) node[rotate=0, scale=9] {\Cross};
+              \draw (vla) node[rotate=0, scale=9] {\Cross};
+              \draw (float) node[rotate=0, scale=9] {\Cross};
+              \draw (dep) node[rotate=0, scale=9] {\Cross};
+              \draw (cycl) node[rotate=0, scale=9] {\Cross};
+\end{tikzpicture}
+}
+}
+
+\makeatletter
+% \tikzset{
+%     database/.style={
+%         path picture={
+%             \draw[fill=anssibleu!30] (0, 1.5*\database@segmentheight) circle [x radius=\database@radius,y radius=\database@aspectratio*\database@radius];
+%             \draw[] (-\database@radius, 0.5*\database@segmentheight) arc [start angle=180,end angle=360,x radius=\database@radius, y radius=\database@aspectratio*\database@radius];
+%             \draw[] (-\database@radius,-0.5*\database@segmentheight) arc [start angle=180,end angle=360,x radius=\database@radius, y radius=\database@aspectratio*\database@radius];
+%             \draw[] (-\database@radius,1.5*\database@segmentheight) -- ++(0,-3*\database@segmentheight) arc [start angle=180,end angle=360,x radius=\database@radius, y radius=\database@aspectratio*\database@radius] -- ++(0,3*\database@segmentheight);
+%         },
+%         minimum width=2*\database@radius + \pgflinewidth,
+%         minimum height=3*\database@segmentheight + 2*\database@aspectratio*\database@radius + \pgflinewidth,
+%     },
+%     database segment height/.store in=\database@segmentheight,
+%     database radius/.store in=\database@radius,
+%     database aspect ratio/.store in=\database@aspectratio,
+%     database segment height=0.1cm,
+%     database radius=0.25cm,
+%     database aspect ratio=0.35,
+% }
+\makeatother
+
+\newcommand\bdd{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[database,label=below:X.509 database,database radius=1cm,database segment height=0.5cm] (database) at (3,0) {};
+\node[draw=black, rounded corners, fill=yellow!10, yshift=1cm, xshift=-4cm] (tls) at (database.west) {TLS measurement campaigns};
+\node[draw=black, rounded corners, fill=rougel!10, yshift=-1.5cm] (certtransp) at (tls.south) {Certificate Transparency Logs};
+\draw[-latex] (tls.east) -- ([yshift=.1cm]database.west);
+\draw[-latex] (certtransp.east) -- ([yshift=-.1cm]database.west);
+\tikzset{
+    position label/.style={
+       below = 3pt,
+       text height = 1.5ex,
+       text depth = 1ex
+    },
+   braceabove/.style={
+     decoration={brace},
+     decorate
+   },
+   bracebelow/.style={
+     decoration={brace, mirror},
+     decorate
+   }
+}
+\draw [braceabove,decoration={raise=1ex}, thick] ([xshift=2cm]database.north east) -- node [anchor=center, above, yshift=-.3cm, xshift=2.5cm, align=center] (label) {{\color{rougel}197 millions} of {\color{anssibleu}certificates}\\(252~GB of data)} ([xshift=2cm, yshift=-.5cm]database.south east);
+
+\onslide<2->{
+\node[rounded corners, draw=black, fill=anssibleu!20, xshift=-10cm, yshift=-4cm, minimum height=1cm] (labelone) at (label.south) {Implementation decisions};
+\onslide<2>{
+\path[-latex] (label.south) edge[out=270,in=40,looseness=.8, thick] node [left] {} (labelone.north);
+}
+}
+\onslide<3->{
+\node[rounded corners, draw=black, fill=anssibleu!20, anchor=west, minimum height=1cm] (labeltwo) at ([xshift=.5cm]labelone.east) {Validations};
+\onslide<3>{
+\path[-latex] (label.south) edge[out=270,in=90,looseness=.8, thick] node [left] {} (labeltwo.north);
+}
+}
+\onslide<4->{
+\node[rounded corners, draw=black, fill=anssibleu!20, anchor=west, minimum height=1cm] (labelthree) at ([xshift=.5cm]labeltwo.east) {Regression tests};
+\onslide<4>{
+\path[-latex] (label.south) edge[out=270,in=90,looseness=.8, thick] node [left] {} (labelthree.north);
+}
+}
+\onslide<5->{
+\node[rounded corners, draw=black, fill=anssibleu!20, anchor=west, minimum height=1cm, align=center] (labelfour) at ([xshift=.5cm]labelthree.east) {Optimization/performance\\(200,000 certificates/second)};
+\onslide<5>{
+\path[-latex] (label.south) edge[out=270,in=90,looseness=.8, thick] node [left] {} (labelfour.north);
+}
+}
+
+
+\end{tikzpicture}
+}
+}
+
+\newcommand{\slice}[5]{
+  \pgfmathparse{0.5*#1+0.5*#2}
+  \let\midangle\pgfmathresult
+
+  % slice
+  \draw[thick,fill=#5] (0,0) -- (#1:1) arc (#1:#2:1) -- cycle;
+
+  % outer label
+  \node[label=\midangle:#4] at (\midangle:1) {};
+
+  % inner label
+  \pgfmathparse{min((#2-#1-10)/110*(-0.3),0)}
+  \let\temp\pgfmathresult
+  \pgfmathparse{max(\temp,-0.5) + 0.8}
+  \let\innerpos\pgfmathresult
+  \node[] at (\midangle:\innerpos) {#3};
+}
+
+\newcommand\cve{
+\scalebox{.9}{
+\begin{tikzpicture}
+\node[minimum height=1.5cm, minimum width=2.5cm, draw=black, rounded corners, fill=gray!20, text width=4cm, align=center,] (cve) at (0,0) {X.509 and ASN.1\\parsing};
+\node[fill=yellow!10, draw=rougel, rounded corners] (bof) at ([xshift=5cm, yshift=1cm]cve.east) {\color{rougel}Buffer overflows};
+\node[fill=yellow!10, draw=black, rounded corners] (bugs) at ([yshift=-.5cm]bof.south) {\color{black}Logical bugs (standard, etc.)};
+\node[fill=yellow!10, draw=anssibleu, rounded corners] (crypto) at ([yshift=-.5cm]bugs.south) {\color{anssibleu}Cryptographic bugs (sig, padding, etc.)};
+
+\path[-latex] (cve.east) edge[out=0,in=180,looseness=.8, thick] node [left] {} (bof.west);
+\path[-latex] (cve.east) edge[out=0,in=180,looseness=.8, thick] node [left] {} (bugs.west);
+\path[-latex] (cve.east) edge[out=0,in=180,looseness=.8, thick] node [left] {} (crypto.west);
+\end{tikzpicture}
+}
+}
+
+\newcommand\openssl{
+\scalebox{.9}{
+\begin{tikzpicture}
+\newcounter{a}
+\newcounter{b}
+\setcounter{a}{\value{b}}
+\addtocounter{b}{15}
+\slice{\thea/100*360}{\theb/100*360}{\textbf{15\%}}{\color{rougel!80}\textbf{ASN.1 parsing}}{rougel!70}
+\setcounter{a}{\value{b}}
+\addtocounter{b}{85}
+\slice{\thea/100*360}{\theb/100*360}{}{}{anssibleu!50}
+\end{tikzpicture}
+}
+}
+
+
+
+\newcommand\rte{
+\scalebox{.8}{
+\tikzset{
+  basic/.style  = {draw, text width=2cm, font=\sffamily, rectangle},
+  root/.style   = {basic, rounded corners=2pt, thin, align=center,
+                   fill=anssibleu!50, drop shadow},
+  level 2/.style = {basic, rounded corners=6pt, thin,align=center, fill=rougel!40,
+                   text width=8em},
+  level 3/.style = {basic, thin, align=left, fill=yellow!10, text width=10em, rounded corners}
+}
+\begin{tikzpicture}[
+  level 1/.style={sibling distance=40mm},
+  edge from parent/.style={->,draw},
+  >=latex]
+
+  \onslide<1>{
+    % root of the the initial tree, level 1
+    \node[root, text width=5cm, minimum height=1cm] {RTE = \textbf{RunTime Errors}}
+    % The first level, as children of the initial tree
+    child {node[level 2, minimum width=4cm] (c1) {\textit{Undefined behaviours} of the C standard}};
+    % Undefined behaviour
+    \begin{scope}[every node/.style={level 3}]
+      \node [below of = c1, xshift=10pt, yshift=-.5cm] (c11) {\color{rougel}Invalid memory\\ access};
+      \node [below of = c11] (c12) {\color{anssibleu}Signed integers\\ overflows};
+      \node [below of = c12] (c13) {Divide by zero};
+      \node [below of = c13] (c14) {Unitialized variables};
+      \node [below of = c14] (c15) {Floats};
+      \node [below of = c15, yshift=.3cm] (c16) {\ldots};
+    \end{scope}
+    \foreach \value in {1,2,3,4,5,6}
+    \draw[->] (c1.195) |- (c1\value.west);
+    \node[overlay, anchor=center,black,fill=white,draw=black, rotate=10,rounded corners,
+    inner sep=10pt, scale=.8, drop shadow] (warning) at ($(c11.east)+(4cm, 0cm)$)
+    {
+      \begin{minipage}{6cm}
+        \begin{center}
+          {\color{black}\textbf{Classicaly handled by the tools}}
+        \end{center}
+      \end{minipage}
+    };
+%\node[star,star points=8, fill=black, scale=.8] at (warning.north east) {\color{white}\textbf{}};
+%\node[star,star points=8, fill=black, scale=.8] at (warning.north west) {\color{white}\textbf{}};
+}
+\onslide<2>{
+% root of the the initial tree, level 1
+\node[root, text width=5cm, minimum height=1cm]  {RTE = \textbf{RunTime Errors}}
+% The first level, as children of the initial tree
+child {node[level 2, minimum width=4cm, opacity=.2] (c1) {\textit{Undefined behaviours} of the C standard}}
+child {node[level 2, dashed] (c2) {Other}};
+% Undefined behaviour
+\begin{scope}[every node/.style={level 3}]
+\node [below of = c1, xshift=10pt, yshift=-.5cm, opacity=.2] (c11) {\color{rougel}Invalid memory\\ access};
+\node [below of = c11, opacity=.2] (c12) {\color{anssibleu}Signed integers\\ overflows};
+\node [below of = c12, opacity=.2] (c13) {Divide by zero};
+\node [below of = c13, opacity=.2] (c14) {Unitialized variables};
+\node [below of = c14, opacity=.2] (c15) {Floats};
+\node [below of = c15, opacity=.2, yshift=.3cm] (c16) {\ldots};
+\end{scope}
+\foreach \value in {1,2,3,4,5,6}
+  \draw[->, opacity=.2] (c1.195) |- (c1\value.west);
+% Other
+\begin{scope}[every node/.style={level 3}]
+\node [below of = c2, xshift=65pt, yshift=-.5cm, text width=5cm, dashed] (c21) {\textbf{Unsigned integers} overflows (modulo)};
+\node [below of = c21, text width=5cm, dashed] (c22) {\textit{Downcasts} signed/unsigned};
+%\node [below of = c22, text width=5cm, dashed] (c23) {Décalages à droite négatifs};
+\node [below of = c22, text width=5cm, dashed] (c23) {\ldots};
+\end{scope}
+\foreach \value in {1,2,3}
+  \draw[->, dashed] (c2.195) |- (c2\value.west);
+\node[overlay, anchor=center,black,fill=white,draw=rougel, rotate=10,rounded corners,
+                inner sep=10pt, scale=.8, drop shadow] (warning) at ($(c12.east)+(6.5cm, 3.0cm)$)
+               {
+                 \begin{minipage}{6cm}
+                   \begin{center}
+                    {\color{white}\textbf{ {\color{rougel}Usually unhandled by tools by default (options)}}}
+                   \end{center}
+                 \end{minipage}
+                };
+}
+
+\end{tikzpicture}
+}
+}
+
+
+\newcommand\tools{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[circle, draw, fill=anssibleu!50] (center) {\textbf{Perfect tool}};
+\onslide<1->{
+\node[fill=gray!50, draw=black, rounded corners] (a) at ([xshift=-3cm]center.west) {C code};
+\draw[] (center) -- (a);
+}
+\onslide<2->{
+\node[fill=gray!50, draw=black, rounded corners] (b) at ([xshift=-2cm, yshift=2cm]center.west) {Detect all RTEs};
+\draw[] (center) -- (b);
+\node[dashed,fill=rougel!30, draw=black, rounded corners] (c) at ([xshift=-2cm]b.west) {Even more!};
+\draw[dashed] (b) -- (c);
+}
+\onslide<3->{
+\node[fill=gray!50, draw=black, rounded corners] (d) at ([xshift=0cm, yshift=2cm]center.north) {{\color{rougel}Sound} analysis};
+\draw[] (center) -- (d);
+}
+\onslide<4->{
+\node[fill=gray!50, draw=black, rounded corners] (f) at ([xshift=2cm, yshift=2cm]center.east) {No false positive};
+\draw[] (center) -- (f);
+\node[dashed,fill=rougel!30, draw=black, rounded corners] (g) at ([xshift=2cm]f.east) {Minimum rate};
+\draw[dashed] (f) -- (g);
+}
+\onslide<5->{
+\node[fill=gray!50, draw=black, rounded corners] (e) at ([xshift=3cm, yshift=0cm]center.east) {Simple and automatic};uns
+\draw[] (center) -- (e);
+}
+\onslide<6->{
+\node[fill=gray!50, draw=black, rounded corners] (h) at ([xshift=0cm, yshift=-2cm]center.south) {Open source};
+\draw[] (center) -- (h);
+}
+\onslide<7->{
+\node[yshift=-.5cm] (licorne) at (center) {\includegraphics[width=3.5cm]{figs/404.jpg}};
+}
+\end{tikzpicture}
+}
+}
+
+\newcommand\introframac{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[circle, draw, fill=anssibleu!50, minimum width=2cm] (center) {\textbf{Frama-C}};
+\node[fill=yellow!10, draw=black, rounded corners] (a) at ([xshift=-3cm]center.west) {C code (C99)};
+\draw[] (center) -- (a);
+\node[fill=yellow!10, draw=black, rounded corners] (b) at ([xshift=0cm, yshift=2cm]center.north) {Various analysis levels};
+\draw[] (center) -- (b);
+\node[fill=yellow!10, draw=black, rounded corners] (c) at ([xshift=3cm, yshift=0cm]center.east) {Formal methods};
+\draw[] (center) -- (c);
+\node[fill=yellow!10, draw=black, rounded corners] (d) at ([xshift=0cm, yshift=-2cm]center.south) {Open Source};
+\draw[] (center) -- (d);
+\node[xshift=3cm, yshift=1.8cm] (framaclogo) at (center) {\includegraphics[width=3.5cm]{figs/framac_logo.png}};
+\end{tikzpicture}
+}
+}
+
+\newcommand\project{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[circle, draw, fill=gray!30, minimum width=2cm] (center) {\textbf{X.509 parser}};
+\onslide<2->{
+\node[fill=yellow!10, draw=black, rounded corners] (aa) at ([yshift=-3cm]center.south) {\textbf{\color{rougel}X.509 parsing}?};
+\draw[] (center) -- (aa);
+\node[dashed,fill=gray!30, draw=black, rounded corners, anchor=east] (bb) at ([xshift=-2cm]aa.west) {X.509 syntax};
+\draw[dashed] (aa) -- (bb);
+\node[dashed,fill=gray!30, draw=black, rounded corners, anchor=west] (cc) at ([xshift=2cm]aa.east) {crypto validation};
+\node[cross out,thick, draw=rougel, rounded corners, anchor=west] (cc) at ([xshift=2cm]aa.east) {\phantom{crypto validation}};
+\draw[dashed] (aa) -- (cc);
+}
+\onslide<3->{
+\node[fill=yellow!10, draw=black, rounded corners] (a) at ([xshift=-3cm]center.west) {In \textbf{\color{rougel}C}?};
+\draw[] (center) -- (a);
+\node[dashed,fill=rougel!30, draw=black, rounded corners] (b) at ([xshift=-2cm]a.west) {Portability};
+\draw[dashed] (a) -- (b);
+\node[dashed,fill=rougel!30, draw=black, rounded corners] (c) at ([yshift=-2cm]a.south) {Performance / Integration};
+\draw[dashed] (a) -- (c);
+\node[dashed,fill=rougel!30, draw=black, rounded corners] (cc) at ([yshift=2cm]a.north) {Large dev. community};
+\draw[dashed] (a) -- (cc);
+}
+\onslide<4->{
+\node[fill=yellow!10, draw=black, rounded corners] (d) at ([xshift=3cm]center.east) {{\color{anssibleu}\textbf{Clean}}?};
+\draw[] (center) -- (d);
+\node[dashed,fill=anssibleu!30, draw=black, rounded corners] (e) at ([xshift=2cm]d.east) {Without bugs?};
+\draw[dashed] (e) -- (d);
+\node[dashed,fill=anssibleu!30, draw=black, rounded corners] (f) at ([yshift=-2cm]d.south) {Formal guarantees};
+\draw[dashed] (f) -- (d);
+\node[dashed,fill=anssibleu!30, draw=black, rounded corners] (ff) at ([yshift=2cm]d.north) {Simple and readable};
+\draw[dashed] (ff) -- (d);
+}
+
+\end{tikzpicture}
+}
+}
+
+
+
+\newcommand\dshack{
+\scalebox{.8}{
+\begin{tikzpicture}[overlay,remember picture,rotate=0,transform shape,
+node distance = 0mm,
+  start chain = going right,
+     N/.style = {draw,
+                 minimum width=5 cm,
+                 outer sep=0pt,
+                 text height=1.5ex, text depth=0.5ex,
+                 on chain},
+                        ]
+\tikzset{
+    position label/.style={
+       below = 3pt,
+       text height = 1.5ex,
+       text depth = 1ex
+    },
+   braceabove/.style={
+     decoration={brace},
+     decorate
+   },
+   bracebelow/.style={
+     decoration={brace, mirror},
+     decorate
+   }
+}
+
+\node[minimum height=2cm, minimum width=2.5cm, draw=black, rounded corners, fill=gray!20,align=center] (bootrom) at ([xshift=-4cm]n21.west) {BootROM9\\(ARM9)};
+\onslide<1>{
+%---
+\node (n11) [fill=gray!50,N=15,right, minimum height=1.3cm] at (0,-2)        {};
+\draw[fill=green!20] ([xshift=-.2cm, yshift=.5cm]n11.north west) -- ([xshift=.2cm, yshift=.5cm]n11.north east) -- ([xshift=.2cm, yshift=-.2cm]n11.south east) -- ([xshift=-.2cm, yshift=-.2cm]n11.south west) -- ([xshift=-.2cm, yshift=.5cm]n11.north west); 
+\node[] (labelefuse) at ([xshift=2.5cm, yshift=.25cm]n11.north west) {Flash};
+
+%---
+\node (n21) [N=15,
+      below=of n11, yshift=-.8cm, draw=none]    {};
+%---
+\node (n31) [N=15,
+      below=of n21,yshift=-.8cm,draw=none]    {};
+%---
+\node (n33) [N=30, below=of n31, yshift=-.8cm, draw=none]  {};
+
+\draw[fill=anssibleu!10, dashed] (n21.north west) -- (n21.north east) -- ([yshift=-.5cm]n33.south east) -- ([yshift=-.5cm]n33.south west) -- (n21.north west); 
+
+%---
+\node (n11) [fill=anssibleu!50,N=15,anchor=north] at (labelefuse.south)        {Signature};
+\node (n12) [fill=gray!50,N=15,right, below=of n11]       {Loader2};
+%---
+\node (n21) [N=15,
+      below=of n11, yshift=-1.8cm, draw=none]    {SRAM};
+}
+%---
+\node (n31) [N=15,
+      below=of n21,yshift=-.2cm,draw=black, fill=anssibleu!50]    {Signature};
+%
+\node (n41) [N=15,
+      below=of n31,yshift=0cm,draw=black, fill=rougel!30]    {Hash(Loader2) ref};
+
+\node (n51) [N=15,
+      below=of n41,yshift=-.6cm,draw=black, fill=rougel!30]    {Hash(Loader2) calculé};
+
+
+\end{tikzpicture}
+}
+}
+
+\newcommand\framacusage{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[circle, draw, fill=anssibleu!40, minimum width=1cm, inner sep=0pt] (center) {\Huge\textbf{+}};
+\onslide<2->{
+\node[fill=anssibleu!40, draw=black, rounded corners, align=center] (a) at ([xshift=-2cm, yshift=-2cm]center) {{\color{rougel}Preuve} d'absence de RTE\\Modèle mémoire {\color{rougel}sound}};
+\draw[] (center) -- (a);
+\node[fill=anssibleu!40, draw=black, rounded corners, align=center] (b) at ([xshift=2cm, yshift=-2cm]center) {Communauté et\\CEA {\color{rougel}réactifs}};
+\draw[] (center) -- (b);
+}
+
+\onslide<3->{
+\node[circle, draw, fill=rougel!40, minimum width=1cm, inner sep=0pt] (center2) at ([yshift=-3cm]center.south) {\Huge\textbf{-}};
+\node[fill=rougel!40, draw=black, rounded corners, align=center] (a2) at ([xshift=-6.5cm, yshift=-2cm]center2) {EVA seul {\color{anssibleu}insuffisant}\\WP nécessaire {\color{anssibleu}(annotations)}};
+\draw[] (center2) -- (a2);
+\node[fill=rougel!40, draw=black, rounded corners, align=center] (b2) at ([xshift=-2cm, yshift=-2cm]center2) {{\color{anssibleu}Incompatibilité} WP\\avec \texttt{memset} (modèle)};
+\draw[] (center2) -- (b2);
+\node[fill=rougel!40, draw=black, rounded corners, align=center] (c2) at ([xshift=2cm, yshift=-2cm]center2) {{\color{anssibleu}Flou} autour de\\certaines options};
+\draw[] (center2) -- (c2);
+\node[fill=rougel!40, draw=black, rounded corners, align=center] (d2) at ([xshift=6.5cm, yshift=-2cm]center2) {{\color{anssibleu}Frustrations/incompréhensions}\\lors des preuves};
+\draw[] (center2) -- (d2);
+}
+\end{tikzpicture}
+}
+}
+
+\newcommand\acslusage{
+\scalebox{.8}{
+\begin{tikzpicture}
+\onslide<1>{
+%\node[draw, fill=gray!40, align=center] (analyse) {Analyse statique\\"automatique" };
+%\node[fill=anssibleu!40, draw=black, rounded corners, align=center] (a) at ([xshift=-3cm, yshift=0cm]analyse) {Code C};
+%\draw[-latex] (a) -- (analyse);
+%\node[fill=rougel!40, draw=black, rounded corners, align=center] (b) at ([xshift=3cm, yshift=0cm]analyse) {Warnings};
+%\draw[-latex] (analyse) -- (b);
+%\node[fill=rougel!40, draw=black, rounded corners, align=center] (c) at ([xshift=3cm, yshift=0cm]b) {Gestion \textbf{manuelle}};
+%\draw[-latex] (b) -- (c);
+%\node[fill=anssibleu!40, draw=black, rounded corners, align=center] (d) at ([xshift=4cm, yshift=0cm]c) {Code \textbf{validé}\\(limite humaine)};
+%\draw[-latex] (c) -- (d);
+%\draw[-latex, draw=rougel, thick, dashed] (c.south) |- ([yshift=-1cm]c.south) node[below,pos=0.25, xshift=-4cm] {\color{rougel}Gestion de chaque warning} -| (a.south);
+
+\node[draw, fill=gray!20, align=center] (analyse) {``Automatic''\\static analysis};
+\node[fill=anssibleu!40, draw=black, rounded corners, align=center] (a) at ([xshift=-3cm, yshift=0cm]analyse) {C code};
+\draw[-latex] (a) -- (analyse);
+\node[fill=rougel!40, draw=black, rounded corners, align=center] (b) at ([xshift=3cm, yshift=0cm]analyse) {Remaining\\warnings?};
+\draw[-latex] (analyse) -- (b);
+
+\node[fill=rougel!40, draw=black, rounded corners, align=center, minimum height=.8cm, minimum width=2.8cm] (c) at ([xshift=7cm, yshift=-1.5cm]b) {Processing};
+\draw[-latex, draw=rougel] (b) -- node[below,pos=0.25, xshift=1cm,yshift=.45cm, sloped] {\color{rougel}OUI} (c.west);
+
+\node[fill=anssibleu!40, draw=black, rounded corners, align=center, minimum height=.8cm, minimum width=2.8cm] (cc) at ([xshift=7cm, yshift=1.5cm]b) {\textbf{Validated} code};
+\draw[-latex, draw=anssibleu] (b) -- node[below,pos=0.25, xshift=1cm,yshift=.45cm, sloped] {\color{anssibleu}NO} (cc.west);
+
+\node[yshift=-.12cm, anchor=south] (achievement) at (cc.north) {\includegraphics[width=2.7cm]{figs/achievement.jpg}};
+
+\node[fill=anssibleu!40, draw=black, rounded corners, align=center, minimum height=.8cm, minimum width=2.8cm,dashed] (ccc) at ([xshift=7cm, yshift=0cm]b) {\textbf{Validated} code\\(human limits)};
+\draw[-latex, draw=anssibleu,dashed] (b) -- node[below,pos=0.25, xshift=1.5cm,yshift=.55cm, sloped] {\color{anssibleu}YES (manual processing)} (ccc.west);
+
+\draw[-latex, draw=rougel, thick, dashed] ([xshift=0cm]c.south) |- ([yshift=-2cm]b.south) node[below,pos=0.25, xshift=-3.9cm,yshift=.4cm] {\color{rougel}Code modifications} -| ([xshift=0cm]a.south);
+
+\node[overlay, anchor=center,black,fill=yellow!10,draw=rougel, rotate=10,rounded corners,
+                inner sep=0pt, scale=.9, minimum height=2cm] (expl) at ($(c.east)+(-10cm, 4cm)$)
+               {
+                 \begin{minipage}{5cm}
+                   \begin{center}
+                     Code modification\\$\Rightarrow$ possible \textbf{new warnings}
+                   \end{center}
+                 \end{minipage}
+                };
+\node[star,star points=8, fill=rougel, scale=.8] at (expl.north east) {\color{white}\textbf{!}};
+\node[star,star points=8, fill=rougel, scale=.8] at (expl.north west) {\color{white}\textbf{!}};
+}
+\onslide<2>{
+\node[draw, fill=orange!40, align=center] (analyse) {Frama-C\\RTE/EVA/WP};
+\node[fill=anssibleu!40, draw=black, rounded corners, align=center] (a) at ([xshift=-3cm, yshift=0cm]analyse) {C code};
+\draw[-latex] (a) -- (analyse);
+\node[fill=rougel!40, draw=black, rounded corners, align=center] (b) at ([xshift=3cm, yshift=0cm]analyse) {Remaining\\warnings?};
+\draw[-latex] (analyse) -- (b);
+
+\node[fill=rougel!40, draw=black, rounded corners, align=center, minimum height=.8cm, minimum width=2.8cm] (c) at ([xshift=7cm, yshift=-.5cm]b) {Processing};
+\draw[-latex, draw=rougel] (b) -- node[below,pos=0.25, xshift=1cm,yshift=.45cm, sloped] {\color{rougel}YES} (c.west);
+
+\node[fill=anssibleu!40, draw=black, rounded corners, align=center, minimum height=.8cm, minimum width=2.8cm] (cc) at ([xshift=7cm, yshift=.5cm]b) {\textbf{Proven} code};
+\draw[-latex, draw=anssibleu] (b) -- node[below,pos=0.25, xshift=1cm,yshift=.45cm, sloped] {\color{anssibleu}NO} (cc.west);
+
+\node[yshift=-.12cm, anchor=south] (workhard) at (cc.north) {\includegraphics[width=2.7cm]{figs/workhard.png}};
+
+\draw[-latex, draw=rougel, thick, dashed] (c.south) |- ([yshift=-1cm]b.south) node[below,pos=0.25, xshift=-3.9cm,yshift=.35cm] {\color{rougel}ACSL annotations} -| (a.south);
+
+\draw[-latex, draw=rougel, thick, dashed] ([xshift=.2cm]c.south) |- ([yshift=-2cm]b.south) node[below,pos=0.25, xshift=-4cm,yshift=-.1cm] {\color{rougel}Code modifications} -| ([xshift=-.2cm]a.south);
+
+\node[overlay, anchor=center,black,fill=yellow!10,draw=anssibleu, rotate=10,rounded corners,
+                inner sep=0pt, scale=.9, minimum height=2cm] (expl) at ($(c.east)+(-10cm, 3cm)$)
+               {
+                 \begin{minipage}{5cm}
+                   \begin{center}
+                     Proven code basis\\$\Rightarrow$ code evolution made \textbf{easy}
+                   \end{center}
+                 \end{minipage}
+                };
+\node[star,star points=8, fill=anssibleu, scale=.8] at (expl.north east) {\color{white}\textbf{!}};
+\node[star,star points=8, fill=anssibleu, scale=.8] at (expl.north west) {\color{white}\textbf{!}};
+}
+\end{tikzpicture}
+}
+}
+
+\newcommand\retexframac{
+\scalebox{.8}{
+\begin{tikzpicture}[paths/.style={->, thick, >=stealth'}]
+\node[circle, draw, fill=anssibleu!50, align=center] (center) {\textbf{Parser}\\\textbf{development}};
+\onslide<1->{
+\node[onslide=<{2-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (a) at ([xshift=-3cm]center.west) {{\color{rougel}Plug-ins choice}\\(RTE, EVA, EVA/WP)};
+\draw[onslide=<{2-}>{opacity=.4},] (center) -- (a);
+}
+\onslide<2->{
+\node[onslide=<{3-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (b) at ([xshift=-3cm, yshift=1.5cm]center.west) {{\color{rougel}Options choice}\\kernel/plug-ins};
+\draw[onslide=<{3-}>{opacity=.4},] (center) -- (b);
+\onslide<2>{
+\draw[paths, dashed] ($(center)!0.5!(a)$) to [bend left=30] node[sloped, above] {$\Delta_T$} ($(center)!0.5!(b)$);
+}
+%\node[dashed,fill=rougel!30, draw=black, rounded corners] (c) at ([xshift=-2cm]b.west) {Voire plus~!};
+%\draw[dashed] (b) -- (c);
+}
+\onslide<3->{
+\node[onslide=<{4-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (d) at ([xshift=-1.8cm, yshift=1.3cm]center.north) {Simple {\color{rougel}ACSL} annotations};
+\draw[onslide=<{4-}>{opacity=.4},] (center) -- (d);
+\onslide<3>{
+\draw[paths, dashed] ($(center)!0.5!(b)$) to [bend left=30] node[sloped, above] {} ($(center)!0.65!(d)$);
+}
+%\node[dashed,fill=rougel!30, draw=black, rounded corners] (dd) at ([xshift=-2cm]b.west) {Contrats de fonctions, boucles};
+%\draw[dashed] (dd) -- (d);
+}
+\onslide<4->{
+\node[onslide=<{5-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (f) at ([xshift=1cm, yshift=2.5cm]center.east) {Play with the {\color{rougel}\texttt{slevel}}};
+\draw[onslide=<{5-}>{opacity=.4},] (center) -- (f);
+\onslide<4>{
+\draw[paths, dashed] ($(center)!0.65!(d)$) to [bend left=50] node[sloped, above] {} ($(center)!0.5!(f)$);
+}
+%\node[dashed,fill=rougel!30, draw=black, rounded corners] (g) at ([xshift=2cm]f.east) {Le moins possible~!};
+%\draw[dashed] (f) -- (g);
+}
+\onslide<5->{
+\node[onslide=<{6-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (e) at ([xshift=3cm, yshift=1.5cm]center.east) {{\color{rougel}Code refactoring}\\(for complex parts)};
+\draw[onslide=<{6-}>{opacity=.4},] (center) -- (e);
+\onslide<5>{
+\draw[paths, dashed] ($(center)!0.7!(f)$) to [bend left=40] node[sloped, above] {} ($(center)!0.5!(e)$);
+}
+}
+\onslide<6->{
+\node[onslide=<{7-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (h) at ([xshift=3.5cm, yshift=0cm]center.east) {\\{\color{rougel}Last warnings} handling\\(\texttt{assert})};
+\draw[onslide=<{7-}>{opacity=.4},] (center) -- (h);
+\onslide<6>{
+\draw[paths, dashed] ($(center)!0.5!(e)$) to [bend left=40] node[sloped, below] {} ($(center)!0.5!(h)$);
+}
+%\node[dashed,fill=rougel!30, draw=black, rounded corners] (hh) at ([xshift=3cm]h.east) {Pointeurs de fonction};
+%\draw[dashed] (hh) -- (h);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners,align=center] (hhh) at ([xshift=2cm, yshift=-1.0cm]h.east) {Modèle mémoire\\{\em sound} pour WP};
+%\draw[dashed] (hhh) -- (h);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners,align=center] (hhhh) at ([xshift=0cm, yshift=-1.5cm]h.south) {Suppression \texttt{union}, \texttt{memset}\\Nouvelles {\color{rougel}annotations}};
+%\draw[dashed] (hhhh) -- (h);
+}
+\onslide<7->{
+\node[onslide=<{8-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (i) at ([xshift=3.5cm, yshift=-1.1cm]center.east) {{\color{rougel}Function pointeurs}};
+\draw[onslide=<{8-}>{opacity=.4},] (center) -- (i);
+\onslide<7>{
+\draw[paths, dashed] ($(center)!0.5!(h)$) to [bend left=40] node[sloped, below] {} ($(center)!0.5!(i)$);
+}
+}
+\onslide<8->{
+\node[onslide=<{9-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (j) at ([xshift=4cm, yshift=-2.4cm]center.east) {Memory model\\{\em \color{rougel}sound} for WP};
+\draw[onslide=<{9-}>{opacity=.4},] (center) -- (j);
+\onslide<8>{
+\draw[paths, dashed] ($(center)!0.5!(i)$) to [bend left=40] node[sloped, below] {} ($(center)!0.5!(j)$);
+}
+}
+\onslide<9->{
+\node[onslide=<{10-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (k) at ([xshift=2cm, yshift=-3.5cm]center.east) {Remove \texttt{union}, \texttt{memset}\\New {\color{rougel} annotations}};
+\draw[onslide=<{10-}>{opacity=.4},] (center) -- (k);
+\onslide<9>{
+\draw[paths, dashed] ($(center)!0.5!(j)$) to [bend left=40] node[sloped, below] {} ($(center)!0.6!(k)$);
+}
+}
+\onslide<10->{
+\node[onslide=<{11-}>{opacity=.4},fill=gray!50, draw=black, rounded corners, align=center] (l) at ([xshift=0cm, yshift=-4cm]center.west) {{\color{rougel}RTE++} options};
+\draw[onslide=<{11-}>{opacity=.4},] (center) -- (l);
+\node[onslide=<{11-}>{opacity=.4},dashed,fill=rougel!30, draw=black, rounded corners,align=center,scale=.8] (hh) at ([xshift=-2cm, yshift=-1cm]l.south) {-warn-\{left,right\}\\-shift-negative};
+\draw[onslide=<{11-}>{opacity=.4},dashed] (hh) -- (l);
+\node[onslide=<{11-}>{opacity=.4},dashed,fill=rougel!30, draw=black, rounded corners,align=center,scale=.8] (hhh) at ([xshift=2cm, yshift=-1.0cm]l.south) {-warn-\{signed,unsigned\}\\-\{downcast,overflow\}};
+\draw[onslide=<{11-}>{opacity=.4},dashed] (hhh) -- (l);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners,align=center] (hhhh) at ([xshift=0cm, yshift=-1.5cm]i.south) {Nouvelles {\color{rougel}annotations}};
+%\draw[dashed] (hhhh) -- (i);
+\onslide<10>{
+\draw[paths, dashed] ($(center)!0.5!(k)$) to [bend left=40] node[sloped, below] {} ($(center)!0.5!(l)$);
+}
+}
+\onslide<11->{
+\node[fill=gray!50, draw=black, rounded corners, align=center] (m) at ([xshift=-6cm, yshift=-3cm]center.east) {New {\color{rougel}annotations}};
+\draw[] (center) -- (m);
+\onslide<11>{
+\draw[paths, dashed] ($(center)!0.5!(l)$) to [bend left=40] node[sloped, below] {} ($(center)!0.6!(m)$);
+}
+}
+
+
+%\node[dashed,fill=rougel!30, draw=black, rounded corners] (hh) at ([xshift=3cm]h.east) {Pointeurs de fonction};
+%\draw[dashed] (hh) -- (h);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners,align=center] (hhh) at ([xshift=2cm, yshift=-1.0cm]h.east) {Modèle mémoire\\{\em sound} pour WP};
+%\draw[dashed] (hhh) -- (h);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners,align=center] (hhhh) at ([xshift=0cm, yshift=-1.5cm]h.south) {Suppression \texttt{union}, \texttt{memset}\\Nouvelles {\color{rougel}annotations}};
+%\draw[dashed] (hhhh) -- (h);
+%}
+
+
+%\onslide<7->{
+%\node[fill=gray!50, draw=black, rounded corners, align=center] (i) at ([xshift=-2cm, yshift=-2cm]center.west) {Options {\color{rougel}RTE++}};
+%\draw[] (center) -- (i);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners,align=center,scale=.8] (hh) at ([xshift=-3cm]i.west) {-warn-\{left,right\}\\-shift-negative};
+%\draw[dashed] (hh) -- (i);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners,align=center,scale=.8] (hhh) at ([xshift=-2cm, yshift=-1.0cm]i.west) {-warn-\{signed,unsigned\}\\-\{downcast,overflow\}};
+%\draw[dashed] (hhh) -- (i);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners,align=center] (hhhh) at ([xshift=0cm, yshift=-1.5cm]i.south) {Nouvelles {\color{rougel}annotations}};
+%\draw[dashed] (hhhh) -- (i);
+%\onslide<7>{
+%\draw[paths, dashed] ($(center)!0.5!(h)$) to [bend left=40] node[sloped, below] {} ($(center)!0.5!(i)$);
+%}
+%}
+%\onslide<7->{
+%\node[yshift=-.5cm] (licorne) at (center) {\includegraphics[width=3.5cm]{figs/404.jpg}};
+%}
+\end{tikzpicture}
+}
+}
+
+\newcommand\framacminus{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[circle, draw, fill=rougel!40, minimum width=1cm, inner sep=0pt] (center) at (0,0) {\Huge\textbf{-}};
+%
+\onslide<2->{
+\node[onslide=<{3-}>{opacity=.4},fill=rougel!40, draw=black, rounded corners, align=center] (a) at ([xshift=-3cm, yshift=0cm]center) {Learning\\curve};
+\draw[] (center) -- (a);
+\node[onslide=<{3-}>{opacity=.4},dashed,fill=yellow!10, draw=rougel, rounded corners, align=center] (aa) at ([xshift=0cm, yshift=2cm]a) {Poorly documented\\designs patterns};
+\draw[onslide=<{3-}>{opacity=.4},dashed] (a) -- (aa);
+\node[onslide=<{3-}>{opacity=.4},dashed,fill=yellow!10, draw=rougel, rounded corners, align=center] (aaa) at ([xshift=-4cm, yshift=0cm]a) {Unlimited warning\\processing time};
+\draw[onslide=<{3-}>{opacity=.4},dashed] (a) -- (aaa);
+\node[onslide=<{3-}>{opacity=.4},dashed,fill=yellow!10, draw=rougel, rounded corners, align=center] (aaaa) at ([xshift=0cm, yshift=-2cm]a) {Non trivial\\processing choices};
+\draw[onslide=<{3-}>{opacity=.4},dashed] (a) -- (aaaa);
+}
+%
+\onslide<3->{
+\node[onslide=<{4-}>{opacity=.4},fill=rougel!40, draw=black, rounded corners, align=center] (b) at ([xshift=0cm, yshift=-4cm]center) {EVA (automatic)\\too limited};
+\draw[onslide=<{4-}>{opacity=.4},] (center) -- (b);
+}
+%
+\onslide<4->{
+\node[fill=rougel!40, draw=black, rounded corners, align=center] (c) at ([xshift=3cm, yshift=0cm]center) {Limited sound\\memory model};
+\draw[] (center) -- (c);
+\node[dashed,fill=yellow!10, draw=rougel, rounded corners, align=center] (cc) at ([xshift=0cm, yshift=2cm]c) {\texttt{union}};
+\draw[dashed] (c) -- (cc);
+\node[dashed,fill=yellow!10, draw=rougel, rounded corners, align=center] (ccc) at ([xshift=0cm, yshift=-2cm]c) {\texttt{memset()}};
+\draw[dashed] (c) -- (ccc);
+}
+\end{tikzpicture}
+}
+}
+
+\newcommand\framacplus{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[circle, draw, fill=anssibleu!40, minimum width=1cm, inner sep=0pt] (center) at (0,0) {\Huge\textbf{+}};
+%
+\onslide<2->{
+\node[onslide=<{3-}>{opacity=.4},fill=anssibleu!40, draw=black, rounded corners, align=center] (a) at ([xshift=-4cm, yshift=0cm]center) {Annotations approach\\is efficient};
+\draw[onslide=<{3-}>{opacity=.4},] (center) -- (a);
+}
+%
+\onslide<3->{
+\node[onslide=<{4-}>{opacity=.4},fill=anssibleu!40, draw=black, rounded corners, align=center] (b) at ([xshift=-2cm, yshift=2cm]center) {ACSL\\is simple};
+\draw[onslide=<{4-}>{opacity=.4},] (center) -- (b);
+}
+%
+\onslide<4->{
+\node[onslide=<{5-}>{opacity=.4},fill=anssibleu!40, draw=black, rounded corners, align=center] (c) at ([xshift=1cm, yshift=2cm]center) {No theoretical\\knowledge needed};
+\draw[onslide=<{5-}>{opacity=.4},] (center) -- (c);
+}
+\onslide<5->{
+\node[onslide=<{6-}>{opacity=.4},fill=anssibleu!40, draw=black, rounded corners, align=center] (d) at ([xshift=4cm, yshift=0cm]center) {Complementary plug-ins\\(EVA+WP)};
+\draw[onslide=<{6-}>{opacity=.4},] (center) -- (d);
+}
+\onslide<6->{
+\node[onslide=<{7-}>{opacity=.4},fill=anssibleu!40, draw=black, rounded corners, align=center] (e) at ([xshift=2cm, yshift=-2cm]center) {Efficient/useful\\GUI};
+\draw[onslide=<{6-}>{opacity=.4},] (center) -- (e);
+}
+\onslide<7->{
+\node[fill=anssibleu!40, draw=black, rounded corners, align=center] (f) at ([xshift=-1.5cm, yshift=-2.5cm]center) {Tool improving\\ with new versions\\ (somewhat) \\ \includegraphics[height=5ex]{ressources/confounded-face-emoji-icon.png}};
+\draw[] (center) -- (f);
+}
+
+\end{tikzpicture}
+}
+}
+
+
+\newcommand\releases{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[circle, draw, fill=gray!30, minimum width=2cm] (center) {\textbf{Releases}};
+\onslide<2->{
+\node[onslide=<{3-}>{opacity=.4}, fill=yellow!10,   draw=black,    rounded   corners]    (aa)   at
+([yshift=-2cm]center.south) {\textbf{Chlorine - 17}};
+\draw[onslide=<{3-}>{opacity=.4}] (center) -- (aa);
+\node[onslide=<{3-}>{opacity=.4}, dashed,fill=red!30,  draw=black, rounded  corners, anchor=east]
+(bb) at ([xshift=-2cm]aa.west) {44 Unknowns};
+\draw[onslide=<{3-}>{opacity=.4}, dashed] (aa) -- (bb);
+\node[onslide=<{3-}>{opacity=.4}, dashed,fill=red!30,  draw=black, rounded  corners, anchor=west]
+(cc) at ([xshift=2cm]aa.east) {19mn 35s};
+\draw[onslide=<{3-}>{opacity=.4}, dashed] (aa) -- (cc);
+}
+\onslide<3->{
+\node[onslide=<{4-}>{opacity=.4}, fill=yellow!10,    draw=black,   rounded    corners]   (a)    at
+([xshift=-2cm]center.west) {\textbf{Argon - 18}};
+\draw[onslide=<{4-}>{opacity=.4},] (center) -- (a);
+\node[onslide=<{4-}>{opacity=.4},dashed,fill=green!30,  draw=black,  rounded   corners, text width=2.4cm]  (b)  at
+([xshift=-4cm]a.west) {Val -> EVA changes \&\\ improvements};
+\draw[onslide=<{4-}>{opacity=.4},dashed] (a) -- (b);
+\node[onslide=<{4-}>{opacity=.4},dashed,fill=orange!30,  draw=black,  rounded   corners]  (c)  at
+([yshift=-1cm]a.south) {5 Unknown (calls)};
+\draw[onslide=<{4-}>{opacity=.4},dashed] (a) -- (c);
+\node[onslide=<{4-}>{opacity=.4},dashed,fill=gray!30,  draw=black,  rounded  corners]  (cc)  at
+([yshift=1cm]a.north) {15mn 16s};
+\draw[onslide=<{4-}>{opacity=.4}, dashed] (a) -- (cc);
+}
+\onslide<4->{
+\node[onslide=<{5-}>{opacity=.4}, fill=yellow!10,    draw=black,   rounded    corners]   (d)    at
+([yshift=2cm]center.north) {\textbf{Potassium - 19}};
+\draw[onslide=<{5-}>{opacity=.4},] (center) -- (d);
+\node[onslide=<{5-}>{opacity=.4},dashed,fill=orange!30,  draw=black, rounded  corners, text width=3.5cm] (e)  at
+([xshift=3.8cm]d.east) {More improvements \\ Alt-ergo 2.3.0\\ -eva-precision...};
+\draw[onslide=<{5-}>{opacity=.4},dashed] (e) -- (d);
+\node[onslide=<{5-}>{opacity=.4},dashed,fill=orange!30,  draw=black, rounded  corners, text width=4.8cm] (f)  at
+([xshift=-4.2cm]d.west) {10 Unknown (calls) \&\\ 93 Valid Under Hyp (WP/calls)};
+\draw[onslide=<{5-}>{opacity=.4},dashed] (f) -- (d);
+\node[onslide=<{5-}>{opacity=.4},dashed,fill=green!30, draw=black,  rounded corners]  (ff) at
+([yshift=1cm]d.north) {1 mn 54s};
+\draw[onslide=<{5-}>{opacity=.4},dashed] (ff) -- (d);
+}
+\onslide<5->{
+\node[fill=yellow!10,    draw=black,   rounded    corners]   (dd)    at
+([xshift=2cm]center.east) {\textbf{Calcium - BETA}};
+\draw[] (center) -- (dd);
+\node[dashed,fill=orange!30,  draw=black, rounded  corners,text width=4.8cm] (g)  at
+([xshift=3cm]dd.east) {New changes/improvements - Why3 \\ -eva-auto-loop-unroll};
+\draw[dashed] (g) -- (dd);
+\node[dashed,fill=anssibleu!30,  draw=black, rounded  corners, text width=4.8cm] (h)  at
+([yshift=-1.2cm]dd.south) {10 Unknown (calls) \&\\ 94 Valid Under Hyp (WP/calls)};
+\draw[dashed] (h) -- (dd);
+\node[dashed,fill=anssibleu!30, draw=black,  rounded corners]  (i) at
+([yshift=1cm]dd.north) {2 mn 1s};
+\draw[dashed] (i) -- (dd);
+}
+
+\end{tikzpicture}
+}
+}
+
+
+\newcommand\unsound{
+\scalebox{.8}{
+\begin{tikzpicture}
+\node[circle, draw, fill=anssibleu!50] (center) {\textbf{Defects}};
+\onslide<1->{
+\node[fill=gray!50, draw=black, rounded corners] (a) at ([xshift=-3cm]center.west) {Code quality};
+\draw[] (center) -- (a);
+}
+\onslide<2->{
+\node[fill=gray!50, draw=black, rounded corners] (b) at ([xshift=-2cm, yshift=2cm]center.west) {Useless parts};
+\draw[] (center) -- (b);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners] (c) at ([xshift=-2cm]b.west) {Even more!};
+%\draw[dashed] (b) -- (c);
+}
+\onslide<3->{
+\node[fill=gray!50, draw=black, rounded corners] (d) at ([xshift=0cm, yshift=2cm]center.north) {Unreachable parts};
+\draw[] (center) -- (d);
+}
+\onslide<4->{
+\node[fill=rougel!50, draw=black, rounded  corners, dashed] (f) at ([xshift=2cm,
+yshift=2cm]center.east) {BugFinder R2019a - MathWorks};
+\draw[] (center) -- (f);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners] (g) at ([xshift=2cm]f.east) {MathWorks};
+%\draw[dashed] (f) -- (g);
+}
+\onslide<5->{
+\node[fill=rougel!50, draw=black, rounded  corners, dashed] (e) at ([xshift=3cm,
+yshift=0cm]center.east) {CodeSonar 5.0 - Grammatech};
+\draw[] (center) -- (e);
+%\node[dashed,fill=rougel!30, draw=black, rounded corners] (ee) at ([xshift=2cm]f.east) {Grammatech};
+%\draw[dashed] (e) -- (ee);
+}
+\onslide<6->{
+\node[fill=rougel!50, draw=black, rounded  corners, dashed] (h) at ([xshift=3cm,
+yshift=-1cm]center.south) {Coverity 2019.03 - Synopsis};
+\draw[] (center) -- (h);
+}
+\onslide<7->{
+  \node[fill=gray!50, draw=black, rounded corners] (i) at ([xshift=0cm, yshift=-2cm]center.south) {Fully automatic};
+\draw[] (center) -- (i);
+}
+\onslide<8->{
+  \node[fill=gray!50,    draw=black,   rounded    corners]   (i)    at
+  ([xshift=-2cm, yshift=-1cm]center.south) {Fast and Easy to use};
+\draw[] (center) -- (i);
+}
+\onslide<9->{
+ \node[overlay, anchor=center,black,fill=yellow!10,draw=anssibleu, rotate=-20,rounded corners,
+    inner sep=10pt, scale=.8, drop shadow] (feat) at ($(c11.east)+(-4cm, 0cm)$)
+    {
+      \begin{minipage}{6cm}
+        \begin{center}
+          {\color{black}\textbf{{\color{anssibleu}Interesting Features}}}
+        \end{center}
+      \end{minipage}
+    }; \
+    \node[star,star points=8, fill=anssibleu, scale=.8] at (feat.north east) {\color{white}\textbf{!}};
+    \node[star,star points=8, fill=anssibleu, scale=.8] at (feat.north west) {\color{white}\textbf{!}};
+  }
+\onslide<10->{
+\node[overlay, anchor=center,black,fill=yellow!10,draw=rougel, rotate=-20,rounded corners,
+                inner sep=10pt, scale=.8, drop shadow] (logbug) at ($(c12.east)+(8.2cm, 4.0cm)$)
+               {
+                 \begin{minipage}{6cm}
+                   \begin{center}
+                    {\color{white}\textbf{{\color{rougel} The 3 tools detect the logical bug}}}
+                   \end{center}
+                 \end{minipage}
+               };
+               \node[star,star points=8, fill=rougel, scale=.8] at (logbug.north east) {\color{white}\textbf{!}};
+               \node[star,star points=8, fill=rougel, scale=.8] at (logbug.north west) {\color{white}\textbf{!}};
+             }
+
+\end{tikzpicture}
+}
+}
+% \newcommand\unsound{
+% \scalebox{.8}{
+% \tikzset{
+%   basic/.style  = {draw, text width=2cm, font=\sffamily, rectangle},
+%   root/.style   = {basic, rounded corners=2pt, thin, align=center,
+%                    fill=anssibleu!50, drop shadow},
+%   level 2/.style = {basic, rounded corners=6pt, thin,align=center, fill=rougel!40,
+%                    text width=8em},
+%   level 3/.style = {basic, thin, align=left, fill=yellow!10, text width=10em, rounded corners}
+% }
+% \begin{tikzpicture}[
+%   level 1/.style={sibling distance=40mm},
+%   edge from parent/.style={->,draw},
+%   >=latex]
+
+%   \onslide<1>{
+%     % root of the the initial tree, level 1
+%     \node[root, text width=5cm, minimum height=1cm] {Dedicated to find \textbf{defects}}
+%     % The first level, as children of the initial tree
+%     child {node[level 2, minimum width=4cm] (c1) {BugFinder - R2019a\\MathWorks }};
+%     % Undefined behaviour
+%     \begin{scope}[every node/.style={level 3}]
+%       \node [below of = c1, xshift=10pt, yshift=-.5cm] (c11) {Code Quality:};
+%       \node [below of = c11] (c12) {Useless parts};
+%       \node [below of = c12] (c13) {Unreachable parts};
+%       \node [below of = c13] (c14) {Total};
+%     \end{scope}
+%     \foreach \value in {1,2,3,4}
+%     \draw[->] (c1.195) |- (c1\value.west);
+%     \node[overlay, anchor=center,black,fill=white,draw=black, rotate=10,rounded corners,
+%     inner sep=10pt, scale=.8, drop shadow] (warning) at ($(c11.east)+(4cm, 0cm)$)
+%     {
+%       \begin{minipage}{6cm}
+%         \begin{center}
+%           {\color{black}\textbf{Classicaly handled by the tools}}
+%         \end{center}
+%       \end{minipage}
+%     };
+% \node[star,star points=8, fill=black, scale=.8] at (warning.north east) {\color{white}\textbf{}};
+% \node[star,star points=8, fill=black, scale=.8] at (warning.north west) {\color{white}\textbf{}};
+% }
+% \onslide<2>{
+%     % root of the the initial tree, level 1
+%     \node[root, text width=5cm, minimum height=1cm] {Dedicated to find \textbf{defects}}
+%     % The first level, as children of the initial tree
+%     child {node[level 2, minimum width=4cm] (c1) {BugFinder - R2019a\\MathWorks}};
+%     child {node[level 2] (c2) {CodeSonar 5.0\\Grammatech}};
+%     % Undefined behaviour
+%     \begin{scope}[every node/.style={level 3}]
+%       \node [below of = c1, xshift=10pt, yshift=-.5cm] (c11) {Code Quality:};
+%       \node [below of = c11] (c12) {Useless parts};
+%       \node [below of = c12] (c13) {Unreachable parts};
+%       \node [below of = c13] (c14) {Total};
+%     \end{scope}
+%     \foreach \value in {1,2,3,4}
+%     \draw[->] (c1.195) |- (c1\value.west);
+%     % Other
+%     \begin{scope}[every node/.style={level 3}]
+%       \node [below of = c2, xshift=65pt, yshift=-.5cm, text width=5cm] (c21) {Code Quality:};
+% \node [below of = c21, text width=5cm] (c22) {Useless parts:};
+% %\node [below of = c22, text width=5cm] (c23) {Décalages à droite négatifs};
+% \node [below of = c22, text width=5cm] (c23) {Unreachable parts:};
+% \node [below of = c23, text width=5cm] (c24) {Total:};
+% \end{scope}
+% \foreach \value in {1,2,3,4}
+%   \draw[->, dashed] (c2.195) |- (c2\value.west);
+% \node[overlay, anchor=center,black,fill=white,draw=rougel, rotate=10,rounded corners,
+%                 inner sep=10pt, scale=.8, drop shadow] (warning) at ($(c12.east)+(6.5cm, 3.0cm)$)
+%                {
+%                  \begin{minipage}{6cm}
+%                    \begin{center}
+%                     {\color{white}\textbf{ {\color{rougel}Usually unhandled by tools by default (options)}}}
+%                    \end{center}
+%                  \end{minipage}
+%                 };
+% }
+
+% \end{tikzpicture}
+% }
+% }
+
+% \newcommand\unsound{
+% \scalebox{.8}{
+% \begin{tikzpicture}
+% \node[circle, draw, fill=anssibleu!50] (center) {\textbf{Defect}};
+% \onslide<1->{
+% \node[fill=gray!50, draw=black, rounded corners] (a) at ([xshift=-3cm]center.west) {C code};
+% \draw[] (center) -- (a);
+% }
+% \onslide<2->{
+% \node[fill=gray!50, draw=black, rounded corners] (b) at ([xshift=-2cm,
+% yshift=2cm]center.west) {Bugfinder MathWorks R2019a};
+% \draw[] (center) -- (b);
+% }
+% \onslide<3->{
+% \node[fill=gray!50, draw=black, rounded  corners] (d) at ([xshift=0cm,
+% yshift=2cm]center.north) {CodeSonar Grammatech 5.0};
+% \draw[] (center) -- (d);
+% }
+% \onslide<4->{
+% \node[fill=gray!50, draw=black, rounded  corners] (f) at ([xshift=2cm,
+% yshift=2cm]center.east) {Coverity - Synopsys 2019.03};
+% \draw[] (center) -- (f);
+
+% }
+% \onslide<5->{
+% \node[fill=gray!50, draw=black, rounded  corners] (e) at ([xshift=3cm,
+% yshift=0cm]center.east) {Quality code};
+% \draw[] (center) -- (e);
+% }
+% \onslide<6->{
+% \node[fill=gray!50, draw=black, rounded  corners] (h) at ([xshift=2cm,
+% yshift=-1cm]center.south) {Useless parts};
+% \draw[] (center) -- (h);
+% }
+% \onslide<7->{
+% \node[fill=gray!50, draw=black, rounded  corners] (h) at ([xshift=1cm,
+% yshift=-2cm]center.south) {Unreachable parts};
+% \draw[] (center) -- (h);
+% \onslide<8->{
+% \node[fill=gray!50, draw=black, rounded  corners] (h) at ([xshift=0cm,
+% yshift=-3cm]center.south) {Automatic and easy to use};
+% \draw[] (center) -- (h);
+% }
+% \end{tikzpicture}
+% }
+% }

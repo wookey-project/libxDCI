@@ -1,0 +1,110 @@
+%- analyse des logs avec EVA : recherche des alarmes, analyse des warning
+% dans le chapitre 5, pour l'interprétation des résultats : unknown, invalides etc...
+% mettre un exemple avec un RTE (overflow et mem access)
+\section{Résultats de l'analyse réalisée avec EVA}
+
+\subsection{Travail réalisé}
+
+Comme indiqué dans le chapitre précédent, l'utilisation d'EVA nécessite un point d'entrée dans le code à analyser. La bibliothèque USBctrl ne disposant pas de fonction main(), j'ai défini plusieurs nouvelles fonctions spécifiques à l'analyse Frama-C, à partir desquelles l'ensemble des fonctions de la bibliothèque USBctrl et du driver USB High Speed sont appelées, avec différents contextes (afin de tester ces fonctions dans leur comportement nominal, c'est à dire avec des paramètres d'entrée corrects), et la gestion des erreurs de chacune de ces fonctions). Ces différentes fonctions sont ensuites appelées par une fonction principale, un main(), point d'entrée de l'analyse réalisée avec EVA. Ces fonctions ajoutées pour l'analyse avec EVA sont reproduites dans l'annexe 1.
+\newline \noindent Les fonctions introduites pour l'analyse avec EVA utilisent en particulier une fonction spécifique à EVA, la fonction Frama\_C\_interval, qui permet à EVA de parcourir les différentes fonctions analysées avec des paramètres d'entrées qui varient entre une valeur minimale et une valeur maximale. A titre d'illustration, il est possible de définir la variable suivante (un entier non signé sur 16 bits):
+
+\begin{lstlisting}
+uint16_t Value = Frama_C_interval(0,65535);
+\end{lstlisting}
+
+puis de l'utiliser dans une fonction. En appelant cette fonction une seule fois dans le point d'entrée de l'analyse, EVA analysera la fonction avec toutes les valeurs possibles de la variable entre 0 et 65535.
+\newline \noindent La fonction Frama\_C\_interval est définie dans la bibliothèque C installée en même temps que Frama-C : cette bibliothèque, spécifique à l'utilisation de Frama-C, est une variante de la bibliothèque stantard du C dans laquelle les différentes fonctions de la bibliothèqie standard sont annotées en ACSL (ce qui permet de pouvoir utiliser si nécessaire les fonctions standards dans le code à analyser, sans avoir à d'abord définir leur contrat en ACSL). Par ailleurs, en plus des fonctions standards, la bibliothèque C de Frama-C introduit plusieurs fonctions spécifiques à l'analyse avec Frama-C, comme la fonction Frama\_C\_interval. Il existe plusieurs variante de cette fonction, en fonction du type de la variable que l'on souhaite faire varier. Dans le cadre de ce stage, seule la fonction Frama\_C\_interval a été utilisée. Il a toutefois été nécessaire d'inclure plusieurs fichiers de la bibliothèque C de Frama-C dans le répertoire framac/include/ afin de pouvoir utiliser cette fonction.
+\newline \noindent
+Le taux de couverture d'EVA indiqué à la fin de l'analyse est de 91\%, l'ensemble des fonctions de la bibliothèque USBctrl et du driver USB High Speed étant analysé à l'aide d'EVA. Parmi les embrenchements non analysés par EVA se trouvent:
+\begin{itemize}
+	\item des embranchements non atteignables, tels que:
+		\begin{itemize}
+			\item des case default non atteignable car une structure conditonnelle avant le switch élimine ce cas, mais ajoutés à des fins de compilation
+			\item des structures conditionnelles redondantes
+			\item des cas d'erreur non atteints (pointeurs null par exemple, ou paramètres invalides dans certaines structures)
+		\end{itemize}
+\end{itemize}
+
+Pour ces embrenchements non analysés avec EVA, je les ai analysés à l'aide de l'interface graphique, afin de déterminer si une RTE était possible. Je n'en ai pas trouvé dans ces embrenchements.
+
+
+
+Les options présentées dans le chapitre précédent garantissent par ailleurs la précision de l'analyse, le temps de calcul étant de près de XX minute pour un processeur de    \footnote{il n'est actuellement pas possible de paralléliser l'analyse d'EVA, donc le nombre de coeur n'influe pas sur le temps de calcul}
+
+\subsection{RTE decouverts}
+
+liste sous forme de tableau? integer overflow, division par 0, bad memory access, variables non initialisées, tests manquants
+
+Ces RTE ont été patchés, détail en annexe?
+
+\begin{tabular}{|c|c|l}
+	\hline
+Type de RTE & fonctions impactées & Patch \\
+	\hline
+débordement d'entier non signé & test & test \\
+	\hline\hline
+downcast d'entier non signé & test & test \\
+	\hline
+débordement de tablaux & test & test \\
+	\hline
+accès mémoire invalide & test & test \\
+	\hline
+division par 0 & test & test \\
+	\hline
+variables non initialisées & test & test \\
+\end{tabular}
+
+
+\subsection{Problèmes rencontrés}
+
+établir un point d'entrée correct : déterminer, parmi l'ensemble des fonctions, les données d'entrées nécessaires aux fonctions.
+comment atteindre tout le code source? nécessité d'initialiser des structures incorrectes, avec des valeurs incorrectes (par exemple pour les pointeurs null).
+Jouer sur la machine à état : certains états ne sont possibles qu'après interraction avec la machine hôte par exemple. Solution: frama-c\_interval sur une structure globale, avant l'appel à la fonction
+
+boucles : unroll : quel niveau? examen des boucles, pas besoin de faire bcp (donc très bonne approximation)
+certaines fonctions comportent de nombreuses boucles conditionnelles imbriquées : utilisation de l'option domain history nécessaire pour qu'EVA puisse déterminer les valeurs possibles des variables dans les différentes conditions du code: plus généralement, la précision de l'analyse
+
+pointeurs de fonction : utilisation de calls + wp dynamic : permet à EVA de savoir vers quoi pointe le pointeur de fonction. Nécessité de rajouter des assertions dans le code. Important pour WP : wp pourra prouver la fonction grâve aux résultats d'EVA (sans ça, WP n'est pas capable de prouver la partie du code dans laquelle se trouve le pointeur de fonction)
+
+
+\subsection{Pistes d'amélioration}
+
+
+\section{Résultats obtenus avec WP}
+
+\subsection{Travail réalisé}
+
+chiffrer à la fin le pourcentage de fonctions spécifiées dans la lib USB
+s'il en manque, ça sera expliqué dans problemes rencontrés
+
+\subsection{Problèmes rencontrés}
+
+aliasing : faire un define backend pour que wp passe les preuves
+volatile : problème, aucune preuve ne passe si une variable est volatile (car elle peut prendre n'importe quelle valeur : donc retrait des volatile)
+memset / memcpy : initialisation des structures "manuellement" et copie manuelle également
+pointeurs de fonction : wp dynamic + calls + ajout d'assertion. Si c'est validé par EVA, WP le prend pour argent comptant, et la preuve passe
+boucle while : difficulté à déterminer des variant pour ces boucles (quand while (f(a)) par exemple, donc transformation de ces boucles while en boucles for avec ajout d'un compteur suffisamment grand, dépendant du while. Mettre deux exemples de compteur pour illustrer
+
+de manière générale, difficulté à spécifier certaines boucles : exemples de boucles avec un if où on sort si on rentre dedans. Si on sort, c'est une conditions anormale de sortie de boucle, donc il ne faut pas en tenir compte dans les invariant et les assigns de la boucle (subtil...)
+
+%les variables static : problème, framaC ne les connait pas dans d'autres contextes que le fichier dans lesquelles elles sont définies. Donc comment faire quand le preuve de certaines fonctions fait référence à ces variables? exemple du num_ctx (nombre de contexte, défini dans usbctrl.c).
+réponse : utiliser des variables ghost (type de variable ACSL) pour "remplacer les variables statiques" dans les spécifications des fonctions. Concrètement, on assign la variable ghost à la variable static quand celle-ci est modifiée par une fonction (et donc apparait dans les assign de la spec de la fonction). Mais c'est juste un artifice pour compenser le fait que frama ne gère pas correctement les variables statiques
+
+\subsection{Résultats obtenus}
+
+donner combien de fonctions sont pleinement spéficiées
+combien de problème il reste (s'il en reste...)
+
+
+\section{Retour d'expérience sur l'utilisation de Frama-C}
+
+complexe mais puissant
+importance des options : pas facile de trouver des explications (toutes ne sont pas expliquées dans les différents manuels, frama -wp-h pour avoir la liste exhaustive, mais explications succinctes
+
+installation pas facile également !
+
+pas facile d'obtenir des renseignements en ligne pour comprendre certains comportements de framaC (cf chapitre plus loin) : contact du CEA nécessaire
+
+importance de la communauté en ligne
+
+Toutefois, les exemples donnés ne sont pas toujours bien illustrés, et toutes les options ne sont pas présentes. Il est ainsi nécessaire de se référer à l'aide en ligne de commande, installée en même temps que Frama-C.
