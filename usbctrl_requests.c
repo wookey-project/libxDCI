@@ -2285,18 +2285,18 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     mbed_error_t errcode = MBED_ERROR_NONE;
     usbctrl_context_t *ctx = NULL;
 
-    /* Sanitation */
-    if (pkt == NULL) {
-        errcode = MBED_ERROR_INVPARAM;
-        usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
-        goto err;
-    }
     /* Detect which context is assocated to current request and set local ctx */
         if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ; */
         /* trapped on oepint() from a device which is not handled here ! what ? */
         /*@ assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (0x40040000 .. 0x40150000))) ; */
         errcode = MBED_ERROR_UNKNOWN;
+        usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
+        goto err_init;
+    }
+    /* Sanitation */
+    if (pkt == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
         usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
         goto err;
     }
@@ -2384,15 +2384,8 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     }
 err:
     /* release EP0 recv FIFO */
-
-#if defined(__FRAMAC__)
-/*
-    FIXME : RTE car on peut y arriver avec ctx non défini (donc accès mémoire invalide)
-*/
-#else
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-#endif/*!__FRAMAC__*/
-
+err_init:
     return errcode;
 }
 
