@@ -211,7 +211,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     usb_device_state_t state = usbctrl_get_state(ctx);
     /*@ assert state == ctx->state ; */
 
- beforeif:
     /* resetting directly depends on the current state */
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
         log_printf("[USBCTRL] RESET transition is invalid in current state !\n");

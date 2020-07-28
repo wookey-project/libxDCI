@@ -496,6 +496,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                              * thus we reduce the max allowed size for class descriptor.
                              * normally we can assert cur_offset >= MAX_DESCRIPTOR_LEN */
                             uint32_t max_buf_size = MAX_DESCRIPTOR_LEN - curr_offset;
+                            uint8_t class_desc_max_size = 0;
+                            if (max_buf_size > 256) {
+                                class_desc_max_size = 255;
+                            } else {
+                                /* reducing buffer to effective max buf size if shorter than uint8_t size */
+                                class_desc_max_size = (uint8_t)(max_buf_size & 0xff);
+                            }
 
                             // PTH: patch au dessus devrait corriger le RTE, à confirmer par EVA
                             // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
@@ -509,13 +516,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
                             /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler ∈ {&class_get_descriptor}; */
                             /*@ calls class_get_descriptor; */
-                            errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &max_buf_size, handler);
+                            errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &class_desc_max_size, handler);
 
 
                             if (errcode != MBED_ERROR_NONE) {
                                 goto err;
                             }
-                            curr_offset += max_buf_size;
+                            curr_offset += class_desc_max_size;
                         }
                     }
                     {
