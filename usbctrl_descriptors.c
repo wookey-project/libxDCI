@@ -407,6 +407,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              * complete, and can be sanitized properly in comparison with the passed buffer size */
             descriptor_size += class_desc_size;
 
+            /* before starting to build descriptor, check that we have enough memory space in the given buffer */
             if (descriptor_size > MAX_DESCRIPTOR_LEN) {
                 log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
                 errcode = MBED_ERROR_UNSUPORTED_CMD;
@@ -490,13 +491,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
                             }
 
-                        #ifndef __FRAMAC__
                             /* FIXME: there is a RTE here, to check if the semantic of __FRAMAC__ version is okay, using a noRTE statement globaly */
-                            uint32_t max_buf_size = *desc_size - curr_offset;
-                        #else
-                            uint32_t max_buf_size = curr_offset ;
-                        #endif
+                            /* we need to get back class level descriptor from upper layer. Although, we have already consumed a part of the target buffer and
+                             * thus we reduce the max allowed size for class descriptor.
+                             * normally we can assert cur_offset >= MAX_DESCRIPTOR_LEN */
+                            uint32_t max_buf_size = MAX_DESCRIPTOR_LEN - curr_offset;
 
+                            // PTH: patch au dessus devrait corriger le RTE, à confirmer par EVA
                             // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
                             // Cyril : probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset;
 
