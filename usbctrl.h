@@ -139,6 +139,9 @@ uint32_t Frama_C_interval_32(uint32_t min, uint32_t max);
 
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 
+#define USB_BACKEND_MEMORY_BASE 0x40040000
+#define USB_BACKEND_MEMORY_END  0x40044000
+
 //@ ghost  uint8_t GHOST_num_ctx;
 //@ ghost  uint8_t GHOST_idx_ctx = 0;
 
@@ -223,32 +226,42 @@ typedef struct usbctrl_context {
 } usbctrl_context_t;
 usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = {0} ;
 
+bool FLAG = false ;
 
 /*@
-    @ requires \separated(buf,desc_size,&ctx_list);
-    @ assigns *desc_size, *buf ;
+    @ requires \separated(buf,desc_size,&ctx_list,&Frama_C_entropy_source_8, &FLAG);
+    @ assigns *desc_size, FLAG,Frama_C_entropy_source_8 ;
     @ ensures (buf == \null || desc_size == \null) ==> \result == MBED_ERROR_INVPARAM ;
-    @ ensures !(buf == \null || desc_size == \null) ==> (\result == MBED_ERROR_NONE && 0 <= *desc_size <=  \old(*desc_size)) ;
+    @ ensures (!(buf == \null || desc_size == \null) && FLAG == \false)
+             ==> (\result == MBED_ERROR_NONE && 0 <= *desc_size <=  \old(*desc_size) && FLAG == \true) ;
+    @ ensures (!(buf == \null || desc_size == \null) && FLAG == \true)
+             ==> (\result == MBED_ERROR_NONE && \old(*desc_size) ==  \old(*desc_size) && FLAG == \true) ;
 */
 mbed_error_t  class_get_descriptor(uint8_t             iface_id,
                                         uint8_t            *buf,
                                         uint8_t           *desc_size,
-                                        uint32_t            usbdci_handler ) ;
-/*{
+                                        uint32_t            usbdci_handler )
+{
     mbed_error_t errcode = MBED_ERROR_NONE;
 
     // sanitation
     if (buf == NULL || desc_size == NULL) {
-        log_printf( invalid param buffers\n");
+        log_printf("invalid param buffers\n");
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
 
-    *buf = Frama_C_interval(0,*desc_size) ;
+    if(FLAG == false){
+        *desc_size = Frama_C_interval_8(0,*desc_size) ;
+    }else{
+        *desc_size = *desc_size ;
+    }
+
+FLAG = true ;
 
 err:
     return errcode;
-}*/
+}
 
 #else
 

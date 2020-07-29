@@ -820,7 +820,7 @@ err:
     @ behavior other :
     @   assumes ctxh < GHOST_num_ctx ;
     @	assigns usbotghs_ctx ;
-    @	assigns *((uint32_t *) (0x40040000 .. 0x40150000)), ctx_list[ctxh] ;
+    @	assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), ctx_list[ctxh] ;
     @   ensures is_valid_error(\result) ;
 
     @ complete behaviors ;

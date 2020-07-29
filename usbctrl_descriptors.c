@@ -347,10 +347,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
             for (uint8_t i = 0; i < iface_num; ++i) {
                 if (ctx->cfg[curr_cfg].interfaces[i].class_desc_handler != NULL) {
-                    //uint32_t max_buf_size = MAX_DESCRIPTOR_LEN;  // cyril : pourquoi 32 bits alors que MAX_DESCRIPTOR_LEN == 256 ?
-
                     uint8_t max_buf_size = MAX_DESCRIPTOR_LEN-1 ;
-
 
                     #ifndef __FRAMAC__
                     if (handler_sanity_check_with_panic((physaddr_t)ctx->cfg[curr_cfg].interfaces[i].class_desc_handler)) {
@@ -366,7 +363,8 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         goto err;
                     }
                     log_printf("[LIBCTRL] found one class level descriptor of size %d\n", max_buf_size);
-                    class_desc_size += max_buf_size;  // cyril : à confirmer, avant max_buf_size
+                    class_desc_size += max_buf_size;
+                    /*@ assert FLAG == \true ; */
                 }
             }
 
@@ -406,6 +404,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             /* we add potential class descriptors found above ... From now on, the global descriptor size is
              * complete, and can be sanitized properly in comparison with the passed buffer size */
             descriptor_size += class_desc_size;
+            /*@ assert FLAG == \true ; */
 
             /* before starting to build descriptor, check that we have enough memory space in the given buffer */
             if (descriptor_size > MAX_DESCRIPTOR_LEN) {
@@ -414,6 +413,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 *desc_size = 0;
                 goto err;
             }
+            /*@ assert descriptor_size <= MAX_DESCRIPTOR_LEN ; */
             log_printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
             uint32_t curr_offset = 0;
             uint8_t *config_desc = &(buf[curr_offset]);
@@ -482,6 +482,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         curr_offset += sizeof(usbctrl_interface_descriptor_t);
                     }
                     {
+                        /*@ assert FLAG == \true ; */
                         // class level descriptor of current interface
 
                         if (ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler) {
