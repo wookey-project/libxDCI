@@ -63,6 +63,9 @@
 //PMO COMPTEUR HARD
 #define CPT_HARD 100
 
+#define CORE_FIFO_LENGTH 4096
+#define MAX_EP_HW 4
+
 /******************************************************************
  * Utilities
  */
@@ -472,8 +475,8 @@ uint32_t usbotghs_get_ep_mpsize(void)
 
 /*@
     @ requires \valid(src);
-    @ requires \separated(src,&usbotghs_ctx, (uint32_t *) (0x40040000 .. 0x40150000));
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)),usbotghs_ctx, usbotghs_ctx.in_eps[ep_id];
+    @ requires \separated(src,&usbotghs_ctx, (uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END));
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),usbotghs_ctx, usbotghs_ctx.in_eps[ep_id];
 
     @ behavior bad_ctx:
     @   assumes &usbotghs_ctx == \null ;
@@ -482,19 +485,19 @@ uint32_t usbotghs_get_ep_mpsize(void)
 
     @ behavior bad_ep:
     @   assumes &usbotghs_ctx != \null ;
-    @   assumes ep_id >= USBOTGHS_MAX_IN_EP ;   // case CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
+    @   assumes (ep_id >= USBOTGHS_MAX_IN_EP || ep_id >= MAX_EP_HW) ;   // case CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
     @   assigns \nothing ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior not_configured:
     @   assumes &usbotghs_ctx != \null ;
-    @   assumes ep_id < USBOTGHS_MAX_IN_EP ;
+    @   assumes !(ep_id >= USBOTGHS_MAX_IN_EP || ep_id >= MAX_EP_HW) ;
     @   assumes ((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == 0)); // Cyril : il faut tenir compte de la variable CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE...
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
     @ behavior set_fifo_error:
     @   assumes &usbotghs_ctx != \null ;
-    @   assumes ep_id < USBOTGHS_MAX_IN_EP ;
+    @   assumes !(ep_id >= USBOTGHS_MAX_IN_EP || ep_id >= MAX_EP_HW) ;
     @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == 0));
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck != 0)  ;
     @   ensures \old(usbotghs_ctx) ≡ usbotghs_ctx;
@@ -502,7 +505,7 @@ uint32_t usbotghs_get_ep_mpsize(void)
 
     @ behavior fifo_no_error:
     @   assumes &usbotghs_ctx != \null ;
-    @   assumes ep_id < USBOTGHS_MAX_IN_EP ;
+    @   assumes !(ep_id >= USBOTGHS_MAX_IN_EP || ep_id >= MAX_EP_HW) ;
     @   assumes !((usbotghs_ctx.in_eps[ep_id].configured == \false) || (usbotghs_ctx.in_eps[ep_id].mpsize == 0));
     @   assumes (usbotghs_ctx.in_eps[ep_id].fifo_lck == 0)  ;
     @   ensures \result == MBED_ERROR_BUSY || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
@@ -540,7 +543,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
 
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
 
-    if(ep_id >= USBOTGHS_MAX_IN_EP)
+    if(ep_id >= USBOTGHS_MAX_IN_EP || ep_id >= MAX_EP_HW)
     {
         errcode = MBED_ERROR_INVPARAM;
         goto err_init;
@@ -711,7 +714,7 @@ mbed_error_t usbotghs_send_data(uint8_t *src, uint32_t size, uint8_t ep_id)
       /*@
             @ loop invariant \valid_read(r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id));
             @ loop invariant \separated(&usbotghs_ctx,r_CORTEX_M_USBOTG_HS_DTXFSTS(ep_id),r_CORTEX_M_USBOTG_HS_GINTMSK, USBOTG_HS_DEVICE_FIFO(usbotghs_ctx.in_eps[ep_id].id) )  ;
-            @ loop assigns  residual_size, *ep, *((uint32_t *) (0x40040000 .. 0x40150000));
+            @ loop assigns  residual_size, *ep, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END));
             @ loop variant (residual_size - fifo_size);
        */
     //PMO loop assigns pas errcode
@@ -817,7 +820,7 @@ err_init:
  */
 
 /*@
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_BUSY || \result == MBED_ERROR_NONE ;
 */
 
@@ -901,7 +904,7 @@ mbed_error_t usbotghs_global_stall(void)
 
 
 /*@
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ ensures (&usbotghs_ctx == \null) ==> \result == MBED_ERROR_INVSTATE ;
     @ ensures (&usbotghs_ctx != \null) ==> ( \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_BUSY || \result ==MBED_ERROR_NONE  ) ;
 
@@ -995,8 +998,8 @@ err:
 }
 
 /*@
-    @	requires \separated(&usbotghs_ctx,((uint32_t *) (0x40040000 .. 0x40150000)) ) ;
-    @   assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
+    @	requires \separated(&usbotghs_ctx,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ) ;
+    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
 
     @ behavior bad_ctx:
     @   assumes &usbotghs_ctx == \null ;
@@ -1131,7 +1134,7 @@ mbed_error_t usbotghs_global_stall_clear(void)
  */
 
 /*@
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ ensures (&usbotghs_ctx == \null) ==> (\result == MBED_ERROR_INVSTATE) ;
     @ ensures ((&usbotghs_ctx == \null) && (dir == USBOTG_HS_EP_DIR_IN )) ==>
                 (\result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_NONE ||  \result == MBED_ERROR_BUSY ) ;
@@ -1239,8 +1242,8 @@ mbed_error_t usbotghs_endpoint_stall_clear(uint8_t ep, usbotghs_ep_dir_t dir)
 
 
 /*@
-    @ requires \separated(&usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],((uint32_t *) (0x40040000 .. 0x40150000)));
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)] ;
+    @ requires \separated(&usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)] ;
 
     @ behavior bad_ctx:
     @   assumes &usbotghs_ctx == \null ;
@@ -1249,12 +1252,12 @@ mbed_error_t usbotghs_endpoint_stall_clear(uint8_t ep, usbotghs_ep_dir_t dir)
     @ behavior USBOTG_HS_EP_DIR_IN:
     @   assumes &usbotghs_ctx != \null ;
     @   assumes dir == USBOTG_HS_EP_DIR_IN ;
-    @   ensures \result == MBED_ERROR_NONE || MBED_ERROR_INVPARAM ;
+    @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_NOSTORAGE ;
 
     @ behavior USBOTG_HS_EP_DIR_OUT:
     @   assumes &usbotghs_ctx != \null ;
     @   assumes dir == USBOTG_HS_EP_DIR_OUT ;
-    @   ensures \result == MBED_ERROR_NONE || MBED_ERROR_INVPARAM ;
+    @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_NOSTORAGE ;
 
     @ behavior default:
     @   assumes &usbotghs_ctx != \null ;
@@ -1267,7 +1270,7 @@ mbed_error_t usbotghs_endpoint_stall_clear(uint8_t ep, usbotghs_ep_dir_t dir)
 
 /*
     FIXME : RTE pour la valeur d'ep : ctx->in_eps[ep] et ctx->out_eps[ep]
-    		spec à revoir pour traiter les différents cas d'ep possible pour les behavior
+    TODO : spec à revoir pour traiter les différents cas d'ep possible pour les behavior
 */
 
 
@@ -1298,13 +1301,12 @@ mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
 
     switch (dir) {
         case USBOTG_HS_EP_DIR_IN:
-
-            if(ep >= USBOTGHS_MAX_IN_EP){
-            	errcode = MBED_ERROR_INVPARAM;
-            	goto err;
+            log_printf("[USBOTGHS] enable EP %d: dir IN, mpsize %d, type %x\n", ep, mpsize, type);
+            if (ep >= USBOTGHS_MAX_IN_EP) {
+                errcode = MBED_ERROR_NOSTORAGE;
+                goto err;
             }
 
-            log_printf("[USBOTGHS] enable EP %d: dir IN, mpsize %d, type %x\n", ep, mpsize, type);
             ctx->in_eps[ep].id = ep;
             ctx->in_eps[ep].dir = dir;
             ctx->in_eps[ep].configured = true;
@@ -1312,17 +1314,9 @@ mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
             ctx->in_eps[ep].type = type;
             ctx->in_eps[ep].state = USBOTG_HS_EP_STATE_IDLE;
             ctx->in_eps[ep].handler = handler;
-
-            if(ep >= USBOTGHS_MAX_OUT_EP){
-            	errcode = MBED_ERROR_INVPARAM;
-            	goto err;
+            if (ep < USBOTGHS_MAX_OUT_EP) {
+                ctx->out_eps[ep].configured = false;
             }
-
-            ctx->out_eps[ep].configured = false;
-
-            /*
-				FIXME : RTE avec ep
-            */
 
             /* set EP configuration */
             set_reg_value(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep), type,USBOTG_HS_DIEPCTL_EPTYP_Msk,USBOTG_HS_DIEPCTL_EPTYP_Pos);
@@ -1352,13 +1346,12 @@ mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
             set_reg_bits(r_CORTEX_M_USBOTG_HS_DAINTMSK, USBOTG_HS_DAINTMSK_IEPM(ep));
             break;
         case USBOTG_HS_EP_DIR_OUT:
-
-            if(ep >= USBOTGHS_MAX_OUT_EP){
-            	errcode = MBED_ERROR_INVPARAM;
-            	goto err;
+            log_printf("[USBOTGHS] enable EP %d: dir OUT, mpsize %d, type %x\n", ep, mpsize, type);
+            if (ep >= USBOTGHS_MAX_OUT_EP) {
+                errcode = MBED_ERROR_NOSTORAGE;
+                goto err;
             }
 
-            log_printf("[USBOTGHS] enable EP %d: dir OUT, mpsize %d, type %x\n", ep, mpsize, type);
             ctx->out_eps[ep].id = ep;
             ctx->out_eps[ep].dir = dir;
             ctx->out_eps[ep].configured = true;
@@ -1366,10 +1359,8 @@ mbed_error_t usbotghs_configure_endpoint(uint8_t                 ep,
             ctx->out_eps[ep].type = type;
             ctx->out_eps[ep].state = USBOTG_HS_EP_STATE_IDLE;
             ctx->out_eps[ep].handler = handler;
-
-            if(ep >= USBOTGHS_MAX_IN_EP){
-            	errcode = MBED_ERROR_INVPARAM;
-            	goto err;
+            if (ep < USBOTGHS_MAX_IN_EP) {
+                ctx->in_eps[ep].configured = false;
             }
 
             ctx->in_eps[ep].configured = false;
@@ -1604,7 +1595,7 @@ err:
 
 /*@
     @ requires \valid(r_CORTEX_M_USBOTG_HS_DCFG);
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ ensures ((USBOTG_HS_DCFG_DAD_Pos <= 31) && (USBOTG_HS_DCFG_DAD_Msk == 0xFFFFFFFF)) ==> *r_CORTEX_M_USBOTG_HS_DCFG == addr ;
 */
 
@@ -1783,7 +1774,7 @@ end:
 
 /*@
     @ requires \valid(dst);
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)), usbotghs_ctx;
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx;
 
     @ behavior not_configured:
     @   assumes ((usbotghs_ctx.out_eps[epid].configured == \false) || (usbotghs_ctx.out_eps[epid].mpsize == 0))  ;
@@ -1804,14 +1795,16 @@ end:
 
 */
 
+/*
+    RTE if epid too big
+*/
+
 
 mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid)
 {
     usbotghs_context_t *ctx = usbotghs_get_context();
     usbotghs_ep_t*      ep;
     mbed_error_t        errcode = MBED_ERROR_NONE;
-
-// cyril : RTE ici si epid trop grand
 
 #if CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE
         /* reception is done ON out_eps in device mode */
@@ -1857,7 +1850,7 @@ mbed_error_t usbotghs_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t epid)
         /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid) <= (uint32_t *)0x40150000 ; */
         set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), pktcount, USBOTG_HS_DOEPTSIZ_PKTCNT_Msk(epid), USBOTG_HS_DOEPTSIZ_PKTCNT_Pos(epid));
         /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid) <= (uint32_t *)0x40150000 ; */
-        set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), size, USBOTG_HS_DOEPTSIZ_XFRSIZ_Msk(epid), USBOTG_HS_DOEPTSIZ_XFRSIZ_Pos(epid)); // cyril : ep ici avant, epid plutot
+        set_reg_value(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(epid), size, USBOTG_HS_DOEPTSIZ_XFRSIZ_Msk(epid), USBOTG_HS_DOEPTSIZ_XFRSIZ_Pos(epid));
     } else {
         /* for EP0, the IP is not able to handle more than 64 bytes per
          * transfer. As a consequence, even for bigger transfers (e.g. 4K)
@@ -1946,13 +1939,11 @@ err:
 }
 
 /*@
-    @ requires \valid(src);
-    @ requires \separated(src,r_CORTEX_M_USBOTG_HS_GINTMSK, USBOTG_HS_DEVICE_FIFO(ep) ) ;
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
-*/
-
-/*
-    FIXME : pb de *(const uint32_t *)src, alors que uint8_t *src : risque de dépassement en mémoire (valid_read(src) pas validé)
+    @ requires ep <= 3 ;  // cyril : USBOTG_HS_DEVICE_FIFO(ep) = (uint32_t *)(0x40040000 + 0x1000*(ep+1))
+    @ requires \valid_read(src);
+    @ requires (uint32_t *)USB_BACKEND_MEMORY_BASE <= USBOTG_HS_DEVICE_FIFO(ep) <= (uint32_t *)USB_BACKEND_MEMORY_END ;
+    @ requires \separated(src,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ) ;
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
 */
 
 static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, uint8_t ep)
@@ -1970,15 +1961,11 @@ static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, 
         return ;
     }
 
-    /*@ assert \valid(src) ; */
-
     log_printf("[USBOTG][HS] writing %d bytes to EP %d core TxFIFO\n", size, ep);
     // IP should has its own interrupts disable during ISR execution
     uint32_t oldmask = read_reg_value(r_CORTEX_M_USBOTG_HS_GINTMSK);
     /* mask interrupts while writting Core FIFO */
     set_reg_value(r_CORTEX_M_USBOTG_HS_GINTMSK, 0, 0xffffffff, 0);
-
-    /*@ assert *r_CORTEX_M_USBOTG_HS_GINTMSK == *((uint32_t *) (USB_OTG_HS_BASE + 0x018)); */
 
     /* manual copy to Core FIFO */
     /* there is no overflow on src here, as the C divisor is natural integer
@@ -1988,22 +1975,24 @@ static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, 
 
     /*@
         @ loop invariant 0 <= i <= size_4bytes;
-        @ loop invariant \valid(USBOTG_HS_DEVICE_FIFO(ep));
-        @ loop invariant \separated(src,USBOTG_HS_DEVICE_FIFO(ep) );
-        @ loop assigns i, *((uint32_t *) (0x40040000 .. 0x40150000)), tmp, src ;
+        @ loop invariant ep <= 3 ;
+        @ loop invariant \valid_read(src);
+        @ loop invariant (uint32_t *)USB_BACKEND_MEMORY_BASE <= USBOTG_HS_DEVICE_FIFO(ep) <= (uint32_t *)USB_BACKEND_MEMORY_END ;
+        @ loop invariant \separated(src,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ) ;
+        @ loop assigns i, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), tmp, src ;
         @ loop variant (size_4bytes - i) ;
     */
-    //*USBOTG_HS_DEVICE_FIFO(ep)
 
     for (uint32_t i = 0; i < size_4bytes; i++, (uint8_t *)src += 4){
-        //write_reg_value(USBOTG_HS_DEVICE_FIFO(ep), *(const uint32_t *)src);  // Cyril : attention au cast pour frama : pb pour EVA ? je crois, en \valid_read : le cast ne passe pas
+        //write_reg_value(USBOTG_HS_DEVICE_FIFO(ep), *(const uint32_t *)src); // RTE here because of the cast
 
         tmp = src[0];
         tmp |= (uint32_t)(src[1] & 0xff) << 8;
         tmp |= (uint32_t)(src[2] & 0xff) << 16;
         tmp |= (uint32_t)(src[3] & 0xff) << 24;
-        /*@ assert (uint32_t *)0x40040000 <= USBOTG_HS_DEVICE_FIFO(ep) <= (uint32_t *)0x40150000 ; */  // pour que le loop assigns passe
-        write_reg_value(USBOTG_HS_DEVICE_FIFO(ep), tmp);  // Cyril : voir pour ajuster la plage mémoire, je dépasse 0x40080000...
+        /*@ assert (uint32_t *)USB_BACKEND_MEMORY_BASE <= USBOTG_HS_DEVICE_FIFO(ep) <= (uint32_t *)USB_BACKEND_MEMORY_END ; */
+        write_reg_value(USBOTG_HS_DEVICE_FIFO(ep), tmp);
+        //write_reg_value((uint32_t *)(0x40040000 + 0x1000*(ep+1)), tmp);
     }
 
     tmp = 0;
@@ -2020,7 +2009,7 @@ static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, 
             __explicit_fallthrough
         case 1:
             tmp |= ((const uint8_t*) src)[0];
-            /*@ assert (uint32_t *)0x40040000 <= USBOTG_HS_DEVICE_FIFO(ep) <= (uint32_t *)0x40150000 ; */
+            /*@ assert (uint32_t *)USB_BACKEND_MEMORY_BASE <= USBOTG_HS_DEVICE_FIFO(ep) <= (uint32_t *)USB_BACKEND_MEMORY_END ; */
             write_reg_value(USBOTG_HS_DEVICE_FIFO(ep), tmp);
             break;
         default:
@@ -2029,22 +2018,19 @@ static inline void usbotghs_write_core_fifo( uint8_t *src, const uint32_t size, 
     }
 
     /* IP should has its own interrupts disable during ISR execution */
+    /*@ assert (uint32_t *)USB_BACKEND_MEMORY_BASE <= r_CORTEX_M_USBOTG_HS_GINTMSK <= (uint32_t *)USB_BACKEND_MEMORY_END ; */
     set_reg_value(r_CORTEX_M_USBOTG_HS_GINTMSK, oldmask, 0xffffffff, 0);
 #endif
 }
 
 /*@
     @ requires \valid(ep);
-    @ requires \separated(ep,&ep->fifo[ep->fifo_idx],r_CORTEX_M_USBOTG_HS_GINTMSK,USBOTG_HS_DEVICE_FIFO(ep->id));
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)), *ep ;
+    @ requires \separated(ep,&ep->fifo[ep->fifo_idx],((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), *ep ;
     @ ensures size > USBOTG_HS_TX_CORE_FIFO_SZ ==> \result == MBED_ERROR_INVPARAM ;
     @ ensures (size <= USBOTG_HS_TX_CORE_FIFO_SZ && ep->fifo_lck != \false) ==> \result == MBED_ERROR_INVSTATE ;
     @ ensures (size <= USBOTG_HS_TX_CORE_FIFO_SZ && ep->fifo_lck == \false) ==> \result == MBED_ERROR_NONE && ep->fifo_lck == \false && ep->fifo_idx == (\old(ep->fifo_idx + size));
 */
-
-
-
-// assigns *r_CORTEX_M_USBOTG_HS_GINTMSK, *USBOTG_HS_DEVICE_FIFO(ep->id) ;
 
 mbed_error_t usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep)
 {
@@ -2067,7 +2053,7 @@ mbed_error_t usbotghs_write_epx_fifo(const uint32_t size, usbotghs_ep_t *ep)
     usbotghs_write_core_fifo(&(ep->fifo[ep->fifo_idx]), size, ep->id);
 
     /* int overflow check */
-    if (((uint64_t)(ep->fifo_idx + size)) >= ((uint32_t)4*1024*1024*1000)) {
+    if (ep->fifo_idx >= ((uint32_t)4*1024*1024*1000 - size)) {
         /* In a nominal embedded usage, this should never arise as embedded devices never
          * handle such amount of memory */
         log_printf("USBOTG][HS] overflow detected!\n");
@@ -2083,23 +2069,30 @@ err:
 
 /*@
     @ requires \valid(ep);
-    @ requires \separated(((uint32_t *) (0x40040000 .. 0x40150000)), &usbotghs_ctx) ;
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)), *ep, usbotghs_ctx ;
-
+    @ requires \separated(((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), &usbotghs_ctx) ;
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx, *ep ;
 
     @ behavior ctx_null:
     @   assumes &usbotghs_ctx == \null;
     @   ensures \result == MBED_ERROR_INVSTATE ;
 
-    @ behavior epid_null:
+    @ behavior epid_null_NOSTORAGE:
     @   assumes &usbotghs_ctx != \null;
     @   assumes (ep->id == 0) ;
-    @   ensures (\result ==  MBED_ERROR_NONE || \result == MBED_ERROR_NOMEM) ;
+    @   assumes usbotghs_ctx.fifo_idx + (uint16_t)USBOTG_HS_TX_CORE_FIFO_SZ >= (uint16_t)CORE_FIFO_LENGTH ;
+    @   ensures \result == MBED_ERROR_NOSTORAGE ;
+    @   ensures ep->mpsize == \old(ep->mpsize) ;
+
+    @ behavior epid_null_STORAGE_OK:
+    @   assumes &usbotghs_ctx != \null;
+    @   assumes (ep->id == 0) ;
+    @   assumes !(usbotghs_ctx.fifo_idx + (uint16_t)USBOTG_HS_TX_CORE_FIFO_SZ >= (uint16_t)CORE_FIFO_LENGTH) ;
+    @   ensures \result == MBED_ERROR_NONE ;
 
     @ behavior epid_not_null :
     @   assumes &usbotghs_ctx != \null;
     @   assumes !(ep->id == 0) ;
-    @   ensures (\result ==  MBED_ERROR_NONE || \result == MBED_ERROR_NOMEM) ;
+    @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_NOSTORAGE ;
 
     @ complete behaviors;
     @ disjoint behaviors ;
@@ -2108,6 +2101,7 @@ err:
 
 /*
     FIXME : RTE possible : assert rte: unsigned_downcast: (int)ctx->fifo_idx + 512 ≤ 65535;
+    TODO : spécifier les behavior pour atteindre nostorage : probleme pour epid_not_null, surement à cause de ep->mpsize
 */
 
 mbed_error_t usbotghs_reset_epx_fifo(usbotghs_ep_t *ep)
@@ -2130,32 +2124,31 @@ mbed_error_t usbotghs_reset_epx_fifo(usbotghs_ep_t *ep)
          *  FIXME: this work is not made in the previous driver... Maybe we should correct this here.
          */
 
+        if (ctx->fifo_idx + USBOTG_HS_TX_CORE_FIFO_SZ >= CORE_FIFO_LENGTH) {
+            errcode = MBED_ERROR_NOSTORAGE;
+            goto err;
+        }
 
         /*
          */
-        /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DIEPTXF0 <= (uint32_t *)0x40150000 ; */
+        /* FIXME: DIEPTXF fifo size is in word unit, shouldn't it be fifo_idx/4 ? see USBOTGFS driver */
         set_reg(r_CORTEX_M_USBOTG_HS_DIEPTXF0, USBOTG_HS_RX_CORE_FIFO_SZ, USBOTG_HS_DIEPTXF_INEPTXSA);
-        /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DIEPTXF0 <= (uint32_t *)0x40150000 ; */
         set_reg(r_CORTEX_M_USBOTG_HS_DIEPTXF0, USBOTG_HS_TX_CORE_FIFO_SZ, USBOTG_HS_DIEPTXF_INEPTXFD);
         /*
          * 4. Program STUPCNT in the endpoint-specific registers for control OUT endpoint 0 to receive a SETUP packet
          *      – STUPCNT = 3 in OTG_HS_DOEPTSIZ0 (to receive up to 3 back-to-back SETUP packets)
          */
-        /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0) <= (uint32_t *)0x40150000 ; */
         set_reg(r_CORTEX_M_USBOTG_HS_DOEPTSIZ(0),
                 3, USBOTG_HS_DOEPTSIZ_STUPCNT);
-        /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DOEPCTL(0) <= (uint32_t *)0x40150000 ; */
         set_reg(r_CORTEX_M_USBOTG_HS_DOEPCTL(0),
                 1, USBOTG_HS_DOEPCTL_CNAK);
         usbotghs_txfifo_flush(0);
-        //ctx->fifo_idx += USBOTG_HS_TX_CORE_FIFO_SZ;  // Cyril : RTE possible : /*@ assert rte: unsigned_downcast: (int)ctx->fifo_idx + 512 ≤ 65535; */
-
+        ctx->fifo_idx += USBOTG_HS_TX_CORE_FIFO_SZ;
     } else {
         /* all other EPs have their DIEPTXF registers accesible through a single macro */
         if (ep->dir == USBOTG_HS_EP_DIR_OUT) {
             /* using global RX fifo... GRXFIFOSZ set as global RX FIFO */
         } else {
-            /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DIEPTXF(ep->id) <= (uint32_t *)0x40150000 ; */
             set_reg(r_CORTEX_M_USBOTG_HS_DIEPTXF(ep->id), ctx->fifo_idx, USBOTG_HS_DIEPTXF_INEPTXSA);
             /* this field is in 32bits words unit */
             /* for very small mpsize EP (e.g. keyboards, we must support at list
@@ -2167,9 +2160,18 @@ mbed_error_t usbotghs_reset_epx_fifo(usbotghs_ep_t *ep)
             } else {
                 fifosize = ep->mpsize;
             }
-            /*@ assert (uint32_t *)0x40040000 <= r_CORTEX_M_USBOTG_HS_DIEPTXF(ep->id) <= (uint32_t *)0x40150000 ; */
+
+
+            if (ctx->fifo_idx + fifosize >= CORE_FIFO_LENGTH) {
+                errcode = MBED_ERROR_NOSTORAGE;
+                goto err;
+            }
+
+            /*@ assert (ctx->fifo_idx + fifosize) < (uint16_t)CORE_FIFO_LENGTH ; */
+
+            /* FIXME: DIEPTXF fifo size is in word unit, shouldn't it be fifosize/4 ? */
             set_reg(r_CORTEX_M_USBOTG_HS_DIEPTXF(ep->id), fifosize, USBOTG_HS_DIEPTXF_INEPTXFD);
-            //ctx->fifo_idx += fifosize;  // Cyril : RTE possible : /*@ assert rte: unsigned_downcast: (int)ctx->fifo_idx + 512 ≤ 65535; */
+            ctx->fifo_idx += fifosize;
         }
     }
     ep->fifo_idx = 0;
@@ -2178,18 +2180,14 @@ mbed_error_t usbotghs_reset_epx_fifo(usbotghs_ep_t *ep)
     ep->fifo_size = 0;
     ep->core_txfifo_empty = true;
 err:
+    /*@ assert \at(ep->mpsize,Here) == \at(ep->mpsize,Pre) ; */
     return errcode;
 }
 
 /*@
-    @ assigns *((uint32_t *) (0x40040000 .. 0x40150000)) ;
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_BUSY ;
 */
-
-/*
-    FIXME: voir pour le compteur (une valeur réaliste?) pour parcourir toute la fonction
-*/
-
 
 mbed_error_t usbotghs_txfifo_flush(uint8_t ep_id)
 {
@@ -2293,11 +2291,19 @@ void test_fcn_driver_eva(){
     usbotghs_endpoint_stall(ep_id, dir) ;
     usbotghs_get_ep_state(ep_id, dir) ;
 
-    uint8_t resp[1024] = { 0 };
 
-    usbotghs_ctx.in_eps[0].mpsize = Frama_C_interval_16(0,65535); // tentative pour entrer dans while(residual_size >= size), mais à revoir
-    usbotghs_ctx.in_eps[0].fifo_lck = 1 ; // pour avoir une erreur dans xmit_fifo dans send_data
+
+    usbotghs_ctx.in_eps[EP0].mpsize = Frama_C_interval_16(0,65535); // tentative pour entrer dans while(residual_size >= size), mais à revoir
+    uint8_t resp[1024] = { 0 };
+    usbotghs_ctx.in_eps[EP0].fifo_lck = 1 ; // pour avoir une erreur dans xmit_fifo dans send_data
     usb_backend_drv_send_data((uint8_t *)&resp, size, EP0);
+    usbotghs_ctx.in_eps[EP0].fifo_lck = 0 ;
+    usb_backend_drv_send_data((uint8_t *)&resp, 513, EP0);  // pour rentrer dans la boucle residual_size >= fifo_size
+    usbotghs_ctx.in_eps[4].mpsize = Frama_C_interval_16(0,65535);
+    usbotghs_ctx.in_eps[4].id = 4 ;  // memory problem for write_core_fifo
+    usbotghs_ctx.in_eps[4].fifo_lck = 0 ;
+    usbotghs_ctx.in_eps[4].configured = 1 ;
+    usb_backend_drv_send_data((uint8_t *)&resp, size, 4);
     usb_backend_drv_send_data((uint8_t *)&resp, size, 8);   // pour entrer dans un cas d'erreur (je n'arrive pas à généraliser ep)
     usbotghs_send_zlp(ep_id);
     usbotghs_txfifo_flush(ep_id);
@@ -2307,7 +2313,7 @@ void test_fcn_driver_eva(){
     usb_backend_drv_configure_endpoint(ep_id,type,dir,1024,USB_BACKEND_EP_ODDFRAME,&handler_ep);
     usbotghs_configure(mode, & usbctrl_handle_inepevent,& usbctrl_handle_outepevent);
     usbotghs_set_recv_fifo((uint8_t *)&resp, size, 0);
-    //usbotghs_set_recv_fifo((uint8_t *)&resp, size, 1);  //Cyril : erreur dans set_reg_value (integer unsigned downcast, fausse alarme je pense)
+    usbotghs_set_recv_fifo((uint8_t *)&resp, size, 1);  //Cyril : erreur dans set_reg_value (integer unsigned downcast, fausse alarme je pense)
 
 }
 

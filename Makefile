@@ -182,7 +182,7 @@ frama-c-parsing-concat:
 
 frama-c-eva:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
-	            -absolute-valid-range 0x40040000-0x400150000 \
+	            -absolute-valid-range 0x40040000-0x40044000 \
 	            -no-frama-c-stdlib \
 	            -warn-left-shift-negative \
 	            -warn-right-shift-negative \
@@ -194,7 +194,6 @@ frama-c-eva:
 				-cpp-extra-args="-nostdinc -I framac/include" \
 		    -rte \
 		    -eva \
-		    -eva-warn-undefined-pointer-comparison none \
 		    -eva-auto-loop-unroll 500 \
 		    -eva-slevel 500 \
 		    -eva-slevel-function usbctrl_get_descriptor:12000 \
@@ -204,19 +203,17 @@ frama-c-eva:
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain \
 		    -eva-bitwise-domain \
-		    -eva-equality-through-calls-function usbctrl_start_device \
-		    -eva-equality-through-calls-function usbctrl_is_valid_transition \
 		    -eva-split-return auto \
 		    -eva-partition-history 3 \
-		    -eva-use-spec class_get_descriptor \
 		    -eva-use-spec usbctrl_reset_received \
 		    -eva-use-spec class_rqst_handler \
+		    -eva-use-spec handler_ep \
 		    -eva-log a:frama-c-rte-eva.log \
 			-save framac/results/frama-c-rte-eva.session
 
 frama-c:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c framac/include/driver_api/usbotghs_frama.c -c11 -machdep x86_32 \
-	        -absolute-valid-range 0x40040000-0x400150000 \
+	        -absolute-valid-range 0x40040000-0x40044000 \
 	        -no-frama-c-stdlib \
 	        -warn-left-shift-negative \
 	        -warn-right-shift-negative \
@@ -228,7 +225,7 @@ frama-c:
 			-cpp-extra-args="-nostdinc -I framac/include" \
 		    -rte \
 		    -eva \
-		    -eva-warn-undefined-pointer-comparison none \
+		    -eva-show-perf \
 		    -eva-auto-loop-unroll 500 \
 		    -eva-slevel 500 \
 		    -eva-slevel-function usbctrl_get_descriptor:12000 \
@@ -238,13 +235,11 @@ frama-c:
 		    -eva-symbolic-locations-domain \
 		    -eva-equality-domain \
 		    -eva-bitwise-domain \
-		    -eva-equality-through-calls-function usbctrl_start_device \
-		    -eva-equality-through-calls-function usbctrl_is_valid_transition \
 		    -eva-split-return auto \
-		    -eva-partition-history 10 \
-		    -eva-use-spec class_get_descriptor \
+		    -eva-partition-history 3 \
 		    -eva-use-spec usbctrl_reset_received \
 		    -eva-use-spec class_rqst_handler \
+		    -eva-use-spec handler_ep \
 		    -eva-log a:frama-c-rte-eva.log \
    		    -then \
    		    -wp \
