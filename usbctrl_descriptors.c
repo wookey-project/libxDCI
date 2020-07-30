@@ -413,12 +413,30 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 *desc_size = 0;
                 goto err;
             }
+
+            /*
+             * From now on, we *know* that the overall descriptor size is smaller than the buffer max supported
+             * length. We can add successive descriptors into it without risking to overflow the buffer.
+             * Descriptors are concatenated with regard to the USB configuration descriptor standard hierarchy,
+             * using the same list of descriptor as calculated above.
+             *
+             * The input buffer is a uint8_t* generic buffer as USB descriptor content is a dynamic, runtime
+             * caclucated, list of structure. To handle this, as unions can't be used due to dynamicity, we
+             * use an offset in the buffer (a uint8_t * pointer) which always target the begining of the currently
+             * being written descriptor. This pointer is explicitely casted into the descriptor that need to be
+             * written in order to properly handle the descriptor fields. The offset is then incremented using
+             * the descriptor size.
+             *
+             * C scoping is used for each descriptor handling to avoid any variable shadowing. Each typed
+             * descriptor pointer is named 'cfg' and its scope is reduced to the currently being handled descriptor
+             * only.
+             */
+            uint32_t curr_offset = 0;
+
             /*@ assert descriptor_size <= MAX_DESCRIPTOR_LEN ; */
             log_printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
-            uint32_t curr_offset = 0;
-            uint8_t *config_desc = &(buf[curr_offset]);
             {
-                usbctrl_configuration_descriptor_t *cfg = (usbctrl_configuration_descriptor_t *)&(config_desc[0]);
+                usbctrl_configuration_descriptor_t *cfg = (usbctrl_configuration_descriptor_t *)&(buf[curr_offset]);
                 cfg->bLength = sizeof(usbctrl_configuration_descriptor_t);
                 cfg->wTotalLength = descriptor_size;
                 cfg->bDescriptorType = USB_DESC_CONFIGURATION;
@@ -451,6 +469,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             */
 
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
+                    /* for each interface, we first need to add the interface descriptor */
                     {
                         /* pointing to next field: interface descriptor */
                         usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)&(buf[curr_offset]);
@@ -481,6 +500,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         cfg->iInterface = 1;
                         curr_offset += sizeof(usbctrl_interface_descriptor_t);
                     }
+                    /* for each interface, we may then add the associated class descriptor, if it exsists */
                     {
                         /*@ assert FLAG == \true ; */
                         // class level descriptor of current interface
@@ -526,6 +546,8 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                             curr_offset += class_desc_max_size;
                         }
                     }
+                    /* for each interface, we finish with each endpoint descriptor, for all non-control EP
+                     * INFO: libusbctrl consider that the device handle a signe control EP: EP0 */
                     {
                         /* and for this interface, handling each EP */
 
