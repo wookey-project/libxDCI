@@ -1022,6 +1022,10 @@ void test_fcn_usbctrl(){
     usb_device_state_t current_state = Frama_C_interval_8(0,9);
     usbctrl_request_code_t request = Frama_C_interval_8(0x0,0xc);
     uint8_t interval = Frama_C_interval_8(0,255);
+    //uint8_t class_descriptor_size = Frama_C_interval_8(0,255);
+
+
+
 
 /*
     def d'une nouvelle interface pour test de la fonction usbctrl_declare_interface
@@ -1138,6 +1142,7 @@ void test_fcn_usbctrl(){
 
     usbctrl_next_state(current_state,request);  // requires is_valid_state && is_valid_request : pas de test d'erreur sur les entrées du coup
     //usbctrl_handle_requests(&pkt, dev_id) ;
+    //SIZE_DESC_FIXED = 100 ;
     usbctrl_handle_requests_switch(&pkt, dev_id) ;  // fonction qui appelle bcp de fonction, EVA prend bcp de temps du coup
    	// c'est l'appel à usbctrl_handle_std_requests qui appelle notamment usbctrl_std_req_handle_get_descriptor qui augmente le temps de calcul (x10...)
    	// car usbctrl_std_req_handle_get_descriptor est appelé 5 fois...donc 2 contexte, ça fait 10 fois en tout, et il y a 12000 états dans get descriptor

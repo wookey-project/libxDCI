@@ -116,7 +116,7 @@ __INLINE uint16_t get_reg16_value( uint16_t * reg, uint16_t mask,
     @ disjoint behaviors ;
 */
 
-// cyril (*reg & ~mask) | ((value << pos) & mask) : je n'arrive pas à faire le ensure *reg pour behavior mask_other
+/* TODO : *reg == pour mask_other */
 
 __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
                               uint32_t mask, uint8_t pos)
@@ -132,7 +132,10 @@ __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
     } else {
         tmp = read_reg_value(reg);
         tmp &= (uint32_t) ~ mask;
-        tmp |= (uint32_t) ((value << pos) & mask);
+
+    /*@ assert 0 <= (uint32_t)(value << pos) <= 4294967295 ; */
+    /*@ assert 0 <= pos <= 30 ; */
+        tmp |= (uint32_t) ((uint32_t)(value << pos) & mask);
         write_reg_value(reg, tmp);
     }
 

@@ -355,6 +355,10 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                     }
                     #endif
 
+                    #if defined(__FRAMAC__)
+                    FLAG = false ;
+                    #endif/*__FRAMAC__*/
+
                     /*@ assert ctx->cfg[curr_cfg].interfaces[i].class_desc_handler ∈ {&class_get_descriptor}; */
                     /*@ calls class_get_descriptor; */
                     errcode = ctx->cfg[curr_cfg].interfaces[i].class_desc_handler(i, buf, &max_buf_size, handler);
@@ -364,7 +368,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                     }
                     log_printf("[LIBCTRL] found one class level descriptor of size %d\n", max_buf_size);
                     class_desc_size += max_buf_size;
-                    /*@ assert FLAG == \true ; */
                 }
             }
 
@@ -380,7 +383,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 @ loop assigns i, descriptor_size  ;
                 @ loop variant (iface_num -i);
             */
-
 
             for (uint8_t i = 0; i < iface_num; ++i) {
                 /* for endpoint, we must not declare CONTROL eps in interface descriptor */
@@ -403,17 +405,31 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
             /* we add potential class descriptors found above ... From now on, the global descriptor size is
              * complete, and can be sanitized properly in comparison with the passed buffer size */
-            descriptor_size += class_desc_size;
-            /*@ assert FLAG == \true ; */
+            
 
             /* before starting to build descriptor, check that we have enough memory space in the given buffer */
+            #if defined(__FRAMAC__)
+            if( (descriptor_size + class_desc_size) > MAX_DESCRIPTOR_LEN    ){
+                log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
+                errcode = MBED_ERROR_UNSUPORTED_CMD;
+                *desc_size = 0;
+                goto err;
+            }
+
+            descriptor_size += class_desc_size;
+            SIZE_DESC_FIXED = class_desc_size ;
+
+            #else
+            descriptor_size += class_desc_size;  
             if (descriptor_size > MAX_DESCRIPTOR_LEN) {
                 log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
                 errcode = MBED_ERROR_UNSUPORTED_CMD;
                 *desc_size = 0;
                 goto err;
             }
-            /*@ assert descriptor_size <= MAX_DESCRIPTOR_LEN ; */
+            #endif/*__FRAMAC__*/
+
+
             log_printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
             uint32_t curr_offset = 0;
             uint8_t *config_desc = &(buf[curr_offset]);
@@ -482,7 +498,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         curr_offset += sizeof(usbctrl_interface_descriptor_t);
                     }
                     {
-                        /*@ assert FLAG == \true ; */
                         // class level descriptor of current interface
 
                         if (ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler) {
@@ -507,12 +522,15 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 goto err;
                             }
                         #endif
+                        
+                        #if defined(__FRAMAC__)
+                            FLAG = true ;
+                        #endif/*__FRAMAC__*/
 
                             /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler ∈ {&class_get_descriptor}; */
                             /*@ calls class_get_descriptor; */
                             errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &max_buf_size, handler);
-
-
+                            
                             if (errcode != MBED_ERROR_NONE) {
                                 goto err;
                             }

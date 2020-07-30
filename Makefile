@@ -240,6 +240,7 @@ frama-c:
 		    -eva-use-spec usbctrl_reset_received \
 		    -eva-use-spec class_rqst_handler \
 		    -eva-use-spec handler_ep \
+		    -eva-use-spec class_get_descriptor \
 		    -eva-log a:frama-c-rte-eva.log \
    		    -then \
    		    -wp \

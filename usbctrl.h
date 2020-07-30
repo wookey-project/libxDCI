@@ -70,8 +70,8 @@
     \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
 */
 
-/*@ lemma u32_bitshift:
-    \forall unsigned long s, unsigned char m; 0<= m <=30 ==> 0 <= (s << m) <= 4294967295 ;
+/* @ lemma u32_bitshift:
+    \forall uint32_t s, uint8_t m; 0<= m <=30 ==> 0 <= (s << m) <= 4294967295 ;
 */
 
 /*@ predicate is_valid_error(mbed_error_t i) =
@@ -226,22 +226,24 @@ typedef struct usbctrl_context {
 } usbctrl_context_t;
 usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = {0} ;
 
-bool FLAG = false ;
+
+uint8_t SIZE_DESC_FIXED ;
+bool FLAG ;
 
 /*@
-    @ requires \separated(buf,desc_size,&ctx_list,&Frama_C_entropy_source_8, &FLAG);
-    @ assigns *desc_size, FLAG,Frama_C_entropy_source_8 ;
+    @ requires \separated(buf,desc_size,&ctx_list, &FLAG,&SIZE_DESC_FIXED);
+    @ assigns *desc_size ;
     @ ensures (buf == \null || desc_size == \null) ==> \result == MBED_ERROR_INVPARAM ;
     @ ensures (!(buf == \null || desc_size == \null) && FLAG == \false)
-             ==> (\result == MBED_ERROR_NONE && 0 <= *desc_size <=  \old(*desc_size) && FLAG == \true) ;
+             ==> (\result == MBED_ERROR_NONE && 0 <= *desc_size <=  255) ;
     @ ensures (!(buf == \null || desc_size == \null) && FLAG == \true)
-             ==> (\result == MBED_ERROR_NONE && \old(*desc_size) ==  \old(*desc_size) && FLAG == \true) ;
+             ==> (\result == MBED_ERROR_NONE && *desc_size ==  SIZE_DESC_FIXED) ;
 */
 mbed_error_t  class_get_descriptor(uint8_t             iface_id,
                                         uint8_t            *buf,
                                         uint8_t           *desc_size,
-                                        uint32_t            usbdci_handler )
-{
+                                        uint32_t            usbdci_handler ) ;
+/*{
     mbed_error_t errcode = MBED_ERROR_NONE;
 
     // sanitation
@@ -254,14 +256,19 @@ mbed_error_t  class_get_descriptor(uint8_t             iface_id,
     if(FLAG == false){
         *desc_size = Frama_C_interval_8(0,*desc_size) ;
     }else{
-        *desc_size = *desc_size ;
+        //if(*desc_size <= SIZE_DESC_FIXED ){
+        //	errcode = MBED_ERROR_INVPARAM;
+        //	goto err;        	
+        //}
+        *desc_size = SIZE_DESC_FIXED ;
     }
 
 FLAG = true ;
 
 err:
     return errcode;
-}
+}*/
+
 
 #else
 
