@@ -211,7 +211,9 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     usb_device_state_t state = usbctrl_get_state(ctx);
     /*@ assert state == ctx->state ; */
 
- beforeif:
+    #if defined(__FRAMAC__)
+    beforeif:
+    #endif
     /* resetting directly depends on the current state */
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
         log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
@@ -652,7 +654,11 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * should inform the host of this */
             errcode = MBED_ERROR_INVSTATE;
             /*@ assert \separated(&usbotghs_ctx,ctx) ; */
-            usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);  // cyril : il manque pas un break ici? et un errcode?
+            usb_backend_drv_nak(ep, USB_BACKEND_DRV_EP_DIR_OUT);
+            /* goto err is, currently, useless as there is no effective code executed between this line
+             * and the err: label. Though, in order to be future-proof in case of code inclusion, we
+             * prefer to add the goto statement. */
+            goto err;
             break ;
         }
         default:
