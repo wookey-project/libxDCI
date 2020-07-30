@@ -122,6 +122,7 @@ __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
                               uint32_t mask, uint8_t pos)
 {
     uint32_t tmp;
+    uint32_t tmp1;
 
     if (pos > 31)
         return -1;
@@ -129,9 +130,9 @@ __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
     if (mask == 0xFFFFFFFF) {
         (*reg) = value;
     } else {
-        (uint32_t)tmp = read_reg_value(reg);
-        (uint32_t)tmp &= ~mask;
-        (uint32_t)tmp |= ((uint32_t)(value << pos)) & mask; // cyril : RTE unsigned downcast, faux négatif que je n'arrive pas à prouver
+        tmp = read_reg_value(reg);
+        tmp &= (uint32_t) ~ mask;
+        tmp |= (uint32_t) ((value << pos) & mask);
         write_reg_value(reg, tmp);
     }
 

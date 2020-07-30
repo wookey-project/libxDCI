@@ -70,8 +70,8 @@
     \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
 */
 
-/* @ lemma u32_and_is_u32:
-    \forall uint32_t s, uint8_t m; 0<= m <=30 ==> 0 <= (s << m) <= 4294967295 ;
+/*@ lemma u32_bitshift:
+    \forall unsigned long s, unsigned char m; 0<= m <=30 ==> 0 <= (s << m) <= 4294967295 ;
 */
 
 /*@ predicate is_valid_error(mbed_error_t i) =

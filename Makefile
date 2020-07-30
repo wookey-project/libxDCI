@@ -255,6 +255,11 @@ frama-c:
    			-time calcium_wp-eva.txt
 
 
+#    			-then \
+#    			-wp-prop=@lemma \
+#    			-wp-auto="wp:split,wp:bitrange" \
+#  			-wp-auto="wp:bitshift" \
+
 #			-wp-steps 100000 \
 
 #-eva-bitwise-domain
