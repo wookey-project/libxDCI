@@ -408,7 +408,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             
 
             /* before starting to build descriptor, check that we have enough memory space in the given buffer */
-            #if defined(__FRAMAC__)
+            
             if( (descriptor_size + class_desc_size) > MAX_DESCRIPTOR_LEN    ){
                 log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
                 errcode = MBED_ERROR_UNSUPORTED_CMD;
@@ -417,18 +417,9 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             }
 
             descriptor_size += class_desc_size;
+            #if defined(__FRAMAC__)
             SIZE_DESC_FIXED = class_desc_size ;
-
-            #else
-            descriptor_size += class_desc_size;  
-            if (descriptor_size > MAX_DESCRIPTOR_LEN) {
-                log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
-                errcode = MBED_ERROR_UNSUPORTED_CMD;
-                *desc_size = 0;
-                goto err;
-            }
             #endif/*__FRAMAC__*/
-
 
             log_printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
             uint32_t curr_offset = 0;
@@ -530,7 +521,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                             /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler ∈ {&class_get_descriptor}; */
                             /*@ calls class_get_descriptor; */
                             errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &max_buf_size, handler);
-                            
+
                             if (errcode != MBED_ERROR_NONE) {
                                 goto err;
                             }
