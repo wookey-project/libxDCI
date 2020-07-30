@@ -122,7 +122,9 @@ __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
                               uint32_t mask, uint8_t pos)
 {
     uint32_t tmp;
-    uint32_t tmp1;
+    uint32_t tmp1 ;
+    uint32_t tmp2 ;
+
 
     if (pos > 31)
         return -1;
@@ -133,9 +135,28 @@ __INLINE int8_t set_reg_value( uint32_t * reg, uint32_t value,
         tmp = read_reg_value(reg);
         tmp &= (uint32_t) ~ mask;
 
-    /*@ assert 0 <= (uint32_t)(value << pos) <= 4294967295 ; */
-    /*@ assert 0 <= pos <= 30 ; */
-        tmp |= (uint32_t) ((uint32_t)(value << pos) & mask);
+        /*@
+        	@ loop invariant 0 <= i <= pos+1 ;
+        	@ loop invariant pos <= 31 ;
+        	@ loop assigns i, tmp1;
+        	@ loop variant pos -i;
+        */
+
+        for(uint8_t i=0; i < pos+1 ; i++){
+        	if(i == 0)
+        		tmp1 = 1 ;
+        	else
+        		tmp1 *= 2 ;
+        }
+
+        tmp1 -= (uint32_t) 1 ;
+        tmp2 = (uint32_t) ~tmp1 ;
+
+    /* @ assert 0 <= (uint32_t)(value << pos) <= 4294967295 ; */
+    /* @ assert 0 <= pos <= 30 ; */
+
+        tmp |= tmp2 & mask;
+        //tmp |= (uint32_t) ((uint32_t)(value << pos) & mask);
         write_reg_value(reg, tmp);
     }
 
