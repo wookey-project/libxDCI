@@ -441,7 +441,9 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             uint32_t curr_offset = 0;
 
             /*@ assert descriptor_size <= MAX_DESCRIPTOR_LEN ; */
-
+            #if defined(__FRAMAC__)
+            SIZE_DESC_FIXED = class_desc_size ;
+            #endif/*__FRAMAC__*/
 
             log_printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
             {

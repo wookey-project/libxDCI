@@ -794,6 +794,7 @@ err_init:
  */
 
 /*@
+    @ requires \separated(((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), &usbotghs_ctx);
     @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ ensures (CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE && ep_id >= USBOTGHS_MAX_IN_EP) ==> \result == MBED_ERROR_INVPARAM ;
     @ ensures (!CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE && ep_id >= USBOTGHS_MAX_OUT_EP) ==> \result == MBED_ERROR_INVPARAM ;
@@ -808,7 +809,7 @@ err_init:
 */
 
 /*
-    FIXME : RTE pour ctx->in_eps[ep_id]
+    Cyril : RTE patched
 */
 
 mbed_error_t usbotghs_send_zlp(uint8_t ep_id)
@@ -864,15 +865,19 @@ mbed_error_t usbotghs_send_zlp(uint8_t ep_id)
     // XXX: needed for ZLP ? ep->state = USBOTG_HS_EP_STATE_DATA_OUT;
     /* 1. Program the OTG_HS_DIEPTSIZx register for the transfer size
      * and the corresponding packet count. */
-    /*@ assert (uint32_t *)USB_OTG_HS_BASE <= r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id) <= (uint32_t *)0x40150000 ; */
+    /*@ assert \separated(ep,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))); */
     set_reg_value(r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id),1,USBOTG_HS_DIEPTSIZ_PKTCNT_Msk(ep_id),USBOTG_HS_DIEPTSIZ_PKTCNT_Pos(ep_id));
-    /*@ assert (uint32_t *)USB_OTG_HS_BASE <= r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id) <= (uint32_t *)0x40150000 ; */
     set_reg_value(r_CORTEX_M_USBOTG_HS_DIEPTSIZ(ep_id),0,USBOTG_HS_DIEPTSIZ_XFRSIZ_Msk(ep_id),USBOTG_HS_DIEPTSIZ_XFRSIZ_Pos(ep_id));
     /* 2. Enable endpoint for transmission. */
-    /*@ assert (uint32_t *)USB_OTG_HS_BASE <= r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id) <= (uint32_t *)0x40150000 ; */
     set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id),USBOTG_HS_DIEPCTL_CNAK_Msk | USBOTG_HS_DIEPCTL_EPENA_Msk);
 
 err:
+    /*@ assert (CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE && ep_id < USBOTGHS_MAX_IN_EP && usbotghs_ctx.in_eps[ep_id].configured == \false) 
+    ==> (errcode == MBED_ERROR_INVSTATE) ; */
+
+    /*@ assert (!CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE && ep_id < USBOTGHS_MAX_OUT_EP && usbotghs_ctx.out_eps[ep_id].configured == \false) 
+    ==> (errcode == MBED_ERROR_INVSTATE) ; */
+
     return errcode;
 }
 
