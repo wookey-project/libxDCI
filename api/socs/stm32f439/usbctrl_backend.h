@@ -82,6 +82,10 @@
  * We can directly use preprocessing values that will be passed to forward-declarated
  * prototypes.
  */
+
+#define USB_BACKEND_MEMORY_BASE 0x40040000
+#define USB_BACKEND_MEMORY_END  0x40044000
+
 typedef enum {
     USB_BACKEND_DRV_PORT_LOWSPEED = 0,
     USB_BACKEND_DRV_PORT_FULLSPEED = 1,

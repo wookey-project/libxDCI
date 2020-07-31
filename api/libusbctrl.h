@@ -48,7 +48,7 @@
  * This will reduce the overload of the abstraction layer.
  */
 #if defined(CONFIG_STM32F439)
-# include "socs/stm32f439/usbctrl_backend.h"
+# include "api/socs/stm32f439/usbctrl_backend.h"
 #else
 # error "architecture not yet supported!"
 #endif
@@ -91,6 +91,7 @@ void usbctrl_configuration_set(void);
 
 #if defined(__FRAMAC__)
     bool reset_requested = false;
+#endif/*!__FRAMAC__*/
 
 /*@
     @ assigns reset_requested ;
@@ -100,10 +101,6 @@ void usbctrl_configuration_set(void);
 void usbctrl_reset_received(void){
     reset_requested = true;
 }
-
-#else
-    void usbctrl_reset_received(void);
-#endif/*!__FRAMAC__*/
 
 
 /************************************************
@@ -235,6 +232,7 @@ typedef struct {
  * A interface can have up to this number of endpoints.
  */
 #define MAX_EP_PER_INTERFACE 8
+
 
 /*
  * A interface may have to handle dedicated

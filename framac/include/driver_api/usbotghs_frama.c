@@ -37,10 +37,11 @@
 #include "socs/stm32f439/usbotghs_handler.h"
 #include "socs/stm32f439/usbotghs_regs.h"
 #include "socs/stm32f439/ulpi.h"
-#include "socs/stm32f439/libusbotghs.h"
+#include "socs/stm32f439/api/libusbotghs.h"
 
 #if defined(__FRAMAC__)
 #include "usbctrl.h"   // pour avoir la fonction Frama_C_interval
+#include "socs/stm32f439/usbctrl_backend.h"
 #endif/*!__FRAMAC__*/
 
 
@@ -872,10 +873,10 @@ mbed_error_t usbotghs_send_zlp(uint8_t ep_id)
     set_reg_bits(r_CORTEX_M_USBOTG_HS_DIEPCTL(ep_id),USBOTG_HS_DIEPCTL_CNAK_Msk | USBOTG_HS_DIEPCTL_EPENA_Msk);
 
 err:
-    /*@ assert (CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE && ep_id < USBOTGHS_MAX_IN_EP && usbotghs_ctx.in_eps[ep_id].configured == \false) 
+    /*@ assert (CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE && ep_id < USBOTGHS_MAX_IN_EP && usbotghs_ctx.in_eps[ep_id].configured == \false)
     ==> (errcode == MBED_ERROR_INVSTATE) ; */
 
-    /*@ assert (!CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE && ep_id < USBOTGHS_MAX_OUT_EP && usbotghs_ctx.out_eps[ep_id].configured == \false) 
+    /*@ assert (!CONFIG_USR_DRV_USBOTGHS_MODE_DEVICE && ep_id < USBOTGHS_MAX_OUT_EP && usbotghs_ctx.out_eps[ep_id].configured == \false)
     ==> (errcode == MBED_ERROR_INVSTATE) ; */
 
     return errcode;
@@ -1393,10 +1394,6 @@ err:
  * a configuration change is required, which implies that some old EPs need to be
  * removed before creating new ones.
  */
-
-/*
-    Cyril : pour avoir tous les endpoints et comme USBOTGHS_MAX_IN_EP != USBOTGHS_MAX_OUT_EP, est-ce qu'il ne faudrait pas faire deux fonctions en séparant les cas in et out?
-*/
 
 mbed_error_t usbotghs_deconfigure_endpoint(uint8_t ep)
 {
@@ -2203,7 +2200,6 @@ mbed_error_t usbotghs_txfifo_flush(uint8_t ep_id)
             errcode = MBED_ERROR_BUSY;   // cyril : avant, errcode et goto en dehors du if
             goto err;
         }
-
     }
     /*
      * The application must write this bit only after checking that the core is neither writing to the
@@ -2231,7 +2227,6 @@ mbed_error_t usbotghs_txfifo_flush(uint8_t ep_id)
             errcode = MBED_ERROR_BUSY;
             goto err;
         }
-
     }
 err:
     return errcode;

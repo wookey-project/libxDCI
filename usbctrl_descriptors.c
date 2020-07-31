@@ -9,19 +9,19 @@
  * device configuration (number of interfaces, power, ...)
  */
 typedef struct __packed usb_configuration_descriptor {
-	uint8_t bLength;
-	uint8_t bDescriptorType;
-	uint16_t wTotalLength;
-	uint8_t bNumInterfaces;
-	uint8_t bConfigurationValue;
-	uint8_t iConfiguration;
-	struct {
-		uint8_t reserved:5;
-		uint8_t remote_wakeup:1;
-		uint8_t self_powered:1;
-		uint8_t reserved7:1;
-	} bmAttributes;
-	uint8_t bMaxPower;
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint16_t wTotalLength;
+    uint8_t bNumInterfaces;
+    uint8_t bConfigurationValue;
+    uint8_t iConfiguration;
+    struct {
+        uint8_t reserved:5;
+        uint8_t remote_wakeup:1;
+        uint8_t self_powered:1;
+        uint8_t reserved7:1;
+    } bmAttributes;
+    uint8_t bMaxPower;
 } usb_configuration_descriptor_t;
 
 /**
@@ -32,11 +32,11 @@ typedef struct __packed usb_configuration_descriptor {
  */
 /* old
 typedef struct __packed usb_ctrl_full_configuration_descriptor {
-	usb_configuration_descriptor_t config;
-	union {
-		usb_ctr_full_endpoint_descriptor_t ep;
-		usb_functional_descriptor_t functional_desc;
-	};
+    usb_configuration_descriptor_t config;
+    union {
+        usb_ctr_full_endpoint_descriptor_t ep;
+        usb_functional_descriptor_t functional_desc;
+    };
 } usb_ctrl_configuration_descriptor_t;
 */
 
@@ -51,7 +51,7 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
  */
 
 /*@
-    @ requires \separated(buf,desc_size,ctx,pkt);  // cyril : je ne pense pas que separated sans valid soit une utilisation correcte
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),desc_size+(..),ctx+(..),pkt+(..));
 
     @ behavior invaparam:
     @   assumes  (buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
@@ -405,10 +405,9 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
             /* we add potential class descriptors found above ... From now on, the global descriptor size is
              * complete, and can be sanitized properly in comparison with the passed buffer size */
-            
+
 
             /* before starting to build descriptor, check that we have enough memory space in the given buffer */
-            
             if( (descriptor_size + class_desc_size) > MAX_DESCRIPTOR_LEN    ){
                 log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
                 errcode = MBED_ERROR_UNSUPORTED_CMD;
@@ -417,15 +416,38 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             }
 
             descriptor_size += class_desc_size;
+#if defined(__FRAMAC__)
+            SIZE_DESC_FIXED = class_desc_size ;
+#endif
+
+
+            /*
+             * From now on, we *know* that the overall descriptor size is smaller than the buffer max supported
+             * length. We can add successive descriptors into it without risking to overflow the buffer.
+             * Descriptors are concatenated with regard to the USB configuration descriptor standard hierarchy,
+             * using the same list of descriptor as calculated above.
+             *
+             * The input buffer is a uint8_t* generic buffer as USB descriptor content is a dynamic, runtime
+             * caclucated, list of structure. To handle this, as unions can't be used due to dynamicity, we
+             * use an offset in the buffer (a uint8_t * pointer) which always target the begining of the currently
+             * being written descriptor. This pointer is explicitely casted into the descriptor that need to be
+             * written in order to properly handle the descriptor fields. The offset is then incremented using
+             * the descriptor size.
+             *
+             * C scoping is used for each descriptor handling to avoid any variable shadowing. Each typed
+             * descriptor pointer is named 'cfg' and its scope is reduced to the currently being handled descriptor
+             * only.
+             */
+            uint32_t curr_offset = 0;
+
+            /*@ assert descriptor_size <= MAX_DESCRIPTOR_LEN ; */
             #if defined(__FRAMAC__)
             SIZE_DESC_FIXED = class_desc_size ;
             #endif/*__FRAMAC__*/
 
             log_printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
-            uint32_t curr_offset = 0;
-            uint8_t *config_desc = &(buf[curr_offset]);
             {
-                usbctrl_configuration_descriptor_t *cfg = (usbctrl_configuration_descriptor_t *)&(config_desc[0]);
+                usbctrl_configuration_descriptor_t *cfg = (usbctrl_configuration_descriptor_t *)&(buf[curr_offset]);
                 cfg->bLength = sizeof(usbctrl_configuration_descriptor_t);
                 cfg->wTotalLength = descriptor_size;
                 cfg->bDescriptorType = USB_DESC_CONFIGURATION;
@@ -458,6 +480,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             */
 
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
+                    /* for each interface, we first need to add the interface descriptor */
                     {
                         /* pointing to next field: interface descriptor */
                         usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)&(buf[curr_offset]);
@@ -488,6 +511,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         cfg->iInterface = 1;
                         curr_offset += sizeof(usbctrl_interface_descriptor_t);
                     }
+                    /* for each interface, we may then add the associated class descriptor, if it exsists */
                     {
                         // class level descriptor of current interface
 
@@ -503,6 +527,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                              * thus we reduce the max allowed size for class descriptor.
                              * normally we can assert cur_offset >= MAX_DESCRIPTOR_LEN */
                             uint32_t max_buf_size = MAX_DESCRIPTOR_LEN - curr_offset;
+                            uint8_t class_desc_max_size = 0;
+                            if (max_buf_size > 256) {
+                                class_desc_max_size = 255;
+                            } else {
+                                /* reducing buffer to effective max buf size if shorter than uint8_t size */
+                                class_desc_max_size = (uint8_t)(max_buf_size & 0xff);
+                            }
 
                             // PTH: patch au dessus devrait corriger le RTE, à confirmer par EVA
                             // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
@@ -513,21 +544,23 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 goto err;
                             }
                         #endif
-                        
+
                         #if defined(__FRAMAC__)
                             FLAG = true ;
                         #endif/*__FRAMAC__*/
 
                             /*@ assert ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler ∈ {&class_get_descriptor}; */
                             /*@ calls class_get_descriptor; */
-                            errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &max_buf_size, handler);
+                            errcode = ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler(iface_id, cfg, &class_desc_max_size, handler);
 
                             if (errcode != MBED_ERROR_NONE) {
                                 goto err;
                             }
-                            curr_offset += max_buf_size;
+                            curr_offset += class_desc_max_size;
                         }
                     }
+                    /* for each interface, we finish with each endpoint descriptor, for all non-control EP
+                     * INFO: libusbctrl consider that the device handle a signe control EP: EP0 */
                     {
                         /* and for this interface, handling each EP */
 

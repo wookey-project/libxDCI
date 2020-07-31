@@ -92,7 +92,7 @@ typedef enum {
     USB_REQ_SYNCH_FRAME       = 0xc,
 } usbctrl_request_code_t;
 
-/*@ predicate is_valid_request_code(usbctrl_request_code_t i) = 
+/*@ predicate is_valid_request_code(usbctrl_request_code_t i) =
         i == USB_REQ_GET_STATUS ||
         i == USB_REQ_CLEAR_FEATURE ||
         i == USB_REQ_FUTURE1 ||
@@ -119,7 +119,7 @@ typedef enum {
     USB_DESC_IFACE_POWER     = 0x8
 } usbctrl_descriptor_type_t;
 
-/*@ predicate is_valid_descriptor_type(usbctrl_descriptor_type_t i) = 
+/*@ predicate is_valid_descriptor_type(usbctrl_descriptor_type_t i) =
         i == USB_DESC_DEVICE ||
         i == USB_DESC_CONFIGURATION ||
         i == USB_DESC_STRING ||
@@ -171,5 +171,14 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                                      uint32_t             id);
 mbed_error_t usbctrl_handle_requests_switch(usbctrl_setup_pkt_t *pkt,
                                      uint32_t             id);
+
+
+
+#if defined(__FRAMAC__)
+mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
+                                                         usbctrl_context_t   *ctx);
+
+
+#endif/*__FRAMAC__*/
 
 #endif/*USBCTRL_STD_REQUESTS_H_*/
