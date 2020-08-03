@@ -185,9 +185,9 @@ frama-c-eva:
 		    -eva-show-perf \
 		    -eva-auto-loop-unroll 500 \
 		    -eva-slevel 500 \
-		    -eva-symbolic-locations-domain \
-		    -eva-equality-domain \
-		    -eva-bitwise-domain \
+		    -eva-domains symbolic-locations\
+		    -eva-domains equality \
+		    -eva-domains bitwise \
 		    -eva-split-return auto \
 		    -eva-partition-history 3 \
 		    -eva-use-spec usbctrl_reset_received \
@@ -214,9 +214,9 @@ frama-c:
 		    -eva-show-perf \
 		    -eva-auto-loop-unroll 500 \
 		    -eva-slevel 500 \
-		    -eva-symbolic-locations-domain \
-		    -eva-equality-domain \
-		    -eva-bitwise-domain \
+		    -eva-domains symbolic-locations\
+		    -eva-domains equality \
+		    -eva-domains bitwise \
 		    -eva-split-return auto \
 		    -eva-partition-history 3 \
 		    -eva-use-spec usbctrl_reset_received \
