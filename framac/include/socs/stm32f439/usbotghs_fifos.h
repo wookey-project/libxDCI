@@ -27,7 +27,7 @@
 
 #include "libc/types.h"
 
-#include "libusbotghs.h"
+#include "api/libusbotghs.h"
 #include "driver_api/usbotghs_frama.h"
 
 /*

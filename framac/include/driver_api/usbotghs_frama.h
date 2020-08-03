@@ -34,7 +34,7 @@
 #include "socs/stm32f439/usbotghs_regs.h"
 #include "socs/stm32f439/usbctrl_backend.h"
 
-#include "socs/stm32f439/libusbotghs.h"
+#include "socs/stm32f439/api/libusbotghs.h"
 
 
 #define USBOTGHS_REG_CHECK_TIMEOUT 50
@@ -47,6 +47,8 @@
 #define USB_SETUP_TRANS_COMPLETED 0b0100 /* SETUP transaction completed (triggers an interrupt) */
 #define USB_SETUP_PACKET_RECEIVED 0b0110 /* SETUP data packet received */
 
+#define USBOTGHS_MAX_IN_EP   8
+#define USBOTGHS_MAX_OUT_EP  3
 
 /*********************************************************
  * General tooling
@@ -87,6 +89,23 @@ typedef struct {
     bool                fifo_lck;     /* DMA, locking mechanism (recv) */
     bool                core_txfifo_empty; /* core TxFIFO (Half) empty */
 } usbotghs_ep_t;
+
+typedef struct {
+    device_t            dev;             /* associated device_t structure */
+    int                 dev_desc;        /* device descriptor */
+    usbotghs_dev_mode_t mode;            /* current OTG mode (host or device) */
+    bool                gonak_req;       /* global OUT NAK requested */
+    bool                gonak_active;    /* global OUT NAK effective */
+    uint16_t            fifo_idx;        /* consumed Core FIFO */
+    usbotghs_ep_t       in_eps[USBOTGHS_MAX_IN_EP];       /* list of HW supported IN EPs */
+    usbotghs_ep_t       out_eps[USBOTGHS_MAX_OUT_EP];      /* list of HW supported OUT EPs */
+    usbotghs_speed_t    speed;        /* device enumerated speed, default HS */
+} usbotghs_context_t;
+
+usbotghs_context_t usbotghs_ctx;  // global variable to be used in lib USBctrl specifications
+
+void test_fcn_driver_eva(void) ;
+
 #else
 typedef struct {
     uint8_t                      id;           /* EP id (libusbctrl view) */
@@ -103,30 +122,6 @@ typedef struct {
     volatile bool                fifo_lck;     /* DMA, locking mechanism (recv) */
     volatile bool                core_txfifo_empty; /* core TxFIFO (Half) empty */
 } usbotghs_ep_t;
-#endif/*!__FRAMAC__*/
-
-#define USBOTGHS_MAX_IN_EP   8
-#define USBOTGHS_MAX_OUT_EP  3
-
-/* current context of the USB OTG HS Core */
-#if defined(__FRAMAC__)
-typedef struct {
-    device_t            dev;             /* associated device_t structure */
-    int                 dev_desc;        /* device descriptor */
-    usbotghs_dev_mode_t mode;            /* current OTG mode (host or device) */
-    bool                gonak_req;       /* global OUT NAK requested */
-    bool                gonak_active;    /* global OUT NAK effective */
-    uint16_t            fifo_idx;        /* consumed Core FIFO */
-    usbotghs_ep_t       in_eps[USBOTGHS_MAX_IN_EP];       /* list of HW supported IN EPs */
-    usbotghs_ep_t       out_eps[USBOTGHS_MAX_OUT_EP];      /* list of HW supported OUT EPs */
-    usbotghs_speed_t    speed;        /* device enumerated speed, default HS */
-} usbotghs_context_t;
-
-usbotghs_context_t usbotghs_ctx;
-
-// Cyril : attention, usbotghs_context_t usbotghs_ctx = {0} ; peut faire foirer des assigns...
-
-#else
 
 typedef struct {
     device_t            dev;             /* associated device_t structure */
@@ -144,13 +139,8 @@ typedef struct {
 #endif/*!__FRAMAC__*/
 
 
+
 usbotghs_context_t *usbotghs_get_context(void);
-
-#if defined(__FRAMAC__)
-
-void test_fcn_driver_eva(void) ;
-
-#endif/*!__FRAMAC__*/
 
 
 /*

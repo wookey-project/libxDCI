@@ -29,7 +29,11 @@
 #include "api/libusbctrl.h"
 
 #if defined(__FRAMAC__)
-#include "driver_api/usbotghs_frama.h"
+//#include "driver_api/usbotghs_frama.h"
+#include "../driver-stm32f4xx-usbotghs/usbotghs.h"
+#include "../driver-stm32f4xx-usbotghs/usbotghs_fifos.h"
+#include "../driver-stm32f4xx-usbotghs/api/libusbotghs.h"
+#include "usbctrl_backend.h"
 #else
 #include "libc/sanhandlers.h"
 #endif
@@ -70,10 +74,6 @@
     \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
 */
 
-/* @ lemma u32_bitshift:
-    \forall uint32_t s, uint8_t m; 0<= m <=30 ==> 0 <= (s << m) <= 4294967295 ;
-*/
-
 /*@ predicate is_valid_error(mbed_error_t i) =
     i == MBED_ERROR_NONE ||
     i == MBED_ERROR_NOMEM ||
@@ -94,9 +94,6 @@
     i == MBED_ERROR_NOTFOUND  ;
 */
 
-/*@ predicate is_valid_ep_dir(usbotghs_ep_dir_t i) =
-    i == USBOTG_HS_EP_DIR_IN || i == USBOTG_HS_EP_DIR_OUT;
-*/
 
 extern volatile uint8_t Frama_C_entropy_source_8 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
 extern volatile uint16_t Frama_C_entropy_source_16 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
@@ -139,9 +136,6 @@ uint32_t Frama_C_interval_32(uint32_t min, uint32_t max);
 
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 
-#define USB_BACKEND_MEMORY_BASE 0x40040000
-#define USB_BACKEND_MEMORY_END  0x40044000
-
 //@ ghost  uint8_t GHOST_num_ctx;
 //@ ghost  uint8_t GHOST_idx_ctx = 0;
 
@@ -160,12 +154,6 @@ mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
 */
 
 /*@
-    assigns \nothing;
-*/
-void usbctrl_reset_received(void);
-
-
-/*@
     @ assigns \nothing ;
     @ ensures is_valid_error(\result);
 */
@@ -174,6 +162,8 @@ mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
     mbed_error_t errcode = MBED_ERROR_NONE;
     return errcode;
 }
+
+void test_fcn_driver_eva(void) ;
 
 #endif/*!__FRAMAC__*/
 
@@ -258,7 +248,7 @@ mbed_error_t  class_get_descriptor(uint8_t             iface_id,
     }else{
         //if(*desc_size <= SIZE_DESC_FIXED ){
         //	errcode = MBED_ERROR_INVPARAM;
-        //	goto err;        	
+        //	goto err;
         //}
         *desc_size = SIZE_DESC_FIXED ;
     }

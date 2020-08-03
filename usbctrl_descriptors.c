@@ -9,19 +9,19 @@
  * device configuration (number of interfaces, power, ...)
  */
 typedef struct __packed usb_configuration_descriptor {
-	uint8_t bLength;
-	uint8_t bDescriptorType;
-	uint16_t wTotalLength;
-	uint8_t bNumInterfaces;
-	uint8_t bConfigurationValue;
-	uint8_t iConfiguration;
-	struct {
-		uint8_t reserved:5;
-		uint8_t remote_wakeup:1;
-		uint8_t self_powered:1;
-		uint8_t reserved7:1;
-	} bmAttributes;
-	uint8_t bMaxPower;
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint16_t wTotalLength;
+    uint8_t bNumInterfaces;
+    uint8_t bConfigurationValue;
+    uint8_t iConfiguration;
+    struct {
+        uint8_t reserved:5;
+        uint8_t remote_wakeup:1;
+        uint8_t self_powered:1;
+        uint8_t reserved7:1;
+    } bmAttributes;
+    uint8_t bMaxPower;
 } usb_configuration_descriptor_t;
 
 /**
@@ -32,11 +32,11 @@ typedef struct __packed usb_configuration_descriptor {
  */
 /* old
 typedef struct __packed usb_ctrl_full_configuration_descriptor {
-	usb_configuration_descriptor_t config;
-	union {
-		usb_ctr_full_endpoint_descriptor_t ep;
-		usb_functional_descriptor_t functional_desc;
-	};
+    usb_configuration_descriptor_t config;
+    union {
+        usb_ctr_full_endpoint_descriptor_t ep;
+        usb_functional_descriptor_t functional_desc;
+    };
 } usb_ctrl_configuration_descriptor_t;
 */
 
@@ -51,7 +51,7 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
  */
 
 /*@
-    @ requires \separated(buf,desc_size,ctx,pkt);  // cyril : je ne pense pas que separated sans valid soit une utilisation correcte
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),desc_size+(..),ctx+(..),pkt+(..));
 
     @ behavior invaparam:
     @   assumes  (buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;

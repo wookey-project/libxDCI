@@ -51,7 +51,6 @@
 
 #include "autoconf.h"
 #include "libc/types.h"
-#include "driver_api/usbotghs_frama.h"
 
 /*
  * First, specify the effective driver header to load
@@ -83,6 +82,10 @@
  * We can directly use preprocessing values that will be passed to forward-declarated
  * prototypes.
  */
+
+#define USB_BACKEND_MEMORY_BASE 0x40040000
+#define USB_BACKEND_MEMORY_END  0x40044000
+
 typedef enum {
     USB_BACKEND_DRV_PORT_LOWSPEED = 0,
     USB_BACKEND_DRV_PORT_FULLSPEED = 1,
@@ -175,12 +178,6 @@ mbed_error_t usb_backend_drv_get_ep_state(uint8_t epnum, usb_backend_drv_ep_dir_
 mbed_error_t usb_backend_drv_send_data(uint8_t *src, uint32_t size, uint8_t ep);
 mbed_error_t usb_backend_drv_send_zlp(uint8_t ep);
 void         usb_backend_drv_set_address(uint16_t addr);
-
-/*@
-    @ assigns \result \from dst, size, ep ;
-    @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_INVSTATE ;
-*/
-
 mbed_error_t usb_backend_drv_set_recv_fifo(uint8_t *dst, uint32_t size, uint8_t ep);
 /* USB protocol standard handshaking */
 mbed_error_t usb_backend_drv_ack(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);

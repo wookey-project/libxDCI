@@ -314,6 +314,7 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
     @ requires is_valid_transition(transition);
     @ requires \valid_read(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
     @ requires \separated(GHOST_usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx);
+    @ requires \separated(usb_automaton+(..),ctx+(..));
     @ assigns ctx->state;
     @ ensures \result == \true ==> (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && GHOST_usb_automaton[current_state].req_trans[i].request == transition)&&(ctx->state == \at(ctx->state, Pre) );
     @ ensures \result != \true ==> (\forall integer i ; 0 <= i < MAX_TRANSITION_STATE ==> GHOST_usb_automaton[current_state].req_trans[i].request != transition ) && (ctx->state == USB_DEVICE_STATE_INVALID);
