@@ -684,7 +684,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
              * and the err: label. Though, in order to be future-proof in case of code inclusion, we
              * prefer to add the goto statement. */
             goto err;
-            break ;
+            break;
         }
         default:
             log_printf("[LIBCTRL] oepint: EP not in good state: %d !\n",usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT));

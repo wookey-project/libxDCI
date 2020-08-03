@@ -26,7 +26,7 @@ CFLAGS := $(LIBS_CFLAGS)
 # libtoken needs libecc
 CFLAGS += $(EXTERNAL_CFLAGS) $(LIBSIGN_CFLAGS)
 CFLAGS += -Iapi
-CFLAGS += -MMD -MP -O2
+CFLAGS += -MMD -MP -O2 -std=c11
 
 #############################################################
 # About library sources
@@ -56,7 +56,11 @@ OUT_DIRS = $(dir $(OBJ))
 
 # file to (dist)clean
 # objects and compilation related
+ifeq (y,$(CONFIG_USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD))
+TODEL_CLEAN += $(OBJ_FW) $(OBJ_DFU)
+else
 TODEL_CLEAN += $(OBJ)
+endif
 # targets
 TODEL_DISTCLEAN += $(APP_BUILD_DIR)
 
