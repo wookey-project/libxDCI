@@ -248,8 +248,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
         goto err;
     }
     /*@ assert (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[state].req_trans[i].request == USB_DEVICE_TRANS_RESET) ; */
-    /*@ assert ctx->state == \at(ctx->state,beforeif) ; */
-    /*@ assert state == \at(state,beforeif) ;*/
     /*@ assert state == ctx->state ; */
     /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
     /*@ assert state == ctx_list[GHOST_idx_ctx].state ; */
