@@ -371,15 +371,30 @@ end:
 
 /*@
     @ requires GHOST_num_ctx == num_ctx ;
-   	@ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx);
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx);
     @ requires \valid_read(ctx_list + (0..(GHOST_num_ctx-1))) ;
     @ assigns *ctx, GHOST_idx_ctx;
-    @ ensures ctx == \null ==> \result == MBED_ERROR_INVPARAM ;
-    @ ensures (ctx != \null && !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id )  ) ==> (\result == MBED_ERROR_NOTFOUND
-                                                                            && !(\exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i] && GHOST_idx_ctx == i )) ;
-    @ ensures (ctx != \null && (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id )) ==> (\result == MBED_ERROR_NONE
-                                                                            && (\exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i] && GHOST_idx_ctx == i ) && *ctx == &ctx_list[GHOST_idx_ctx] ) ;
-*/
+    
+    @ behavior bad_pointer :
+    @   assumes ctx == \null ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    
+    @ behavior not_found :
+    @   assumes ctx != \null ;
+    @   assumes !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id) ;
+    @   ensures \result == MBED_ERROR_NOTFOUND ;
+
+    @ behavior found :
+    @   assumes ctx != \null ;
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id ;
+    @   ensures \exists integer i ; 0 <= i < GHOST_num_ctx && \old(ctx_list[i].dev_id) == device_id && GHOST_idx_ctx==i ;
+    @   ensures \result == MBED_ERROR_NONE ;
+    @	ensures *ctx == &ctx_list[GHOST_idx_ctx];
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/   
+/* ou ensures ctx_list[GHOST_idx_ctx].dev_id == device_id */
 
 mbed_error_t usbctrl_get_context(uint32_t device_id,
                                  usbctrl_context_t **ctx)
@@ -402,7 +417,8 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
         @ loop invariant \separated(&ctx_list + (0..(GHOST_num_ctx-1)),*ctx,&GHOST_num_ctx);
         @ loop invariant \valid(ctx) ;
         @ loop invariant \forall integer prei; 0<=prei<i ==> ctx_list[prei].dev_id != device_id   ;
-        @ loop invariant \at(ctx,LoopEntry) == \at(ctx,LoopCurrent) ;
+        @ loop invariant \at(ctx,LoopEntry) == \at(ctx,LoopCurrent) ; 
+	    @ loop invariant GHOST_idx_ctx == MAX_USB_CTRL_CTX;
         @ loop assigns i ;
         @ loop variant (GHOST_num_ctx - i);
     */
