@@ -1,0 +1,15 @@
+Thanks to all the authors of this library !
+
+This library has been written by the Wookey developpment team which include:
+ *  Ryad     Benadjila
+ *  Arnauld  Michelizza
+ *  Mathieu  Renard
+ *  Philippe Thierry
+ *  Philippe Trebuchet
+
+All the ACSL anotations, Frama-C integration and various RTEs patchs associated to
+the Frama-C integration have been made in association with the ANSSI Software Security
+Laboratory, and especially:
+
+ * Cyril     Debergé
+ * Patricia  Mouy
