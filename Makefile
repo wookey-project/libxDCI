@@ -234,7 +234,7 @@ FRAMAC_GEN_FLAGS:=\
 	        -warn-unsigned-downcast \
 	        -warn-unsigned-overflow \
 			-kernel-msg-key pp \
-			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"  \
+			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"  \
 		    -rte 
 
 FRAMAC_EVA_FLAGS:=\

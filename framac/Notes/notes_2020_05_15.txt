@@ -1,0 +1,58 @@
+travail en cours : spécifications de get_descriptor, de handle_reset et variables ghost pour remplacer les variables statiques
+ 
+Pour get_descriptor:
+-	ajout de const char * pour remplacer les #define pour les strings : les boucles sont maintenant validées par WP
+-	ajout d'assert et de calls pour les pointeurs de fonction : ça passe pour EVA et WP 
+-	finalement j'ai spécifié toute la fonction sans la "casser pour les switchs", la spécification est un peu longue, mais finalement il n'y a que 2 cas qui posent encore soucis (à cause du cast de buf):
+	-	case USB_DESC_DEVICE
+	-	case USB_DESC_CONFIGURATION
+
+-	Pour la boucle while dans case USB_DESC_CONFIGURATION , ajout d'un compteur (voir avec philippe pour validation du code)
+
+
+uint8_t compteur_poll = 9;
+
+/* @
+	@ loop invariant i >= 0 ;
+    @ loop invariant poll >= 0 ;
+    @ loop assigns poll, i, compteur_poll;
+    @ loop variant compteur_poll;
+*/
+
+while (!(poll & 0x1) || compteur_poll > 0) {
+     poll >>= 1;
+     i++;
+     compteur_poll -- ;
+}
+
+Sans le compteur, pas possible de valider le variant
+
+-	il reste des assigns et des variants qui ne sont pas validés, lorsque buf est cast (par exemple, usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf)
+	l'utilisation dans la GUI de unsafe cast dans memory model n'a rien changé
+
+-  Bug pour uint32_t max_buf_size = *desc_size - curr_offset; (ligne 491)
+  *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
+    probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset; 
+
+    Pour faire passer framaC, j'ai mis uint32_t max_buf_size = curr_offset ;  Mais à voir quelle valeur il faut mettre pour max_buf_size à cet endroit du code
+
+
+
+ - usbctrl_handle_reset dans usbctrl_handlers.c :
+ 	Cette fonction est complexe à spécifier : elle commence par un appel à usbctrl_get_context, définie dans usbctrl.c, qui utilise une variable num_ctx en static pour trouver le bon contexte dans le tableau ctx_list
+ 	1) nécessité de définir ctx_list dans usbctrl.h, pour que ce tableau soit visible dans toutes les fonctions pour framaC (définition dans un if defined(__FRAMAC__))
+ 	2) Définition d'une variable ghost //@ ghost uint8_t GHOST_num_ctx = 0 ; dans usbctrl.h
+ 	3) dans usbctrl.c, spécification de usbctrl_declare à modifier pour ajouter //@ ghost GHOST_num_ctx = num_ctx ; car c'est la seule fonction dans laquelle num_ctx est modifié
+ 	4) réflexion pour usbctrl_get_context : modification de la spec pour remplacer num_ctx par GHOST_num_ctx ou ajout de ensures num_ctx == GHOST_num_ctx ; dans la specification? Le problème est le suivant : quand get_context est appelée (dans un if), il faut pouvoir spécifier si la fonction a echoué ou non. La fonction échoue lorsque : assumes \forall integer i ; 0 <= i < num_ctx ==> ctx_list[i].dev_id != device_id. Or comme num_ctx est static, je ne peux pas reprendre tel quel cet assumes dans usbctrl_handle_reset
+
+ 	5) cette fonction fait ensuite appel à is_valid_transition, définie dans usbctrl_state.c. J'ai du ajouter un prédicat en particulier dans usbctrl_state.h pour cette fonction, en faisant appel à une autre variable ghost pour remplacer usb_automaton[]. Le problème c'est que cette fonction prend en entrée l'état du contexte, que je n'ai pas su spécifier pour wp (ctx_list[i].state), avec i tel que ctx_list[i].dev_id == device_id. L'état du contexte est nécessaire pour spécificer la fonction handle_reset... J'ai laissé l'état de mes réflexions dans behavior no_valid_transition pour cette fonction (qui ne passe pas)
+
+ 	6) Je n'ai pas encore spécifié la suite de la fonction, mais la fonction usbotghs_set_recv_fifo est ensuite appelée et elle aussi nécessite l'utilisation d'une variable ghost à la place de usbotghs_ctx (static dans le driver)
+
+
+- Pour le driver :
+   1) ajout d'une variable ghost dans usbotghs_frama.h //@ ghost usbotghs_context_t GHOST_usbotghs_ctx ;
+   2) utilisation de cette variable dans la fonction usbotghs_set_recv_fifo notamment. Je n'ai pas encoré testé si un assigns de GHOST_usbotghs_ctx passait côté lib usb
+
+
+- dans la fonction usbctrl_declare_interface, le assigns ligne 567 ne passe plus. Je ne comprends pas pourquoi... j'ai juste modifié le backend pour la fonction usbotghs_get_ep_mpsize, qui assigns \nothing...Et dans la boucle le loop assigns est validé.

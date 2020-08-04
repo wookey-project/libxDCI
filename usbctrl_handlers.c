@@ -168,7 +168,7 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 */
 
 
-/*@
+/* @
     @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx);
     @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;

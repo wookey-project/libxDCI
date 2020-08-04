@@ -29,11 +29,9 @@
 #include "api/libusbctrl.h"
 
 #if defined(__FRAMAC__)
-//#include "driver_api/usbotghs_frama.h"
 #include "usbotghs.h"
 #include "usbotghs_fifos.h"
 #include "api/libusbotghs.h"
-#include "usbctrl_backend.h"
 #else
 #include "libc/sanhandlers.h"
 #endif
@@ -69,6 +67,10 @@
  * FramaC
  */
 #if defined(__FRAMAC__)
+
+static   uint8_t num_ctx = 0;
+#define MAX_EPx_PKT_SIZE 512
+#define RAND_UINT_32 65535
 
 /*@ lemma u16_and_is_u16:
     \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
@@ -164,6 +166,19 @@ mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
 }
 
 void test_fcn_driver_eva(void) ;
+
+
+bool reset_requested = false;
+
+/*@
+    @ assigns reset_requested ;
+    @ ensures reset_requested == true ;
+*/
+
+void usbctrl_reset_received(void){
+    reset_requested = true;
+}
+
 
 #endif/*!__FRAMAC__*/
 

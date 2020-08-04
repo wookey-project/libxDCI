@@ -86,30 +86,6 @@ void usbctrl_configuration_set(void);
 
 void usbctrl_reset_received(void);
 
-#if defined(__FRAMAC__)
-/* This part is FRAMAC specific, as it should be defined at application level (not library
- * level). For EVA, all requested application level content is defined in order to handle
- * entrypoint glue
- *
- * FIXME: doesn't this part being deployed in another header instead of the public, exported one ? */
-/*
-  definition de la fonction usbctrl_reset_requested
-  definie dans un fichier main.c qui n'appartient pas à libxDCI
-*/
-
-    bool reset_requested = false;
-
-/*@
-    @ assigns reset_requested ;
-    @ ensures reset_requested == true ;
-*/
-
-void usbctrl_reset_received(void){
-    reset_requested = true;
-}
-#endif/*!__FRAMAC__*/
-
-
 /************************************************
  * About standard USB classes
  *
