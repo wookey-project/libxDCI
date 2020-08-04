@@ -79,6 +79,7 @@ all: $(APP_BUILD_DIR) lib
 endif
 
 doc:
+	$(Q)$(MAKE) BUILDDIR=../$(APP_BUILD_DIR)/doc  -C doc html latexpdf
 
 show:
 	@echo

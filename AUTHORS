@@ -7,7 +7,7 @@ This library has been written by the Wookey developpment team which include:
  *  Philippe Thierry
  *  Philippe Trebuchet
 
-All the ACSL anotations, Frama-C integration and various RTEs patchs associated to
+All the ACSL annotations, Frama-C integration and various RTEs patchs associated to
 the Frama-C integration have been made in association with the ANSSI Software Security
 Laboratory, and especially:
 
