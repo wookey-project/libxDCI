@@ -187,6 +187,7 @@ ifeq (y,$(FRAMAC_TARGET))
 # - the libstd, which is the tiny libc implementation of the Wookey environment, including the
 #   userspace part of the syscalls.
 # - some generated headers associated to the target plateform associated to the driver
+# - EwoK kernel exported headers
 
 # dir of USBOTG-HS sources (direct compilation from here bypassing local Makefile)
 # this path is using the Wookey repositories structure hierarchy. Another hierarchy
@@ -205,6 +206,10 @@ USBOTGHS_DEVHEADER_PATH ?= $(PROJ_FILES)/layouts/boards/wookey
 # This is the Wookey micro-libC API directory. This directory is used by all libraries and driver
 # and defines all prototypes and C types used nearly everywhere in the Wookey project.
 LIBSTD_API_DIR ?= $(PROJ_FILES)/libs/std/api
+
+# This is the EwoK kernel exported headers directory. These headers are requested by the libstd
+# itself and thus by upper layers, including drivers and libraries.
+EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
 
 SESSION:=framac/results/frama-c-rte-eva-wp.session
 JOBS:=$(shell nproc)
