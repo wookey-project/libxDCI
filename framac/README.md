@@ -18,10 +18,10 @@ Notes and other informational content.
 
 ### out of tree 
 
-create repository framac_include out of libxcdi repository then export env variable in order to create makefile targets :
+create repository framac_include out of libxcdi repository then export env variable in order to create makefile targets (examples) :
 
 export FRAMAC_TARGET=y
-export USBOTGHS_DIR=/home/cyril/Documents/stage/GIT/driver-stm32f4xx-usbotghs
-export USBOTGHS_DEVHEADER_PATH=/home/cyril/Documents/stage/GIT/framac_include/
-export LIBSTD_API_DIR=/home/cyril/Documents/stage/GIT/framac_include/libstd/api/
-export EWOK_API_DIR=/home/cyril/Documents/stage/GIT/framac_include/
+export USBOTGHS_DIR=~/Documents/stage/GIT/driver-stm32f4xx-usbotghs
+export USBOTGHS_DEVHEADER_PATH=~/Documents/stage/GIT/framac_include/
+export LIBSTD_API_DIR=~/Documents/stage/GIT/framac_include/libstd/api/
+export EWOK_API_DIR=~/Documents/stage/GIT/framac_include/
