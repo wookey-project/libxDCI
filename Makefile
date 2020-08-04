@@ -168,6 +168,26 @@ endif
 FRAMAC_TARGET ?= n
 
 ifeq (y,$(FRAMAC_TARGET))
+
+#
+# INFO: Using Frama-C, the overall flags are not directly used as they are targetting
+# arm-none-eabi architecture which is not handled by framaC. Instead, we used
+# a 32bits target with custom CFLAGS to handle Frama-C compilation step.
+# As a consequence, include paths need to be set here as above CFLAGS are dissmissed.
+# Below variables are used to handle Wookey SDK in-tree vs out-of-tree Frama-C compilation,
+# which permits to:
+# - run Frama-C on an autonomous extract of the overall Wookey firmware, out of the Wookey SDK tree
+# - run Frama-C directly in the SDK tree, on the same set of software
+# The difference is mostly the dependencies paths. The advantage of such an effort is
+# to simplify the begining of the Frama-C integration, by detecting and including the necessary
+# dependencies only. In a second step only, the dependencies, if they are anotated or updated,
+# are pushed back to their initial position in their initial repositories.
+# For libxDCI, the dependencies are:
+# - the USB device driver (we have chosen the USB OTG HS (High Speed) driver
+# - the libstd, which is the tiny libc implementation of the Wookey environment, including the
+#   userspace part of the syscalls.
+# - some generated headers associated to the target plateform associated to the driver
+
 # dir of USBOTG-HS sources (direct compilation from here bypassing local Makefile)
 # this path is using the Wookey repositories structure hierarchy. Another hierarchy
 # can be used by overriding this variable in the environment.
@@ -182,6 +202,10 @@ USBOTGHS_DIR ?= $(PROJ_FILES)/drivers/socs/$(SOC)/usbotghs
 # two files.
 USBOTGHS_DEVHEADER_PATH ?= $(PROJ_FILES)/layouts/boards/wookey
 
+# This is the Wookey micro-libC API directory. This directory is used by all libraries and driver
+# and defines all prototypes and C types used nearly everywhere in the Wookey project.
+LIBSTD_API_DIR ?= $(PROJ_FILES)/libs/std/api
+
 SESSION:=framac/results/frama-c-rte-eva-wp.session
 JOBS:=$(shell nproc)
 TIMEOUT:=15
@@ -191,7 +215,7 @@ frama-c-parsing:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I framac/include -I $(USBOTGHS_DIR)"
+		 -cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"
 
 frama-c-eva:
 	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
@@ -204,7 +228,7 @@ frama-c-eva:
 	        -warn-unsigned-downcast \
 	        -warn-unsigned-overflow \
 			-kernel-msg-key pp \
-			-cpp-extra-args="-nostdinc -I framac/include -I $(USBOTGHS_DIR)"  \
+			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"  \
 		    -rte \
 		    -eva \
 		    -eva-show-perf \
@@ -233,7 +257,7 @@ frama-c:
 	        -warn-unsigned-downcast \
 	        -warn-unsigned-overflow \
 			-kernel-msg-key pp \
-			-cpp-extra-args="-nostdinc -I framac/include -I $(USBOTGHS_DIR)" \
+			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)" \
 		    -rte \
 		    -eva \
 		    -eva-show-perf \
