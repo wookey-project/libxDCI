@@ -223,9 +223,6 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
  TODO FRAMA-c : spécifier memset et memcpy...
 */
 
-    #if defined(__FRAMAC__)
-
-        //memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
         /*
             initialisation des struct interface à la main, car frama-c a quelques difficultés avec memset (avec void *)
         */
@@ -236,8 +233,6 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
             @ loop assigns i, ctx->cfg[ctx->curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)] ;
             @ loop variant (MAX_INTERFACES_PER_DEVICE - i) ;
         */
-
-
         for (uint8_t i = 0; i < MAX_INTERFACES_PER_DEVICE ; ++i ){
             ctx->cfg[ctx->curr_cfg].interfaces[i].id = 0;
             ctx->cfg[ctx->curr_cfg].interfaces[i].usb_class = 0 ;
@@ -247,12 +242,24 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
             ctx->cfg[ctx->curr_cfg].interfaces[i].rqst_handler = 0 ;
             ctx->cfg[ctx->curr_cfg].interfaces[i].class_desc_handler = 0 ;
             ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number = 0 ;
-            //ctx->cfg[ctx->curr_cfg].interfaces[i].eps[MAX_EP_PER_INTERFACE] = 0 ;
+            /*@
+              @ loop invariant 0 <= j <= MAX_EP_PER_INTERFACE ;
+              @ loop invariant \valid(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(MAX_EP_PER_INTERFACE-1))) ;
+              @ loop assigns j, ctx->cfg[ctx->curr_cfg].interfaces[i].eps[0..(MAX_EP_PER_INTERFACE-1)] ;
+              @ loop variant (MAX_EP_PER_INTERFACE - j) ;
+              */
+            for (uint8_t j = 0; j < MAX_EP_PER_INTERFACE; ++j) {
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].type = 0;
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].dir = 0;
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].attr = 0;
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].usage = 0;
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].pkt_maxsize = 0;
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].handler = NULL;
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num = 0;
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].poll_interval = 0;
+               ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].configured = false;
+            }
         }
-
-    #else
-        memset((void*)ctx->cfg[ctx->curr_cfg].interfaces, 0x0, MAX_INTERFACES_PER_DEVICE * sizeof(usbctrl_interface_t));
-    #endif/*!__FRAMAC__*/
 
 
     /* receive FIFO is not set in the driver. Wait for USB reset */
@@ -374,11 +381,11 @@ end:
     @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx);
     @ requires \valid_read(ctx_list + (0..(GHOST_num_ctx-1))) ;
     @ assigns *ctx, GHOST_idx_ctx;
-    
+
     @ behavior bad_pointer :
     @   assumes ctx == \null ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
-    
+
     @ behavior not_found :
     @   assumes ctx != \null ;
     @   assumes !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id) ;
@@ -393,7 +400,7 @@ end:
 
     @ complete behaviors ;
     @ disjoint behaviors ;
-*/   
+*/
 /* ou ensures ctx_list[GHOST_idx_ctx].dev_id == device_id */
 
 mbed_error_t usbctrl_get_context(uint32_t device_id,
@@ -417,7 +424,7 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
         @ loop invariant \separated(&ctx_list + (0..(GHOST_num_ctx-1)),*ctx,&GHOST_num_ctx);
         @ loop invariant \valid(ctx) ;
         @ loop invariant \forall integer prei; 0<=prei<i ==> ctx_list[prei].dev_id != device_id   ;
-        @ loop invariant \at(ctx,LoopEntry) == \at(ctx,LoopCurrent) ; 
+        @ loop invariant \at(ctx,LoopEntry) == \at(ctx,LoopCurrent) ;
 	    @ loop invariant GHOST_idx_ctx == MAX_USB_CTRL_CTX;
         @ loop assigns i ;
         @ loop variant (GHOST_num_ctx - i);

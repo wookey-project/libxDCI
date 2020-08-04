@@ -214,7 +214,7 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] reset: no ctx found!\n");
 	 	/* @ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
-		/*@ assert &ctx != NULL ; */ 
+		/*@ assert &ctx != NULL ; */
         /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
         /* @ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
         errcode = MBED_ERROR_INVPARAM;
@@ -232,7 +232,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     /*@ assert state == ctx->state ; */
     /*@ assert state == ctx_list[GHOST_idx_ctx].state ; */
     /*@ assert \at(ctx_list,Pre)[GHOST_idx_ctx].state == \at(ctx_list, Here)[GHOST_idx_ctx].state ; */
-
 
     /* resetting directly depends on the current state */
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
