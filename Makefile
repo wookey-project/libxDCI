@@ -169,6 +169,11 @@ FRAMAC_TARGET ?= n
 
 ifeq (y,$(FRAMAC_TARGET))
 
+# some FRAMAC arguments may vary depending on the FRAMA-C version (Calcium, Scandium...)
+# Here we support both Calcium (20) and Scandium (21) releases
+FRAMAC_VERSION=$(shell frama-c -version|cut -d'.' -f 1)
+FRAMAC_RELEASE=$(shell frama-c -version|sed -re 's:^.*\((.*)\)$:\1:g')
+
 #
 # INFO: Using Frama-C, the overall flags are not directly used as they are targetting
 # arm-none-eabi architecture which is not handled by framaC. Instead, we used
@@ -211,20 +216,15 @@ LIBSTD_API_DIR ?= $(PROJ_FILES)/libs/std/api
 # itself and thus by upper layers, including drivers and libraries.
 EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
 
-SESSION:=framac/results/frama-c-rte-eva-wp.session
-JOBS:=$(shell nproc)
-TIMEOUT:=15
+SESSION     := framac/results/frama-c-rte-eva-wp.session
+EVA_SESSION := framac/results/frama-c-rte-eva.session
+TIMESTAMP   := framac/result/timestamp-calcium_wp-eva.txt
+JOBS        := $(shell nproc)
+# Does this flag could be overriden by env (i.e. using ?=)
+TIMEOUT     := 15
 
-
-frama-c-parsing:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c \
-		 -c11 -machdep x86_32 \
-		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"
-
-frama-c-eva:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
-	        -absolute-valid-range 0x40040000-0x40044000 \
+FRAMAC_GEN_FLAGS:=\
+			-absolute-valid-range 0x40040000-0x40044000 \
 	        -no-frama-c-stdlib \
 	        -warn-left-shift-negative \
 	        -warn-right-shift-negative \
@@ -234,36 +234,9 @@ frama-c-eva:
 	        -warn-unsigned-overflow \
 			-kernel-msg-key pp \
 			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"  \
-		    -rte \
-		    -eva \
-		    -eva-show-perf \
-		    -eva-auto-loop-unroll 500 \
-		    -eva-slevel 500 \
-		    -eva-domains symbolic-locations\
-		    -eva-domains equality \
-		    -eva-domains bitwise \
-		    -eva-split-return auto \
-		    -eva-partition-history 3 \
-		    -eva-use-spec usbctrl_reset_received \
-		    -eva-use-spec class_rqst_handler \
-		    -eva-use-spec handler_ep \
-		    -eva-use-spec class_get_descriptor \
-		    -eva-log a:frama-c-rte-eva.log \
-			-save framac/results/frama-c-rte-eva.session
+		    -rte 
 
-frama-c:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
-	        -absolute-valid-range 0x40040000-0x40044000 \
-	        -no-frama-c-stdlib \
-	        -warn-left-shift-negative \
-	        -warn-right-shift-negative \
-	        -warn-signed-downcast \
-	        -warn-signed-overflow \
-	        -warn-unsigned-downcast \
-	        -warn-unsigned-overflow \
-			-kernel-msg-key pp \
-			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)" \
-		    -rte \
+FRAMAC_EVA_FLAGS:=\
 		    -eva \
 		    -eva-show-perf \
 		    -eva-auto-loop-unroll 500 \
@@ -277,15 +250,41 @@ frama-c:
 		    -eva-use-spec class_rqst_handler \
 		    -eva-use-spec handler_ep \
 		    -eva-use-spec class_get_descriptor \
-		    -eva-log a:frama-c-rte-eva.log \
-   		    -then \
-   		    -wp \
+		    -eva-log a:frama-c-rte-eva.log
+
+FRAMAC_WP_FLAGS:=\
+	        -wp \
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
-   			-wp-timeout $(TIMEOUT) \
-   			 -save $(SESSION) \
-   			-time calcium_wp-eva.txt
+   			-wp-timeout $(TIMEOUT) 
+
+
+frama-c-parsing:
+	frama-c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c \
+		 -c11 -machdep x86_32 \
+		 -no-frama-c-stdlib \
+		 -cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"
+
+frama-c-eva:
+	frama-c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
+		    $(FRAMAC_GEN_FLAGS) \
+			$(FRAMAC_EVA_FLAGS) \
+			-save $(EVA_SESSION)
+
+frama-c:
+	frama-c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
+		    $(FRAMAC_GEN_FLAGS) \
+			$(FRAMAC_EVA_FLAGS) \
+   		    -then \
+			$(FRAMAC_WP_FLAGS) \
+   			-save $(SESSION) \
+   			-time $(TIMESTAMP)
+
+frama-c-gui:
+	frama-c-gui -load $(SESSION)
+
+
 
 
 #    			-then \
@@ -300,9 +299,6 @@ frama-c:
 #-eva-equality-through-calls all \
 # -from-verify-assigns \
 #-eva-use-spec usbotghs_configure \
-
-frama-c-gui:
-	frama-c-gui -load $(SESSION)
 
 
 # -wp-dynamic         Handle dynamic calls with specific annotations. (set by
