@@ -30,9 +30,9 @@
 
 #if defined(__FRAMAC__)
 //#include "driver_api/usbotghs_frama.h"
-#include "../driver-stm32f4xx-usbotghs/usbotghs.h"
-#include "../driver-stm32f4xx-usbotghs/usbotghs_fifos.h"
-#include "../driver-stm32f4xx-usbotghs/api/libusbotghs.h"
+#include "usbotghs.h"
+#include "usbotghs_fifos.h"
+#include "api/libusbotghs.h"
 #include "usbctrl_backend.h"
 #else
 #include "libc/sanhandlers.h"

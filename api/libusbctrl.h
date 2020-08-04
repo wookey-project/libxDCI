@@ -48,7 +48,7 @@
  * This will reduce the overload of the abstraction layer.
  */
 #if defined(CONFIG_STM32F439)
-# include "api/socs/stm32f439/usbctrl_backend.h"
+# include "socs/stm32f439/usbctrl_backend.h"
 #else
 # error "architecture not yet supported!"
 #endif
@@ -84,14 +84,20 @@
  * From now on, the upper layer EPs are set and ready to use */
 void usbctrl_configuration_set(void);
 
+void usbctrl_reset_received(void);
+
+#if defined(__FRAMAC__)
+/* This part is FRAMAC specific, as it should be defined at application level (not library
+ * level). For EVA, all requested application level content is defined in order to handle
+ * entrypoint glue
+ *
+ * FIXME: doesn't this part being deployed in another header instead of the public, exported one ? */
 /*
   definition de la fonction usbctrl_reset_requested
   definie dans un fichier main.c qui n'appartient pas à libxDCI
 */
 
-#if defined(__FRAMAC__)
     bool reset_requested = false;
-#endif/*!__FRAMAC__*/
 
 /*@
     @ assigns reset_requested ;
@@ -101,6 +107,7 @@ void usbctrl_configuration_set(void);
 void usbctrl_reset_received(void){
     reset_requested = true;
 }
+#endif/*!__FRAMAC__*/
 
 
 /************************************************
