@@ -15,3 +15,13 @@ Handling the results of the successive Frama-C execution
 ### Others
 
 Notes and other informational content.
+
+### out of tree 
+
+create repository framac_include out of libxcdi repository then export env variable in order to create makefile targets :
+
+export FRAMAC_TARGET=y
+export USBOTGHS_DIR=/home/cyril/Documents/stage/GIT/driver-stm32f4xx-usbotghs
+export USBOTGHS_DEVHEADER_PATH=/home/cyril/Documents/stage/GIT/framac_include/
+export LIBSTD_API_DIR=/home/cyril/Documents/stage/GIT/framac_include/libstd/api/
+export EWOK_API_DIR=/home/cyril/Documents/stage/GIT/framac_include/

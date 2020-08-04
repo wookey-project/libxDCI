@@ -206,19 +206,26 @@ USBOTGHS_DEVHEADER_PATH ?= $(PROJ_FILES)/layouts/boards/wookey
 # and defines all prototypes and C types used nearly everywhere in the Wookey project.
 LIBSTD_API_DIR ?= $(PROJ_FILES)/libs/std/api
 
+
+# This is the EwoK kernel exported headers directory. These headers are requested by the libstd
+
+# itself and thus by upper layers, including drivers and libraries.
+
+EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
+
 SESSION:=framac/results/frama-c-rte-eva-wp.session
 JOBS:=$(shell nproc)
 TIMEOUT:=15
 
 
 frama-c-parsing:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c \
+	frama-c framac/entrypoint.c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"
+		 -cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH)"
 
 frama-c-eva:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
+	frama-c framac/entrypoint.c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
 	        -absolute-valid-range 0x40040000-0x40044000 \
 	        -no-frama-c-stdlib \
 	        -warn-left-shift-negative \
@@ -228,7 +235,7 @@ frama-c-eva:
 	        -warn-unsigned-downcast \
 	        -warn-unsigned-overflow \
 			-kernel-msg-key pp \
-			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"  \
+			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH)"  \
 		    -rte \
 		    -eva \
 		    -eva-show-perf \
@@ -247,7 +254,7 @@ frama-c-eva:
 			-save framac/results/frama-c-rte-eva.session
 
 frama-c:
-	frama-c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
+	frama-c framac/entrypoint.c usbctrl.c usbctrl_descriptors.c usbctrl_handlers.c usbctrl_requests.c usbctrl_state.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
 	        -absolute-valid-range 0x40040000-0x40044000 \
 	        -no-frama-c-stdlib \
 	        -warn-left-shift-negative \
@@ -257,7 +264,7 @@ frama-c:
 	        -warn-unsigned-downcast \
 	        -warn-unsigned-overflow \
 			-kernel-msg-key pp \
-			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)" \
+			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH)" \
 		    -rte \
 		    -eva \
 		    -eva-show-perf \
