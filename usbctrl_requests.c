@@ -2261,124 +2261,6 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
 */
 
 
-/*
-
-TODO : mettre à jour les assigns et les ensures de USB_REQ_TYPE_STD, USB_REQ_TYPE_VENDOR et USB_REQ_TYPE_CLASS quand usbctrl_handle_std_requests sera spécifiée
-FIXME : ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE : RTE car on peut y arriver avec ctx non défini (donc accès mémoire invalide)
-		    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), GHOST_idx_ctx,ctx_list[0..(GHOST_num_ctx-1)], *pkt ; pour USB_REQ_TYPE_CLASS ne passe pas
-*/
-
-mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
-                                     uint32_t             dev_id)
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-    usbctrl_context_t *ctx = NULL;
-
-    /* Detect which context is assocated to current request and set local ctx */
-        if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
-        /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ; */
-        /* trapped on oepint() from a device which is not handled here ! what ? */
-        /*@ assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-        errcode = MBED_ERROR_UNKNOWN;
-        usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
-        goto err_init;
-    }
-    /* Sanitation */
-    if (pkt == NULL) {
-        errcode = MBED_ERROR_INVPARAM;
-        usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
-        goto err;
-    }
-
-  /*@ assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id; */
-  /*@ assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx == &ctx_list[i]; */ ;
-    /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
-
-
-    if (   (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_STD)
-        && (usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE)) {
-
-    /*@   assert (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_STD) ;  */
-    /*@   assert (((pkt->bmRequestType) & 0x1F) != USB_REQ_RECIPIENT_INTERFACE) ;  */
-
-        ctx->ctrl_req_processing = true;
-        /* For current request of current context, is the current context is a standard
-         * request ? If yes, handle localy */
-        errcode = usbctrl_handle_std_requests(pkt, ctx);
-    }
-    else if (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_VENDOR) {
-        /* ... or, is the current request is a vendor request, then handle locally
-         * for vendor */
-        /*@ assert (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;  */
-        ctx->ctrl_req_processing = true;
-        /* @ assert \separated(pkt,ctx_list + (0..(num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-        errcode = usbctrl_handle_vendor_requests(pkt, ctx);
-        /*@ assert (errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NONE) ; */
-
-    } else if (   (usbctrl_std_req_get_type(pkt) == USB_REQ_TYPE_CLASS) || (usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE)) {
-    /*@   assert (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_CLASS) || (((pkt->bmRequestType) & 0x1F) == USB_REQ_RECIPIENT_INTERFACE) ;  */
-
-        log_printf("[USBCTRL] receiving class Request\n");
-        /* ... or, is the current request is a class request or target a dedicated
-         * interface, then handle in upper layer*/
-        uint8_t curr_cfg = ctx->curr_cfg;
-        mbed_error_t upper_stack_err = MBED_ERROR_INVPARAM;  // Cyril c'est errcode qui est important non pour savoir si tout se termine bien?
-
-        /*@
-            @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interface_num ;
-            @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(ctx->cfg[curr_cfg].interface_num-1))) ;
-            @ loop assigns i, upper_stack_err ;  // Cyril : supposition forte ici que le pointeur de fonction n'a pas d'effet de bord (assigns \nothing)
-            @ loop variant (ctx->cfg[curr_cfg].interface_num - i);
-        */
-        for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interface_num; ++i) {
-
-            if (ctx->cfg[curr_cfg].interfaces[i].rqst_handler) {
-                log_printf("[USBCTRL] execute iface class handler\n");
-                uint32_t handler;
-                /* @ assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-                if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {  // cyril : il manque pas un break ici aussi? : ajout d'un goto err, sinon pb d'initialisation pour rqst_handler
-                    log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
-                    goto err ;
-                }
-
-#ifndef __FRAMAC__
-                if (handler_sanity_check((physaddr_t)ctx->cfg[curr_cfg].interfaces[i].rqst_handler)) {
-                    goto err;
-               }
-#endif
-                /*@ assert \separated(&handler,pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-                /*@ assert ctx->cfg[curr_cfg].interfaces[i].rqst_handler ∈ {&class_rqst_handler}; */
-                /*@ calls class_rqst_handler; */
-
-                if ((upper_stack_err = ctx->cfg[curr_cfg].interfaces[i].rqst_handler(handler, pkt)) == MBED_ERROR_NONE) {  // Cyril : mais que devient errcode? c'est lui qui est return à la fin
-                    /* upper class handler found, we can leave the loop */
-                    break;
-                }
-            }
-        }
-        /* fallback if no upper stack class request handler was able to handle the received CLASS request */
-        if (upper_stack_err != MBED_ERROR_NONE) {
-            /*@ assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-            usb_backend_drv_stall(0, USB_EP_DIR_OUT);
-        }
-    }
-    else {
-         //... or unknown, return an error
-        /*@ assert ((((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_STD) && (((pkt->bmRequestType) & 0x1F) == USB_REQ_RECIPIENT_INTERFACE) ) ||
-         (!(((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_STD) && !(((pkt->bmRequestType) & 0x1F) == USB_REQ_RECIPIENT_INTERFACE) &&
-          !(((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) && !(((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_CLASS)   ) ;   */
-
-        errcode = usbctrl_handle_unknown_requests(pkt, ctx);
-        /*@ assert errcode == MBED_ERROR_UNKNOWN ; */
-    }
-err:
-    /* release EP0 recv FIFO */
-    ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-err_init:
-    return errcode;
-}
-
-
 
 /*@
     @ requires \separated(pkt,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),&ctx_list[0..(GHOST_num_ctx-1)],&GHOST_idx_ctx) ;
@@ -2439,18 +2321,12 @@ FIXME : ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE : RTE car on peut y a
 
 */
 
-mbed_error_t usbctrl_handle_requests_switch(usbctrl_setup_pkt_t *pkt,
+mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                                      uint32_t             dev_id)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     usbctrl_context_t *ctx = NULL;
 
-    /* Sanitation */
-    if (pkt == NULL) {
-        errcode = MBED_ERROR_INVPARAM;
-        usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
-        goto err;
-    }
     /* Detect which context is assocated to current request and set local ctx */
         if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         /*@ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ; */
@@ -2458,8 +2334,15 @@ mbed_error_t usbctrl_handle_requests_switch(usbctrl_setup_pkt_t *pkt,
         /*@ assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
         errcode = MBED_ERROR_UNKNOWN;
         usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
+        goto err_init;
+    }
+    /* Sanitation */
+    if (pkt == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
+        usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
         goto err;
     }
+
 
   /*@ assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id; */
   /*@ assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx == &ctx_list[i]; */ ;
@@ -2489,7 +2372,7 @@ mbed_error_t usbctrl_handle_requests_switch(usbctrl_setup_pkt_t *pkt,
             /*@ assert (errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NONE) ; */
             break;
         case USB_REQ_TYPE_CLASS:
-            if(((pkt->bmRequestType) & 0x1F) == USB_REQ_RECIPIENT_INTERFACE){
+            if(usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE){
             //if(usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE){
                 log_printf("[USBCTRL] receiving class Request\n");
                 /* ... or, is the current request is a class request or target a dedicated
@@ -2534,6 +2417,8 @@ mbed_error_t usbctrl_handle_requests_switch(usbctrl_setup_pkt_t *pkt,
                     /*@ assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
                     usb_backend_drv_stall(0, USB_EP_DIR_OUT);
                 }
+                /* upgrade local errcode with upper stack errcode received */
+                errcode = upper_stack_err;
             }else{
                 errcode = usbctrl_handle_unknown_requests(pkt, ctx);
             }
@@ -2545,14 +2430,8 @@ mbed_error_t usbctrl_handle_requests_switch(usbctrl_setup_pkt_t *pkt,
 
 err:
     /* release EP0 recv FIFO */
-
-#if defined(__FRAMAC__)
-/*
-    FIXME : RTE car on peut y arriver avec ctx non défini (donc accès mémoire invalide)
-*/
-#else
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-#endif/*!__FRAMAC__*/
+err_init:
 
     return errcode;
 }
