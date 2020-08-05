@@ -16,7 +16,7 @@ Handling the results of the successive Frama-C execution
 
 Notes and other informational content.
 
-### out of tree 
+### out of tree
 
 create repository framac_include out of libxcdi repository then export env variable in order to create makefile targets (examples) :
 

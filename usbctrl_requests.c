@@ -2267,16 +2267,16 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
     @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
     @ ensures \old(GHOST_num_ctx) == GHOST_num_ctx ;
 
-    @ behavior bad_pkt:
-    @   assumes pkt == \null ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
-    @   ensures \result == MBED_ERROR_INVPARAM ;
-
     @ behavior bad_ctx:
-    @   assumes pkt != \null ;
     @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
     @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), GHOST_idx_ctx ;
     @   ensures \result == MBED_ERROR_UNKNOWN ;
+
+    @ behavior bad_pkt:
+    @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
+    @   assumes pkt == \null ;
+    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_TYPE_STD:
     @   assumes pkt != \null ;
