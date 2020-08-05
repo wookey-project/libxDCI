@@ -218,7 +218,7 @@ void test_fcn_usbctrl(){
     usbctrl_next_state(current_state,request);  // requires is_valid_state && is_valid_request : pas de test d'erreur sur les entrées du coup
     //usbctrl_handle_requests(&pkt, dev_id) ;
     //SIZE_DESC_FIXED = 100 ;
-    usbctrl_handle_requests_switch(&pkt, dev_id) ;  // fonction qui appelle bcp de fonction, EVA prend bcp de temps du coup
+    usbctrl_handle_requests(&pkt, dev_id) ;  // fonction qui appelle bcp de fonction, EVA prend bcp de temps du coup
    	// c'est l'appel à usbctrl_handle_std_requests qui appelle notamment usbctrl_std_req_handle_get_descriptor qui augmente le temps de calcul (x10...)
    	// car usbctrl_std_req_handle_get_descriptor est appelé 5 fois...donc 2 contexte, ça fait 10 fois en tout, et il y a 12000 états dans get descriptor
 }
@@ -406,7 +406,7 @@ usbctrl_context_t ctx2 = ctx_list[0] ;
 ctx2.state = Frama_C_interval_8(0,9);
 usbctrl_handle_class_requests(&pkt, &ctx2);
 
-usbctrl_handle_requests_switch(NULL, dev_id);  // pointeur null, les autres erreurs ne sont pas atteignables..
+usbctrl_handle_requests(NULL, dev_id);  // pointeur null, les autres erreurs ne sont pas atteignables..
 
 /*
     usbctrl_std_req_handle_get_descriptor : je n'arrive pas à aller dans tous les cas d'erreur (maxlength == 0 ou get_descriptor != error_none )

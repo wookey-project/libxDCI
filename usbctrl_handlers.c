@@ -589,7 +589,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                     setup_packet[5] << 8 | setup_packet[4],
                     setup_packet[7] << 8 | setup_packet[6]
                 };
-                errcode = usbctrl_handle_requests_switch(&formated_pkt, dev_id);
+                errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
                 return errcode;
             } else {
                 /*@ assert (ep < USBOTGHS_MAX_OUT_EP) &&

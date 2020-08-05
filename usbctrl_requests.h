@@ -169,8 +169,6 @@ typedef enum {
  */
 mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                                      uint32_t             id);
-mbed_error_t usbctrl_handle_requests_switch(usbctrl_setup_pkt_t *pkt,
-                                     uint32_t             id);
 
 
 
