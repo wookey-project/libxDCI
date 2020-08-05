@@ -219,7 +219,7 @@ EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
 
 SESSION     := framac/results/frama-c-rte-eva-wp.session
 EVA_SESSION := framac/results/frama-c-rte-eva.session
-TIMESTAMP   := framac/result/timestamp-calcium_wp-eva.txt
+TIMESTAMP   := framac/results/timestamp-calcium_wp-eva.txt
 JOBS        := $(shell nproc)
 # Does this flag could be overriden by env (i.e. using ?=)
 TIMEOUT     := 15
