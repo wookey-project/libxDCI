@@ -262,19 +262,19 @@ FRAMAC_WP_FLAGS:=\
 
 
 frama-c-parsing:
-	frama-c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c \
+	frama-c framac/entrypoint.c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
 		 -cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"
 
 frama-c-eva:
-	frama-c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
+	frama-c framac/entrypoint.c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
 			-save $(EVA_SESSION)
 
 frama-c:
-	frama-c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
+	frama-c framac/entrypoint.c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
    		    -then \
