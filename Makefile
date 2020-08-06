@@ -244,7 +244,6 @@ FRAMAC_EVA_FLAGS:=\
 		    -eva-slevel 500 \
 		    -eva-domains symbolic-locations\
 		    -eva-domains equality \
-		    -eva-domains bitwise \
 		    -eva-split-return auto \
 		    -eva-partition-history 3 \
 		    -eva-use-spec usbctrl_reset_received \
