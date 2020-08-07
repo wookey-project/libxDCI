@@ -441,7 +441,7 @@ void test_fcn_driver_eva(){
     usbotghs_global_stall_clear();
     usbotghs_endpoint_stall_clear(ep_id, dir);
     usbotghs_deconfigure_endpoint(ep_id);
-    usbotghs_activate_endpoint(dir8,dir);
+    usbotghs_activate_endpoint(ep_id,dir);
     usbotghs_deactivate_endpoint( ep_id,dir);
     usbotghs_enpoint_nak( ep_id);
     usbotghs_enpoint_nak_clear( ep_id);
@@ -451,8 +451,6 @@ void test_fcn_driver_eva(){
     usbotghs_endpoint_stall(ep_id, dir) ;
     usbotghs_get_ep_state(ep_id, dir) ;
 
-
-
     usbotghs_ctx.in_eps[EP0].mpsize = Frama_C_interval_16(0,65535); // tentative pour entrer dans while(residual_size >= size), mais à revoir
     uint8_t resp[1024] = { 0 };
     usbotghs_ctx.in_eps[EP0].fifo_lck = 1 ; // pour avoir une erreur dans xmit_fifo dans send_data
@@ -460,7 +458,7 @@ void test_fcn_driver_eva(){
     usbotghs_ctx.in_eps[EP0].fifo_lck = 0 ;
     usb_backend_drv_send_data((uint8_t *)&resp, 513, EP0);  // pour rentrer dans la boucle residual_size >= fifo_size
     usbotghs_ctx.in_eps[4].mpsize = Frama_C_interval_16(0,65535);
-    usbotghs_ctx.in_eps[4].id = 4 ;  // memory problem for write_core_fifo
+    usbotghs_ctx.in_eps[4].id = 4 ;
     usbotghs_ctx.in_eps[4].fifo_lck = 0 ;
     usbotghs_ctx.in_eps[4].configured = 1 ;
     usb_backend_drv_send_data((uint8_t *)&resp, size, 4);
@@ -473,7 +471,7 @@ void test_fcn_driver_eva(){
     usb_backend_drv_configure_endpoint(ep_id,type,dir,1024,USB_BACKEND_EP_ODDFRAME,&handler_ep);
     usbotghs_configure(mode, & usbctrl_handle_inepevent,& usbctrl_handle_outepevent);
     usbotghs_set_recv_fifo((uint8_t *)&resp, size, 0);
-    usbotghs_set_recv_fifo((uint8_t *)&resp, size, 1);  //Cyril : erreur dans set_reg_value (integer unsigned downcast, fausse alarme je pense)
+    usbotghs_set_recv_fifo((uint8_t *)&resp, size, 1);
 
 }
 
