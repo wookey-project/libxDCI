@@ -218,7 +218,7 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
    if (ctx == NULL) {
        return MBED_ERROR_INVPARAM;
    }
-    if (newstate > USB_DEVICE_STATE_INVALID) {
+    if (newstate > USB_DEVICE_STATE_INVALID) {  // cyril : problem before with >= (for wp)
         log_printf("[USBCTRL] invalid state transition !\n");
         return MBED_ERROR_INVPARAM;
     }

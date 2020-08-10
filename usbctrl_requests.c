@@ -654,7 +654,7 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
     switch (usbctrl_get_state(ctx)) {
         case USB_DEVICE_STATE_DEFAULT:
             if (pkt->wValue != 0) {
-                usbctrl_set_state(ctx, USB_DEVICE_STATE_ADDRESS);  // Cyril : pas prouvé par wp à cause du frama-c interval pour pkt->value
+                usbctrl_set_state(ctx, USB_DEVICE_STATE_ADDRESS);
                 /*@ assert ctx->state == USB_DEVICE_STATE_ADDRESS ; */
                 ctx->address = pkt->wValue;
                 /*@ assert \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
@@ -683,7 +683,7 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
             /* This case is not forbidden by USB2.0 standard, but the behavior is
              * undefined. We can, for example, stall out. (FIXME) */
             /*@ assert \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);   // Cyril : manque la gestion d'erreur
+            usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
@@ -2084,7 +2084,7 @@ err:
 
 /*
     CYRIL : cette fonction est une fonction static inline, mais elle n'est appelée par aucune autre fonction...
-    comment faire pour l'utiliser alors?
+            pour l'appeler, remove static
 
 */
 
@@ -2122,7 +2122,6 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
     /*
         Cyril : Ajout de ce test (defense en profondeur) pour éviter ce cas lors du calcul de iface_idx
                 normalement, cas impossible (interdit dans les specs)
-
     */
 
     if((((pkt->wIndex) & 0xff)) == 0 ){

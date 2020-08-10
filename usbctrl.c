@@ -99,15 +99,15 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
-    if (num_ctx >= MAX_USB_CTRL_CTX) {  // Cyril : == avant, je pense qu'on peut mettre >=
+    if (num_ctx >= MAX_USB_CTRL_CTX) {  // RTE : Cyril : == before
         errcode = MBED_ERROR_NOMEM;
         goto err;
     }
 
-    switch (dev_id) {
+    switch (dev_id){
         case USB_OTG_HS_ID:
             /*@ assert \separated(&usbotghs_ctx,ctx_list + (0..(GHOST_num_ctx-1))); */
-            errcode = usb_backend_drv_declare() ; // Cyril : usbotghs_declare : assigns usbotghs_ctx
+            errcode = usb_backend_drv_declare() ;
             break;
         case USB_OTG_FS_ID:
             /*@ assert \separated(&usbotghs_ctx,ctx_list + (0..(GHOST_num_ctx-1))); */
@@ -116,7 +116,7 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
         default:
             errcode = MBED_ERROR_NOBACKEND;
             goto err;
-            break;  // Cyril : jamais atteint à cause du goto
+            break;
     }
 
 
@@ -213,7 +213,7 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
     #endif/*!__FRAMAC__*/
 
 
-    //printf("[USBCTRL] initializing automaton\n");
+    printf("[USBCTRL] initializing automaton\n");
 
 /*
  TODO FRAMA-c : spécifier memset et memcpy...
@@ -672,7 +672,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     #endif/*!__FRAMAC__*/
 
     /* check space */
-    if (ctx->cfg[ctx->curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) {   // Cyril : modif par rapport à avant ==
+    if (ctx->cfg[ctx->curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) {   // RTE : Cyril : == before
         errcode = MBED_ERROR_NOMEM;
         goto err;
     }
@@ -683,7 +683,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                 check space
             */
 
-    	ctx->num_cfg++;
+    	ctx->num_cfg++;   // RTE before, this line was moved (and no test on ctx->num_cfg before)
 
         if(ctx->num_cfg > (CONFIG_USBCTRL_MAX_CFG - 1)){
             errcode = MBED_ERROR_NOMEM;
