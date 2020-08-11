@@ -235,7 +235,7 @@ FRAMAC_GEN_FLAGS:=\
 	        -warn-unsigned-overflow \
 			-kernel-msg-key pp \
 			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"  \
-		    -rte 
+		    -rte
 
 FRAMAC_EVA_FLAGS:=\
 		    -eva \
@@ -254,7 +254,7 @@ FRAMAC_EVA_FLAGS:=\
 
 FRAMAC_WP_FLAGS:=\
 	        -wp \
-  			-wp-model "Typed+ref+int" \
+  			-wp-model "Typed+raw+int" \
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
    			-wp-timeout $(TIMEOUT) 
@@ -264,7 +264,7 @@ frama-c-parsing:
 	frama-c framac/entrypoint.c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c \
 		 -c11 -machdep x86_32 \
 		 -no-frama-c-stdlib \
-		 -cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR)"
+		 -cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"
 
 frama-c-eva:
 	frama-c framac/entrypoint.c usbctrl*.c $(USBOTGHS_DIR)/usbotghs.c $(USBOTGHS_DIR)/usbotghs_fifos.c -c11 -machdep x86_32 \
@@ -284,7 +284,7 @@ frama-c:
 frama-c-gui:
 	frama-c-gui -load $(SESSION)
 
-
+#	        -warn-invalid-pointer \
 
 
 #    			-then \

@@ -1,5 +1,5 @@
 commande pour parser rapidement le fichier de log EVA :
-grep 'rte,unsigned_downcast' frama-c-rte-eva.log | grep -v 'got final status valid' & grep "'rte,index_bound' got status unknown" frama-c-rte-eva.log & grep "'rte,mem_access'" frama-c-rte-eva.log  | grep -v 'got final status valid' & grep "'rte,unsigned_overflow'" frama-c-rte-eva.log | grep -v 'got final status valid'
+grep 'rte,unsigned_downcast' frama-c-rte-eva.log | grep -v 'got final status valid' & grep "'rte,index_bound' got status unknown" frama-c-rte-eva.log & grep "'rte,mem_access'" frama-c-rte-eva.log  | grep -v 'got final status valid' & grep "'rte,unsigned_overflow'" frama-c-rte-eva.log | grep -v 'got final status valid' & & grep "'rte,pointer_value'" frama-c-rte-eva.log | grep -v 'got final status valid'
 
 #define CONFIG_USR_LIB_USBCTRL_DEV_PRODUCTID 0xDEAD
 #define CONFIG_USR_LIB_USBCTRL_DEV_VENDORID 0xCAFE

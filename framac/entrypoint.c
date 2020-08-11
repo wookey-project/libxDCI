@@ -257,11 +257,11 @@ void test_fcn_usbctrl_erreur(){
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = NULL,
-                                  .rqst_handler = NULL, .class_desc_handler = NULL};
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
     usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = NULL,
-                                   .rqst_handler = NULL, .class_desc_handler = NULL};
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
 /*
     ctx_test : context different de ctx_list, pour trigger certains cas dans get_handler
@@ -316,11 +316,15 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_interface_t *iface_null = NULL ;
     usbctrl_declare_interface(ctxh, iface_null) ;
 
-    usbctrl_interface_t iface_3 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = true, .eps[0].type = 3, .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1 };
+    usbctrl_interface_t iface_3 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = true, 
+        .eps[0].type = 3, .eps[0].handler = handler_ep,  .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
+        .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor };
     ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE ;
     usbctrl_declare_interface(ctxh, &iface_3) ;
 
-    usbctrl_interface_t iface_4 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = false, .eps[0].type = 3, .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1 };
+    usbctrl_interface_t iface_4 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = false, 
+        .eps[0].type = 3, .eps[0].handler = handler_ep, .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
+        .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor };
     ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE - 1 ;
     //ctx_list[ctxh].cfg[0].interfaces[0].eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1 ;
     usbctrl_declare_interface(ctxh, &iface_4) ;

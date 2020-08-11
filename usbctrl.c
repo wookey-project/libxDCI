@@ -218,11 +218,6 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
 /*
  TODO FRAMA-c : spécifier memset et memcpy...
 */
-
-        /*
-            initialisation des struct interface à la main, car frama-c a quelques difficultés avec memset (avec void *)
-        */
-
         /*@
             @ loop invariant 0 <= i <= MAX_INTERFACES_PER_DEVICE ;
             @ loop invariant \valid(ctx->cfg[ctx->curr_cfg].interfaces + (0..(MAX_INTERFACES_PER_DEVICE-1))) ;
