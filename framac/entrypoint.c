@@ -145,7 +145,7 @@ void test_fcn_usbctrl(){
     ///////////////////////////////////////////////////
     //        premier context
     ///////////////////////////////////////////////////
-
+    usbctrl_declare(8, &ctxh1);  // in order to check dev_id !=6 and != 7 ;
     usbctrl_declare(6, &ctxh1);
     /*@ assert ctxh1 == 0 ; */
     usbctrl_initialize(ctxh1);
@@ -277,14 +277,17 @@ void test_fcn_usbctrl_erreur(){
     uint32_t *bad_ctxh = NULL;
     usbctrl_declare(dev_id, bad_ctxh);
 
+/*    ctxh = 1 ;
+    usbctrl_declare(8, &ctxh);  // pour tester dev_id !=6 et != 7
+
     ctxh = 1 ;
-    num_ctx = 2;
+    num_ctx = 2;*/
     usbctrl_declare(dev_id, &ctxh);
 
 
 
     /*
-        usbctrl_declare : cas d'erreur : ctxh >= num_ctx
+        usbctrl_initialize : cas d'erreur : ctxh >= num_ctx
     */
 
     ctxh = 0 ;
@@ -292,9 +295,7 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_initialize(ctxh);
 
 
-    ctxh = 1 ;
-    num_ctx = 0 ;
-    usbctrl_declare(8, &ctxh);  // pour tester dev_id !=6 et != 7
+    ctxh = 5 ;
     usbctrl_initialize(ctxh);
 
     /*
@@ -316,13 +317,13 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_interface_t *iface_null = NULL ;
     usbctrl_declare_interface(ctxh, iface_null) ;
 
-    usbctrl_interface_t iface_3 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = true, 
+    usbctrl_interface_t iface_3 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = true,
         .eps[0].type = 3, .eps[0].handler = handler_ep,  .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
         .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor };
     ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE ;
     usbctrl_declare_interface(ctxh, &iface_3) ;
 
-    usbctrl_interface_t iface_4 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = false, 
+    usbctrl_interface_t iface_4 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = false,
         .eps[0].type = 3, .eps[0].handler = handler_ep, .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
         .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor };
     ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE - 1 ;

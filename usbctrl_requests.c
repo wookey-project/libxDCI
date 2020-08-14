@@ -1193,32 +1193,27 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 ctx->ctrl_req_processing = false;  //
                 goto err;
             }
-            if (maxlength == 0) {  // Cyril : vu que pkt n'est pas modifié, on ne peut pas arriver ici avec le test avant le switch (test if ligne 1946)
-                /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-                errcode = usb_backend_drv_send_zlp(0);   // Cyril : code mort du coup, confirmé par EVA
-                /*request finish here */
-                ctx->ctrl_req_processing = false;
-            } else {
-                if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
+
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                     log_printf("[USBCTRL] Failure while generating descriptor !!!\n");
                     /*request finish here */
                     ctx->ctrl_req_processing = false;  // cyril : comment arriver ici avec EVA ?
                     goto err;
-                }
-                log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)\n", maxlength, size);
-                if (maxlength >= size) {
+            }
+            log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)\n", maxlength, size);
+
+            if (maxlength >= size) {
                     /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-                    errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
-                } else {
-                    /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-                    errcode = usb_backend_drv_send_data(&(buf[0]), maxlength, 0);
-                    if (errcode != MBED_ERROR_NONE) {
-                        log_printf("[USBCTRL] Error while sending data\n");
-                    }
-                    /* should we not inform the host that there is not enough
-                     * space ? TODO: we should: sending NYET or NAK
-                     * XXX: check USB2.0 standard */
+                errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
+            } else {
+                /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
+                errcode = usb_backend_drv_send_data(&(buf[0]), maxlength, 0);
+                if (errcode != MBED_ERROR_NONE) {
+                    log_printf("[USBCTRL] Error while sending data\n");
                 }
+                /* should we not inform the host that there is not enough
+                * space ? TODO: we should: sending NYET or NAK
+                * XXX: check USB2.0 standard */
             }
             /* read status .... */
             /*@ assert \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
@@ -1233,13 +1228,6 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 /*@ assert ctx->ctrl_req_processing == \false ; */
                 goto err;
             }
-            if (maxlength == 0) {  // Cyril : vu que pkt n'est pas modifié, on ne peut pas arriver ici avec le test avant le switch (test if ligne 1946)
-                /*@ assert \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-                errcode = usb_backend_drv_send_zlp(0);
-                /*request finish here */
-                ctx->ctrl_req_processing = false;
-                /*@ assert ctx->ctrl_req_processing == \false; */
-            } else {
                 if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                     /*request finish here */
                     ctx->ctrl_req_processing = false;
@@ -1258,7 +1246,6 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                      * request with the correct size in it.
                      * XXX: check USB2.0 standard */
                 }
-            }
             /* read status .... */
             /*@ assert \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
@@ -1275,13 +1262,6 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 /*@ assert ctx->ctrl_req_processing == \false; */
                 goto err;
             }
-            if (maxlength == 0) {    // Cyril : vu que pkt n'est pas modifié, on ne peut pas arriver ici avec le test avant le switch (test if ligne 1946)
-                /*@ assert \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
-                errcode = usb_backend_drv_send_zlp(0);
-                /*request finish here */
-                ctx->ctrl_req_processing = false;
-                /*@ assert ctx->ctrl_req_processing == \false; */
-            } else {
                 if (maxlength > size) {
                     /*@ assert \separated(&(buf[0]),ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
                     errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
@@ -1292,7 +1272,6 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                      * space ?
                      * XXX: check USB2.0 standard */
                 }
-            }
             /* read status .... */
             /*@ assert \separated(ctx,pkt, r_CORTEX_M_USBOTG_HS_DIEPCTL(0), r_CORTEX_M_USBOTG_HS_DOEPCTL(0)) ; */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
@@ -1306,12 +1285,6 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                 /*@ assert ctx->ctrl_req_processing == \false; */
                 goto err;
             }
-            if (maxlength == 0) {     // Cyril : vu que pkt n'est pas modifié, on ne peut pas arriver ici avec le test avant le switch (test if ligne 1946)
-                errcode = usb_backend_drv_send_zlp(0);
-                /*request finish here */
-                ctx->ctrl_req_processing = false;
-                /*@ assert ctx->ctrl_req_processing == \false; */
-            } else {
                 if ((errcode = usbctrl_get_descriptor(USB_DESC_INTERFACE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                     // Cyril : comme on est dans le cas USB_DESC_INTERFACE, size == 0, donc on n'entrera jamais dans le test ligne 2074 (else) ; code non atteignable par EVA
                     /*request finish here */
@@ -1327,7 +1300,6 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
                      * space ?
                      * XXX: check USB2.0 standard */
                 }
-            }
             /* read status .... */
             /*@ assert \separated(ctx,pkt, r_CORTEX_M_USBOTG_HS_DIEPCTL(0), r_CORTEX_M_USBOTG_HS_DOEPCTL(0)) ; */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
@@ -2135,17 +2107,20 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
     iface_idx = (((pkt->wIndex) & 0xff) -1 );  // Cyril : faux positif, déchargé par WP
  /* @ assert GHOST_num_ctx == num_ctx ; */
      if (!usbctrl_is_interface_exists(ctx, iface_idx)) {
-        //errcode = MBED_ERROR_NOTFOUND;
         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
         errcode = MBED_ERROR_NOTFOUND;
         goto err;
     }
     /* @ assert GHOST_num_ctx == num_ctx ; */
-    if ((iface = usbctrl_get_interface(ctx, iface_idx)) == NULL) {   // je ne peux pas arriver ici après le passage dans usbctrl_is_interface_exists si ça c'est bien passé
-        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
-        errcode = MBED_ERROR_UNKNOWN;
-        goto err;
+    iface = usbctrl_get_interface(ctx, iface_idx) ;
+
+    /*if ((iface = usbctrl_get_interface(ctx, iface_idx)) == NULL) {   // je ne peux pas arriver ici après le passage dans usbctrl_is_interface_exists si ça c'est bien passé
+    //    usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+    //    errcode = MBED_ERROR_UNKNOWN;
+    //    goto err;
     }
+    */
+
     /* interface found, call its dedicated request handler */
     uint32_t handler ;
 

@@ -50,7 +50,7 @@ volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/
 
 /*@
-    @ requires \separated(&usbotghs_ctx,ctxh+(..));
+    @ requires \separated(&usbotghs_ctx,ctxh+(..), ctx_list+ (..));
     @ ensures GHOST_num_ctx == num_ctx ;
 
     @ behavior bad_ctxh:
@@ -75,12 +75,12 @@ volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
     @   assumes (dev_id == USB_OTG_HS_ID || dev_id == USB_OTG_FS_ID) ;
     @   assumes num_ctx < MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null ;
-    @   assigns *ctxh, num_ctx, usbotghs_ctx, GHOST_num_ctx, ctx_list[\old(num_ctx)]   ;
+    @   assigns *ctxh, num_ctx, usbotghs_ctx, GHOST_num_ctx, ctx_list[\old(num_ctx)] ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
     @   ensures *ctxh == \old(GHOST_num_ctx) ;
     @   ensures GHOST_num_ctx == \old(GHOST_num_ctx) +1 ;
-    @   ensures ctx_list[\old(GHOST_num_ctx)].dev_id == dev_id ;
-    @   ensures ctx_list[\at(GHOST_num_ctx,Pre)] == ctx_list[\at(num_ctx,Pre)] ;
+    @   ensures ctx_list[\old(num_ctx)].dev_id == dev_id ;
+    @   ensures ctx_list[GHOST_num_ctx-1] == ctx_list[num_ctx-1] ;
 
     @ complete behaviors;
     @ disjoint behaviors;
@@ -106,11 +106,11 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
 
     switch (dev_id){
         case USB_OTG_HS_ID:
-            /*@ assert \separated(&usbotghs_ctx,ctx_list + (0..(GHOST_num_ctx-1))); */
+            /* @ assert \separated(&usbotghs_ctx,ctx_list + (0..(GHOST_num_ctx-1))); */
             errcode = usb_backend_drv_declare() ;
             break;
         case USB_OTG_FS_ID:
-            /*@ assert \separated(&usbotghs_ctx,ctx_list + (0..(GHOST_num_ctx-1))); */
+            /* @ assert \separated(&usbotghs_ctx,ctx_list + (0..(GHOST_num_ctx-1))); */
             errcode = usb_backend_drv_declare() ;
             break;
         default:
@@ -136,19 +136,19 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
     num_ctx++;
 
     //@ ghost GHOST_num_ctx++  ;
-    /*@ assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre)+1 ; */
 
-    /*@ assert \valid(ctx_list + (0..(GHOST_num_ctx-1))) ; */
 
     /* initialize context */
     ctx->num_cfg = 1;
 
+    /*@ assert ctx_list[GHOST_num_ctx-1] == ctx_list[GHOST_num_ctx-1] ; */
+    /*@ assert \valid(ctx_list + (0..(GHOST_num_ctx-1))) ; */
 
     /*@
         @ loop invariant 0 <= i <= CONFIG_USBCTRL_MAX_CFG;
         @ loop invariant \valid(ctx->cfg + (0..(CONFIG_USBCTRL_MAX_CFG-1))) ;
-        @ loop invariant \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
-        @ loop assigns i , ctx->cfg[0..(CONFIG_USBCTRL_MAX_CFG-1)] ;
+        @ loop invariant \valid(ctx_list + (0..(num_ctx-1))) ;
+        @ loop assigns i , ctx_list[num_ctx-1] ;
         @ loop variant (CONFIG_USBCTRL_MAX_CFG - i);
     */
 
@@ -160,7 +160,8 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
 
     ctx->curr_cfg = 0;
 
-    /*@ assert ctx_list[\at(GHOST_num_ctx,Pre)] == ctx_list[\at(num_ctx,Pre)] ; */
+    /*@ assert GHOST_num_ctx == num_ctx ; */
+    /*@ assert ctx_list[GHOST_num_ctx-1] == ctx_list[GHOST_num_ctx-1] ; */
     /*@ assert *ctxh == GHOST_num_ctx-1 ; */   // Cyril : ajout de ces 2 assert pour que les ensures soient prouvés par WP
     /*@ assert ctx_list[GHOST_num_ctx-1].dev_id == dev_id ; */
     /*@ assert \valid(ctx_list + (0..(GHOST_num_ctx-1))) ; */
@@ -174,7 +175,6 @@ err:
 
 
 /*@
-    @ requires 0 <= ctxh < MAX_USB_CTRL_CTX ;
     @ requires GHOST_num_ctx == num_ctx ;
     @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
 

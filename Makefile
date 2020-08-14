@@ -217,7 +217,7 @@ LIBSTD_API_DIR ?= $(PROJ_FILES)/libs/std/api
 # itself and thus by upper layers, including drivers and libraries.
 EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
 
-SESSION     := framac/results/frama-c-rte-eva-wp.session
+SESSION     := framac/results/frama-c-rte-eva-wp-ref.session
 EVA_SESSION := framac/results/frama-c-rte-eva.session
 TIMESTAMP   := framac/results/timestamp-calcium_wp-eva.txt
 JOBS        := $(shell nproc)
@@ -240,7 +240,6 @@ FRAMAC_GEN_FLAGS:=\
 FRAMAC_EVA_FLAGS:=\
 		    -eva \
 		    -eva-show-perf \
-		    -eva-auto-loop-unroll 500 \
 		    -eva-slevel 500 \
 		    -eva-domains symbolic-locations\
 		    -eva-domains equality \
@@ -254,10 +253,10 @@ FRAMAC_EVA_FLAGS:=\
 
 FRAMAC_WP_FLAGS:=\
 	        -wp \
-  			-wp-model "Typed+raw+int" \
+  			-wp-model "Typed+ref+int" \
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
-   			-wp-timeout $(TIMEOUT) 
+   			-wp-timeout $(TIMEOUT)
 
 
 frama-c-parsing:
