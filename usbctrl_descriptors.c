@@ -115,12 +115,6 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
                             desc->bLength = sizeof(usbctrl_device_descriptor_t);
             wp est perdu, assigns *buf ne passe pas (en même temps, buf est de type uin8_t *...)
 
-    un bug :   uint32_t max_buf_size = *desc_size - curr_offset
-                *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
-                probleme pour EVA  assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset;
-
-    pour le compteur poll, eva n'arrive pas à prouver qu'il reste >= 0
-
     les loop assigns ne passent pas également
 
         @ requires is_valid_descriptor_type(type);  pas nécessaire comme il y a default dans le switch
@@ -337,12 +331,12 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 goto err;
             }
 
-            /* @
+            /*@
                 @ loop invariant 0 <= i <= iface_num ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num-1)));
                 @ loop invariant \separated(buf,ctx);
-                @ loop assigns i, class_desc_size, errcode  ;
-                @ loop variant (iface_num -i);
+                @ loop assigns i, class_desc_size, errcode, FLAG  ;
+                @ loop variant (iface_num - i);
             */
 
             for (uint8_t i = 0; i < iface_num; ++i) {
@@ -377,7 +371,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             /* then calculate the overall descriptor size */
             uint32_t descriptor_size = sizeof(usbctrl_configuration_descriptor_t);
 
-             /* @
+             /*@
                 @ loop invariant 0 <= i <= iface_num ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num-1)));
                 @ loop assigns i, descriptor_size  ;
@@ -388,9 +382,8 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 /* for endpoint, we must not declare CONTROL eps in interface descriptor */
                 uint8_t num_ep = 0;
 
-                /* @
+                /*@
                     @ loop invariant 0 <= ep <= ctx->cfg[curr_cfg].interfaces[i].usb_ep_number ;
-                    @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[i].eps + (0..(ctx->cfg[curr_cfg].interfaces[i].usb_ep_number -1))) ;
                     @ loop assigns num_ep, ep ;
                     @ loop variant (ctx->cfg[curr_cfg].interfaces[i].usb_ep_number - ep);
                 */
@@ -468,14 +461,16 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              * interface, and at the end of each interface, we increment the offset of the size
              * of the complete interface descriptor, including EP. */
 
-            /* @
+            uint8_t max_ep_number ;  // new variable for variant and invariant proof
+
+            /*@
                 @ loop invariant 0 <= iface_id <= iface_num ;
                 @ loop invariant 0 <= curr_offset <=  255 ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num -1))) ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1))) ;
                 @ loop invariant \valid(buf + (0..255));
                 @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1)),buf + (0..255));
-                @ loop assigns iface_id, curr_offset, errcode, buf[0..255] ;
+                @ loop assigns iface_id, curr_offset, errcode, buf[0..255] ;  // not valided by WP due to cast   usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)&(buf[curr_offset])
                 @ loop variant (iface_num - iface_id) ;
             */
 
@@ -491,7 +486,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         cfg->bAlternateSetting = 0;
 
                         uint8_t num_ep = 0;
-                /* @
+                /*@
                     @ loop invariant 0 <= ep <= ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1))) ;
                     @ loop assigns num_ep, ep ;
@@ -516,7 +511,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         // class level descriptor of current interface
 
                         if (ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler) {
-                            uint8_t *cfg = &(buf[curr_offset]);
+                            uint8_t *cfg = &(buf[curr_offset]); // cyril : à quoi sert cette variable?
                             uint32_t handler;
                             if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {
                                 log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
@@ -565,22 +560,26 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         /* and for this interface, handling each EP */
 
                         uint8_t poll ;
-                /* @
-                    @ loop invariant 0 <= ep_number <= ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;
+
+                        max_ep_number = ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;  // variable change in loop
+                /*@
+                    @ loop invariant \at(max_ep_number,LoopEntry) == \at(max_ep_number,LoopCurrent) ;
+                    @ loop invariant 0 <= ep_number <= max_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1))) ;
                     @ loop invariant \valid(buf + (0..255));
                     @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1)),buf + (0..255));
-                    @ loop invariant 0 <= curr_offset <=  255 ;
                     @ loop assigns ep_number, poll, curr_offset, buf[0..255];
-                    @ loop variant (ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - ep_number);
+                    @ loop variant (max_ep_number - ep_number);
                 */
 
-                        for (uint8_t ep_number = 0; ep_number < ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number; ++ep_number) {
+                        for (uint8_t ep_number = 0; ep_number < max_ep_number; ++ep_number) {
+                            /*@ assert 0 <= ep_number < max_ep_number ; */
                             if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].type == USB_EP_TYPE_CONTROL) {
                                 /* Control EP (EP0 usage) are not declared here */
                                 continue;
                             }
-                            usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)&(buf[curr_offset]); // modèle mémoire cast à tester, sinon assert
+                            usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)&(buf[curr_offset]);
+                            /*@ assert \separated(&max_ep_number, &ep_number, &poll, cfg,&curr_offset); */
                             cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
                             cfg->bDescriptorType = USB_DESC_ENDPOINT;
                             cfg->bEndpointAddress = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].ep_num;
@@ -620,10 +619,10 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                     /* get back the position of the first '1' bit */
 
                                     uint8_t compteur_poll = 9;
-                                    /* @
+                                    /*@
                                         @ loop invariant i >= 0 ;
                                         @ loop invariant poll >= 0 ;
-                                        @ loop invariant compteur_poll >= 0 ;
+                                        @ loop invariant 0 <= compteur_poll <= 9 ;
                                         @ loop assigns poll, i, compteur_poll;
                                         @ loop variant compteur_poll;
                                     */

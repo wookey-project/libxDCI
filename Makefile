@@ -226,16 +226,21 @@ TIMEOUT     := 15
 
 FRAMAC_GEN_FLAGS:=\
 			-absolute-valid-range 0x40040000-0x40044000 \
-	        -no-frama-c-stdlib \
+			-no-frama-c-stdlib \
 	        -warn-left-shift-negative \
 	        -warn-right-shift-negative \
 	        -warn-signed-downcast \
 	        -warn-signed-overflow \
 	        -warn-unsigned-downcast \
 	        -warn-unsigned-overflow \
+	        -warn-invalid-pointer \
 			-kernel-msg-key pp \
 			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"  \
-		    -rte
+		    -rte \
+		    -instantiate \
+		    -instantiate-memcpy \
+			-instantiate-debug 1 \
+		    -instantiate-log a:frama-c-instantiate.log
 
 FRAMAC_EVA_FLAGS:=\
 		    -eva \
@@ -256,7 +261,8 @@ FRAMAC_WP_FLAGS:=\
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
-   			-wp-timeout $(TIMEOUT)
+   			-wp-timeout $(TIMEOUT) \
+   			-wp-log a:frama-c-rte-eva-wp.log
 
 
 frama-c-parsing:
@@ -298,6 +304,11 @@ frama-c-gui:
 #-eva-equality-through-calls all \
 # -from-verify-assigns \
 #-eva-use-spec usbotghs_configure \
+
+#   			-wp-smoke-tests \
+#   			-wp-smoke-dead-code \
+#   			-wp-smoke-dead-call \
+#   			-wp-smoke-dead-loop \
 
 
 # -wp-dynamic         Handle dynamic calls with specific annotations. (set by

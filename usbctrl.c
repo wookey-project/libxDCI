@@ -709,12 +709,12 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
    //log_printf("declaring new interface class %x, %d EPs in Cfg %d/%d\n", iface->usb_class, iface->usb_ep_number, iface_config, iface_num);
    /* 1) make a copy of interface. The interface identifier is its cell number  */
 
-    #if defined(__FRAMAC__)
+//    #if defined(__FRAMAC__)
     /*
         en attendant de définir correctement memcpy avec frama-c, je copie manuellement la struct iface dans ctx->cfg[iface_config].interfaces[iface_num]
         les paramètres copiés sont ceux définis dans la struct iface dans le main... (donc c'est un exemple pour passer le code à frama-c)
     */
-       ctx->cfg[iface_config].interfaces[iface_num].usb_class = iface->usb_class ;
+/*       ctx->cfg[iface_config].interfaces[iface_num].usb_class = iface->usb_class ;
        ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number = iface->usb_ep_number ;
        ctx->cfg[iface_config].interfaces[iface_num].dedicated = iface->dedicated ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].type = iface->eps[0].type ;
@@ -723,11 +723,11 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].handler = iface->eps[0].handler ;
        ctx->cfg[iface_config].interfaces[iface_num].rqst_handler = iface->rqst_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].class_desc_handler = iface->class_desc_handler ;
-       ctx->cfg[iface_config].interfaces[iface_num].eps[0].poll_interval = iface->eps[0].poll_interval ;
+       ctx->cfg[iface_config].interfaces[iface_num].eps[0].poll_interval = iface->eps[0].poll_interval ;*/
 
-    #else
+//    #else
         memcpy((void*)&(ctx->cfg[iface_config].interfaces[iface_num]), (void*)iface, sizeof(usbctrl_interface_t));
-    #endif/*!__FRAMAC__*/
+//    #endif/*!__FRAMAC__*/
 
    /* 2) set the interface identifier */
    ctx->cfg[iface_config].interfaces[iface_num].id = iface_num;
