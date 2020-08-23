@@ -237,10 +237,7 @@ FRAMAC_GEN_FLAGS:=\
 			-kernel-msg-key pp \
 			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"  \
 		    -rte \
-		    -instantiate \
-		    -instantiate-memcpy \
-			-instantiate-debug 1 \
-		    -instantiate-log a:frama-c-instantiate.log
+		    -instantiate
 
 FRAMAC_EVA_FLAGS:=\
 		    -eva \
@@ -286,8 +283,15 @@ frama-c:
    			-save $(SESSION) \
    			-time $(TIMESTAMP)
 
+frama-c-instantiate:
+	frama-c framac/entrypoint.c usbctrl.c -c11 -machdep x86_32 \
+			$(FRAMAC_GEN_FLAGS) \
+			-instantiate
+
 frama-c-gui:
 	frama-c-gui -load $(SESSION)
+
+
 
 #	        -warn-invalid-pointer \
 

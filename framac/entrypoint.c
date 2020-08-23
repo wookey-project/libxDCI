@@ -3,6 +3,7 @@
 #include "autoconf.h"
 #include "libc/types.h"
 #include "libc/string.h"
+//#include <string.h>
 #include "usbctrl.h"
 #include "usbctrl_state.h"
 #include "usbctrl_handlers.h"
