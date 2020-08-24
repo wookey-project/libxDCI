@@ -463,7 +463,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
             uint8_t max_ep_number ;  // new variable for variant and invariant proof
 
-            /*@
+            /* @
                 @ loop invariant 0 <= iface_id <= iface_num ;
                 @ loop invariant 0 <= curr_offset <=  255 ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num -1))) ;
@@ -486,7 +486,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         cfg->bAlternateSetting = 0;
 
                         uint8_t num_ep = 0;
-                /*@
+                /* @
                     @ loop invariant 0 <= ep <= ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1))) ;
                     @ loop assigns num_ep, ep ;
@@ -530,10 +530,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 class_desc_max_size = (uint8_t)(max_buf_size & 0xff);
                             }
 
-                            // PTH: patch au dessus devrait corriger le RTE, à confirmer par EVA
-                            // Cyril : bug : *desc_size quand on arrive ici vaut 0... alors que curr_offset >0
-                            // Cyril : probleme pour EVA /*@ assert rte: unsigned_overflow: 0 ≤ *desc_size - curr_offset;
-
                         #ifndef __FRAMAC__
                             if (handler_sanity_check_with_panic((physaddr_t)ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler)) {
                                 goto err;
@@ -562,7 +558,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         uint8_t poll ;
 
                         max_ep_number = ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;  // variable change in loop
-                /*@
+                /* @
                     @ loop invariant \at(max_ep_number,LoopEntry) == \at(max_ep_number,LoopCurrent) ;
                     @ loop invariant 0 <= ep_number <= max_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1))) ;
@@ -618,16 +614,14 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                     uint8_t i = 0;  // Cyril : on a déjà une boucle avec i déclaré, je pense qu'il faut nommer deux variables différentes (variable renommé en ep_number)
                                     /* get back the position of the first '1' bit */
 
-                                    uint8_t compteur_poll = 9;
-                                    /*@
+                                    uint8_t compteur_poll = 9;  // add compteur_poll for framac
+                                    /* @
                                         @ loop invariant i >= 0 ;
                                         @ loop invariant poll >= 0 ;
                                         @ loop invariant 0 <= compteur_poll <= 9 ;
                                         @ loop assigns poll, i, compteur_poll;
                                         @ loop variant compteur_poll;
                                     */
-                                      // Cyril : pour faire passer frama, on peut faire un compteur max de 9 (poll a 8 bits) pour faire un variant sur ce compteur...
-                                      // ou 9 -i en variant
                                     while (!(poll & 0x1) && compteur_poll > 0) {
                                         poll >>= 1;
                                         i++;
