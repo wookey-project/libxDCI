@@ -378,16 +378,19 @@ end:
     @ behavior bad_pointer :
     @   assumes ctx == \null ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   ensures GHOST_idx_ctx == 2 ;
 
     @ behavior not_found :
     @   assumes ctx != \null ;
     @   assumes !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id) ;
     @   ensures \result == MBED_ERROR_NOTFOUND ;
+    @   ensures GHOST_idx_ctx == 2 ;
 
     @ behavior found :
     @   assumes ctx != \null ;
     @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id ;
     @   ensures \exists integer i ; 0 <= i < GHOST_num_ctx && \old(ctx_list[i].dev_id) == device_id && GHOST_idx_ctx==i ;
+    @   ensures 0 <= GHOST_idx_ctx < GHOST_num_ctx ;
     @   ensures \result == MBED_ERROR_NONE ;
     @	ensures *ctx == &ctx_list[GHOST_idx_ctx];
 
@@ -726,7 +729,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        ctx->cfg[iface_config].interfaces[iface_num].rqst_handler = iface->rqst_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].class_desc_handler = iface->class_desc_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].poll_interval = iface->eps[0].poll_interval ;
-	
+
     #else
         memcpy((void*)&(ctx->cfg[iface_config].interfaces[iface_num]), (void*)iface, sizeof(usbctrl_interface_t));
     #endif/*!__FRAMAC__*/

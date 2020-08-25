@@ -169,6 +169,18 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
 
 
 /* @
+  @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx);
+  @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
+  @ assigns ctx_list[GHOST_idx_ctx].state, GHOST_idx_ctx;
+  @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
+  @ ensures \result ≡ MBED_ERROR_INVPARAM ==> !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id);
+  @ ensures (\result == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID) ==> (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && GHOST_idx_ctx==i) && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET);
+  @ ensures \result == MBED_ERROR_NONE ==> (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && GHOST_idx_ctx==i) && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET);
+
+*/
+
+// PMO cette specification ne passe pas - pb disjointitude ?
+/* @
     @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx);
     @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
@@ -191,16 +203,44 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
     @   ensures ctx_list[GHOST_idx_ctx].state != USB_DEVICE_STATE_INVALID ;
 
 @ complete behaviors ;  // ne passe pas car les assumes entre ctx_not_found et les autres behaviors ne sont pas opposés
-@ disjoint behaviors ;
+@ disjoint behaviors ctx_not_found, no_valid_transition ; // PMO ok
+@ disjoint behaviors ctx_not_found, valid_transition ; // PMO ok
+@ disjoint behaviors valid_transition, no_valid_transition ; // PMO ko
+
+    @ ensures 0 <= GHOST_idx_ctx < GHOST_num_ctx ;  // CDE ko
 
 */
+// PMO suppression des behaviors
 
+/*@
+    @ requires 0 < GHOST_num_ctx ; // reset after usbctrl_declare ok, so 0 < GHOST_num_ctx
+    @ requires \separated(((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx, &GHOST_idx_ctx); // PMO addition GHOST_idx_ctx
+    @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
+    @ assigns reset_requested, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx, GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ; // moins .state PMO ctx_list[0..(GHOST_num_ctx-1)].state passe mais il faut ctx_list[GHOST_idx_ctx].state
+    @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
+
+    @ ensures \result == MBED_ERROR_INVPARAM
+    ==>  !(\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list, Pre)[i].dev_id == dev_id)
+    || ((usbotghs_ctx.out_eps[0].configured == \false) || (usbotghs_ctx.out_eps[0].mpsize == 0)) ;
+
+    @ ensures \result == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID
+    ==>  (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list, Pre)[i].dev_id == dev_id
+     && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
+     && (0 <= GHOST_idx_ctx < GHOST_num_ctx) ;
+
+    @ ensures \result == MBED_ERROR_NONE && ctx_list[GHOST_idx_ctx].state != USB_DEVICE_STATE_INVALID
+    ==>(\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list, Pre)[i].dev_id == dev_id
+    && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
+    && !((usbotghs_ctx.out_eps[0].configured == \false) || (usbotghs_ctx.out_eps[0].mpsize == 0))
+    && (0 <= GHOST_idx_ctx < GHOST_num_ctx) ;
+
+*/
 
 mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 {
 
     mbed_error_t       errcode = MBED_ERROR_NONE;
-    dev_id = dev_id;
+    //dev_id = dev_id;
     usbctrl_context_t *ctx = NULL;
     log_printf("[USBCTRL] Handling reset\n");
     /* TODO: support for multiple drivers in the same time.
@@ -211,46 +251,55 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     //dev_id = dev_id;
 
     log_printf("[USBCTRL] reset: get context for dev_id %d\n", dev_id);
+    /*@ assert &ctx != NULL ; */
     if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] reset: no ctx found!\n");
-	 	/* @ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
-		/*@ assert &ctx != NULL ; */
+     /* @ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
+    /*@ assert &ctx != NULL ; */
         /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
         /* @ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
-
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && GHOST_idx_ctx == i ) ; */
     /* @ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
     /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
     /*@ assert ctx->state == ctx_list[GHOST_idx_ctx].state ; */
+    /*@ assert 0 <= GHOST_idx_ctx < GHOST_num_ctx; */
 
     /*@ assert ctx != 0 ; */
     usb_device_state_t state = usbctrl_get_state(ctx);
     /*@ assert state == ctx->state ; */
     /*@ assert state == ctx_list[GHOST_idx_ctx].state ; */
     /*@ assert \at(ctx_list,Pre)[GHOST_idx_ctx].state == \at(ctx_list, Here)[GHOST_idx_ctx].state ; */
+    /*@ assert \at(ctx_list,Pre)[GHOST_idx_ctx] == \at(ctx_list, Here)[GHOST_idx_ctx] ; */
+    /*@ assert 0 <= GHOST_idx_ctx < GHOST_num_ctx; */
+
 
     /* resetting directly depends on the current state */
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
         log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
+
         /*@ assert  ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID ; */
-		/* @ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
-		/*@ assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
-		/*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ; */
+    /*@ assert !(\exists integer i; 0 <= i < GHOST_num_ctx && i!= GHOST_idx_ctx && \at(ctx_list,Pre)[i].state != ctx_list[i].state) ; */
+    /* @ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
+        /* @ assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, beforeif)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
+    /*@ assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ; */
         errcode = MBED_ERROR_INVSTATE;
-		/*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==> (errcode == MBED_ERROR_INVSTATE) ; */
-		/*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==> (errcode == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID) ; */
-        errcode = MBED_ERROR_INVSTATE;
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==> (errcode == MBED_ERROR_INVSTATE) ; */
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==> (errcode == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID) ; */
+    /*@ assert 0 <= GHOST_idx_ctx < GHOST_num_ctx; */
         goto err;
     }
-    /*@ assert (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[state].req_trans[i].request == USB_DEVICE_TRANS_RESET) ; */
-    /*@ assert state == ctx->state ; */
-    /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
-    /*@ assert state == ctx_list[GHOST_idx_ctx].state ; */
-    /*@ assert !(state == USB_DEVICE_STATE_ATTACHED || state == USB_DEVICE_STATE_SUSPENDED_POWER || state == USB_DEVICE_STATE_INVALID) ; */
+    /*@ assert errcode == MBED_ERROR_NONE ; */
+    /*@ assert ctx_list[GHOST_idx_ctx]  == \at(ctx_list,Pre)[GHOST_idx_ctx] ; */
+    /*@ assert ctx_list[GHOST_idx_ctx].state == \at(ctx_list,Pre)[GHOST_idx_ctx].state ; */
+    /*@ assert (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ; */
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && ctx_list[i].dev_id == \at(ctx_list,Pre)[i].dev_id); */
+    /* @ assert state == ctx_list[GHOST_idx_ctx].state ; */
 
     log_printf("[USBCTRL] reset: execute transition from state %d\n", state);
     /* handling RESET event depending on current state */
@@ -344,19 +393,22 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             break;
 
     }
+
+
     /* Switching to state targeted by the automaton, Depending on the current
      * state.
      * This action is generic thinks to the automaton and can be executed out
      * of the above switch().
      * after sanitation, should not fail */
     usbctrl_set_state(ctx, usbctrl_next_state(state, USB_DEVICE_TRANS_RESET));
+    /*@ assert ctx ≡ &ctx_list[GHOST_idx_ctx]; */ ;
+    /*@ assert !(\exists integer i; 0 <= i < GHOST_num_ctx && i!= GHOST_idx_ctx && \at(ctx_list,Pre)[i].state != ctx_list[i].state) ; */
     /*@ assert ctx_list[GHOST_idx_ctx].state!= USB_DEVICE_STATE_INVALID; */
     /*@ assert errcode == MBED_ERROR_NONE; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)); */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id  && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==>  ( errcode == MBED_ERROR_NONE  &&  ctx_list[GHOST_idx_ctx].state!= USB_DEVICE_STATE_INVALID ) ; */
-
-
 err:
+        /*@ assert !(\exists integer i; 0 <= i < GHOST_num_ctx && i!= GHOST_idx_ctx && \at(ctx_list,Pre)[i].state != ctx_list[i].state) ; */
     return errcode;
 }
 
