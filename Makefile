@@ -217,7 +217,7 @@ LIBSTD_API_DIR ?= $(PROJ_FILES)/libs/std/api
 # itself and thus by upper layers, including drivers and libraries.
 EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
 
-SESSION     := framac/results/frama-c-rte-eva-wp-ref-smoke-no-dead.session
+SESSION     := framac/results/frama-c-rte-eva-wp-ref.session
 EVA_SESSION := framac/results/frama-c-rte-eva.session
 TIMESTAMP   := framac/results/timestamp-calcium_wp-eva.txt
 JOBS        := $(shell nproc)
@@ -233,6 +233,7 @@ FRAMAC_GEN_FLAGS:=\
 	        -warn-signed-overflow \
 	        -warn-unsigned-downcast \
 	        -warn-unsigned-overflow \
+	        -warn-invalid-pointer \
 			-kernel-msg-key pp \
 			-cpp-extra-args="-nostdinc -I framac/include -I $(LIBSTD_API_DIR) -I $(USBOTGHS_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"  \
 		    -rte \
@@ -256,8 +257,6 @@ FRAMAC_WP_FLAGS:=\
 	        -wp \
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
-  			-wp-smoke-tests \
-  			-wp-no-smoke-dead-code \
   			-wp-prover alt-ergo,cvc4,z3 \
    			-wp-timeout $(TIMEOUT) \
    			-wp-log a:frama-c-rte-eva-wp.log
@@ -294,7 +293,9 @@ frama-c-gui:
 
 
 
-#	        -warn-invalid-pointer \
+#
+#   			-wp-smoke-tests \
+#   			-wp-no-smoke-dead-code \
 
 
 #    			-then \

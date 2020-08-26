@@ -113,12 +113,7 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
 /*
     1 problemes pour finir de spécifier la fonction:  cast du type : usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;
                             desc->bLength = sizeof(usbctrl_device_descriptor_t);
-            wp est perdu, assigns *buf ne passe pas (en même temps, buf est de type uin8_t *...)
-
-    les loop assigns ne passent pas également
-
-        @ requires is_valid_descriptor_type(type);  pas nécessaire comme il y a default dans le switch
-
+            assigns *buf ne passe pas
 */
 
 mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
@@ -433,7 +428,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              */
             uint32_t curr_offset = 0;
 
-            /*@ assert descriptor_size <= MAX_DESCRIPTOR_LEN ; */
             #if defined(__FRAMAC__)
             SIZE_DESC_FIXED = class_desc_size ;
             #endif/*__FRAMAC__*/
@@ -479,7 +473,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                     {
                         /* pointing to next field: interface descriptor */
                         usbctrl_interface_descriptor_t *cfg = (usbctrl_interface_descriptor_t*)&(buf[curr_offset]);
-                        /* @ assert &buf[curr_offset] ==  cfg ; */
                         cfg->bLength = sizeof(usbctrl_interface_descriptor_t);
                         cfg->bDescriptorType = USB_DESC_INTERFACE;
                         cfg->bInterfaceNumber = iface_id;
@@ -569,13 +562,11 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 */
 
                         for (uint8_t ep_number = 0; ep_number < max_ep_number; ++ep_number) {
-                            /*@ assert 0 <= ep_number < max_ep_number ; */
                             if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].type == USB_EP_TYPE_CONTROL) {
                                 /* Control EP (EP0 usage) are not declared here */
                                 continue;
                             }
                             usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)&(buf[curr_offset]);
-                            /*@ assert \separated(&max_ep_number, &ep_number, &poll, cfg,&curr_offset); */
                             cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
                             cfg->bDescriptorType = USB_DESC_ENDPOINT;
                             cfg->bEndpointAddress = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].ep_num;
