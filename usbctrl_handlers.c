@@ -240,7 +240,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 {
 
     mbed_error_t       errcode = MBED_ERROR_NONE;
-    //dev_id = dev_id;
     usbctrl_context_t *ctx = NULL;
     log_printf("[USBCTRL] Handling reset\n");
     /* TODO: support for multiple drivers in the same time.
