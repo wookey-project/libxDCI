@@ -46,6 +46,7 @@
 #if defined(__FRAMAC__)
 #else
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
+#define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG
 static volatile uint8_t num_ctx = 0;
 volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/
@@ -658,7 +659,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                 soit iface_config = ctx->curr_cfg, qui est forcément < CONFIG_USBCTRL_MAX_CFG
     */
 
-    if (iface_config >= MAX_USB_CTRL_CTX) { // cyril : pq MAX_USB_CTRL_CTX et pas CONFIG_USBCTRL_MAX_CFG
+    if (iface_config >= MAX_USB_CTRL_CFG) { // cyril : pq MAX_USB_CTRL_CTX et pas CONFIG_USBCTRL_MAX_CFG
         errcode = MBED_ERROR_NOMEM;
         goto err;
     }
