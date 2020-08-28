@@ -50,7 +50,7 @@
 #define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG
 static uint8_t num_ctx = 0;
 //PTH volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
-usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
+usbctrl_context_t ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/
 
 /*@
@@ -591,18 +591,33 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
     @   assigns ctx_list[ctxh] ;
     @   ensures \result == MBED_ERROR_NOMEM ;
 
+    @ behavior too_many_ctrl_config :
+    @   assumes ctxh < num_ctx ;
+    @   assumes iface != \null ;
+    @   assumes !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) ;
+    @   assumes ((iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && !((ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1))
+                && ((ctx_list[ctxh].num_cfg +1) >= MAX_USB_CTRL_CFG ))
+                ||  (( (iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 ) ) && ctx_list[ctxh].curr_cfg >= MAX_USB_CTRL_CFG ) ;
+    @   assigns ctx_list[ctxh] ;
+    @   ensures \result == MBED_ERROR_NOMEM ;
+
     @ behavior ok :
     @   assumes ctxh < num_ctx ;
     @   assumes iface != \null ;
     @   assumes !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) ;
-    @   assumes (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && (ctx_list[ctxh].num_cfg < (MAX_USB_CTRL_CTX-1))
-                ||(iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 )  ;
+    @   assumes ((iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && !((ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1))
+                && ((ctx_list[ctxh].num_cfg +1) < MAX_USB_CTRL_CFG ))
+                ||  (( (iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 ) ) && ctx_list[ctxh].curr_cfg < MAX_USB_CTRL_CFG ) ;
     @   assigns *iface, ctx_list[ctxh] ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors;
     @ disjoint behaviors;
 
+*/
+
+/*
+    TODO : test spec with greater value for CONFIG_USBCTRL_MAX_CFG & MAX_USB_CTRL_CFG : dead code with value == 2
 */
 
 mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
@@ -657,13 +672,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     }
 
 
-    /*
-    Cyril : code mort si MAX_USB_CTRL_CTX == CONFIG_USBCTRL_MAX_CFG:
-                soit iface_config = ctx->num_cfg +1 , qui est < CONFIG_USBCTRL_MAX_CFG d'après le test précédent
-                soit iface_config = ctx->curr_cfg, qui est forcément < CONFIG_USBCTRL_MAX_CFG
-    */
-
-    if (iface_config >= MAX_USB_CTRL_CFG) { // cyril : pq MAX_USB_CTRL_CTX et pas CONFIG_USBCTRL_MAX_CFG
+    if (iface_config >= MAX_USB_CTRL_CFG) {
         errcode = MBED_ERROR_NOMEM;
         goto err;
     }

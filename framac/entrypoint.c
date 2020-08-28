@@ -9,6 +9,7 @@
 #include "usbctrl_handlers.h"
 #include "usbctrl_requests.h"
 #include "usbctrl_descriptors.h"
+#include "framac/entrypoint.h"
 
 /*
  * Support for Frama-C testing
@@ -481,7 +482,7 @@ void test_fcn_driver_eva(){
 
 }
 
-int main(void)
+void main(void)
 {
 
     test_fcn_usbctrl() ;

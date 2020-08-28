@@ -47,11 +47,8 @@
  * compilation units */
 # if defined(MODE_DFU)
 
-#if defined(__FRAMAC__)
-#  define CONFIG_USBCTRL_MAX_CFG                4
-#else
+
 #  define CONFIG_USBCTRL_MAX_CFG                CONFIG_USBCTRL_DFU_MAX_CFG
-#endif/*__FRAMAC__*/
 #  define CONFIG_USBCTRL_MAX_CTX                CONFIG_USBCTRL_DFU_MAX_CTX
 #  define CONFIG_USR_LIB_USBCTRL_DEBUG          CONFIG_USR_LIB_USBCTRL_DFU_DEBUG
 #  define CONFIG_USR_LIB_USBCTRL_DEV_PRODUCTID  CONFIG_USR_LIB_USBCTRL_DFU_DEV_PRODUCTID
@@ -62,125 +59,6 @@
 #  define CONFIG_USR_LIB_USBCTRL_DEV_PRODUCTID  CONFIG_USR_LIB_USBCTRL_FW_DEV_PRODUCTID
 # endif
 #endif
-
-/*********************************************************
- * FramaC
- */
-#if defined(__FRAMAC__)
-
-static   uint8_t num_ctx = 0;
-#define MAX_EPx_PKT_SIZE 512
-#define RAND_UINT_32 65535
-
-/*@ lemma u16_and_is_u16:
-    \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
-*/
-
-/*@ predicate is_valid_error(mbed_error_t i) =
-    i == MBED_ERROR_NONE ||
-    i == MBED_ERROR_NOMEM ||
-    i == MBED_ERROR_NOSTORAGE ||
-    i == MBED_ERROR_NOBACKEND ||
-    i == MBED_ERROR_INVCREDENCIALS ||
-    i == MBED_ERROR_UNSUPORTED_CMD ||
-    i == MBED_ERROR_INVSTATE ||
-    i == MBED_ERROR_NOTREADY ||
-    i == MBED_ERROR_BUSY ||
-    i == MBED_ERROR_DENIED ||
-    i == MBED_ERROR_UNKNOWN ||
-    i == MBED_ERROR_INVPARAM ||
-    i == MBED_ERROR_WRERROR ||
-    i == MBED_ERROR_RDERROR ||
-    i == MBED_ERROR_INITFAIL ||
-    i == MBED_ERROR_TOOBIG ||
-    i == MBED_ERROR_NOTFOUND  ;
-*/
-
-
-extern volatile uint8_t Frama_C_entropy_source_8 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
-extern volatile uint16_t Frama_C_entropy_source_16 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
-extern volatile uint32_t Frama_C_entropy_source_32 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
-
-/*@ requires order: 0 <= min <= max <= 255;
-    assigns \result \from min, max, Frama_C_entropy_source_8;
-    assigns Frama_C_entropy_source_8 \from Frama_C_entropy_source_8;
-    ensures result_bounded: min <= \result <= max ;
- */
-uint8_t Frama_C_interval_8(uint8_t min, uint8_t max);
-
-/*@ requires order: 0 <= min <= max <= 65535;
-    assigns \result \from min, max, Frama_C_entropy_source_16;
-    assigns Frama_C_entropy_source_16 \from Frama_C_entropy_source_16;
-    ensures result_bounded: min <= \result <= max ;
- */
-uint16_t Frama_C_interval_16(uint16_t min, uint16_t max);
-
-/*@ requires order: 0 <= min <= max <= 4294967295;
-    assigns \result \from min, max, Frama_C_entropy_source_32;
-    assigns Frama_C_entropy_source_32 \from Frama_C_entropy_source_32;
-    ensures result_bounded: min <= \result <= max ;
- */
-uint32_t Frama_C_interval_32(uint32_t min, uint32_t max);
-
-#define usb_backend_drv_declare usbotghs_declare
-#define usb_backend_drv_get_speed usbotghs_get_speed
-#define usb_backend_drv_stall usbotghs_endpoint_stall
-#define usb_backend_drv_send_data usbotghs_send_data
-#define usb_backend_drv_ack usbotghs_endpoint_clear_nak
-#define usb_backend_drv_nak usbotghs_endpoint_set_nak
-#define usb_backend_drv_set_address usbotghs_set_address
-#define usb_backend_drv_send_zlp usbotghs_send_zlp
-#define usb_backend_drv_configure_endpoint usbotghs_configure_endpoint
-#define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
-#define usb_backend_drv_get_ep_state usbotghs_get_ep_state
-#define usb_backend_drv_configure usbotghs_configure
-#define usb_backend_get_ep_mpsize usbotghs_get_ep_mpsize
-
-#define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
-
-//@ ghost  uint8_t GHOST_num_ctx;
-//@ ghost  uint8_t GHOST_idx_ctx = 0;
-
-/*@
-    @ requires \valid(packet);
-    @ assigns \nothing ;
-    @ ensures is_valid_error(\result);
-*/
-
-mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
-                                       usbctrl_setup_pkt_t *packet);
-/*
-
-    introduction des fonctions définies seulement pour passer FramaC sur les pointeurs de fonctions + usbctrl_reset_received (utilisée une fois dans usbctrl_handle_resets)
-
-*/
-
-/*@
-    @ assigns \nothing ;
-    @ ensures is_valid_error(\result);
-*/
-mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-    return errcode;
-}
-
-void test_fcn_driver_eva(void) ;
-
-
-bool reset_requested = false;
-
-/*@
-    @ assigns reset_requested ;
-    @ ensures reset_requested == true ;
-*/
-
-void usbctrl_reset_received(void){
-    reset_requested = true;
-}
-
-
-#endif/*!__FRAMAC__*/
 
 /*********************************************************
  * General tooling
@@ -216,6 +94,87 @@ typedef enum {
 
 #if defined(__FRAMAC__)
 
+static   uint8_t num_ctx = 0;
+
+/*@ lemma u16_and_is_u16:
+    \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
+*/
+
+/*@ predicate is_valid_error(mbed_error_t i) =
+    i == MBED_ERROR_NONE ||
+    i == MBED_ERROR_NOMEM ||
+    i == MBED_ERROR_NOSTORAGE ||
+    i == MBED_ERROR_NOBACKEND ||
+    i == MBED_ERROR_INVCREDENCIALS ||
+    i == MBED_ERROR_UNSUPORTED_CMD ||
+    i == MBED_ERROR_INVSTATE ||
+    i == MBED_ERROR_NOTREADY ||
+    i == MBED_ERROR_BUSY ||
+    i == MBED_ERROR_DENIED ||
+    i == MBED_ERROR_UNKNOWN ||
+    i == MBED_ERROR_INVPARAM ||
+    i == MBED_ERROR_WRERROR ||
+    i == MBED_ERROR_RDERROR ||
+    i == MBED_ERROR_INITFAIL ||
+    i == MBED_ERROR_TOOBIG ||
+    i == MBED_ERROR_NOTFOUND  ;
+*/
+
+
+#define usb_backend_drv_declare usbotghs_declare
+#define usb_backend_drv_get_speed usbotghs_get_speed
+#define usb_backend_drv_stall usbotghs_endpoint_stall
+#define usb_backend_drv_send_data usbotghs_send_data
+#define usb_backend_drv_ack usbotghs_endpoint_clear_nak
+#define usb_backend_drv_nak usbotghs_endpoint_set_nak
+#define usb_backend_drv_set_address usbotghs_set_address
+#define usb_backend_drv_send_zlp usbotghs_send_zlp
+#define usb_backend_drv_configure_endpoint usbotghs_configure_endpoint
+#define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
+#define usb_backend_drv_get_ep_state usbotghs_get_ep_state
+#define usb_backend_drv_configure usbotghs_configure
+#define usb_backend_get_ep_mpsize usbotghs_get_ep_mpsize
+
+#define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
+#define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG
+
+//@ ghost  uint8_t GHOST_num_ctx;
+//@ ghost  uint8_t GHOST_idx_ctx = 0;
+
+/*@
+    @ requires \valid(packet);
+    @ assigns \nothing ;
+    @ ensures is_valid_error(\result);
+*/
+
+mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
+                                       usbctrl_setup_pkt_t *packet);
+
+/*@
+    @ assigns \nothing ;
+    @ ensures is_valid_error(\result);
+*/
+mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    return errcode;
+}
+
+void test_fcn_driver_eva(void) ;
+
+
+bool reset_requested = false;
+
+/*@
+    @ assigns reset_requested ;
+    @ ensures reset_requested == true ;
+*/
+
+void usbctrl_reset_received(void){
+    reset_requested = true;
+}
+
+
 typedef struct usbctrl_context {
     /* first, about device driver interactions */
     uint32_t               dev_id;              /*< device id, from the USB device driver */
@@ -248,32 +207,6 @@ mbed_error_t  class_get_descriptor(uint8_t             iface_id,
                                         uint8_t            *buf,
                                         uint8_t           *desc_size,
                                         uint32_t            usbdci_handler ) ;
-/*{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-
-    // sanitation
-    if (buf == NULL || desc_size == NULL) {
-        log_printf("invalid param buffers\n");
-        errcode = MBED_ERROR_INVPARAM;
-        goto err;
-    }
-
-    if(FLAG == false){
-        *desc_size = Frama_C_interval_8(0,*desc_size) ;
-    }else{
-        //if(*desc_size <= SIZE_DESC_FIXED ){
-        //	errcode = MBED_ERROR_INVPARAM;
-        //	goto err;
-        //}
-        *desc_size = SIZE_DESC_FIXED ;
-    }
-
-FLAG = true ;
-
-err:
-    return errcode;
-}*/
-
 
 #else
 
@@ -291,9 +224,6 @@ typedef struct usbctrl_context {
     volatile bool           ctrl_req_processing; /* a control level request is being processed */
 } usbctrl_context_t;
 
-/*
- Cyril : déclaration de cette variable en globale dans ce fichier, et non dans usbctrl.c pour qu'elle soit connue dans les spec dans les autres fichiers (sinon ça marche pas)
-*/
 
 #endif/*!__FRAMAC__*/
 
