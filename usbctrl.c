@@ -823,12 +823,7 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
         errcode = MBED_ERROR_INVPARAM;
         goto end;
     }
-
-    #if defined(__FRAMAC__)
     usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    #else
-     volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    #endif/*!__FRAMAC__*/
 
 
 #ifndef __FRAMAC__
@@ -872,11 +867,7 @@ mbed_error_t usbctrl_stop_device(uint32_t ctxh)
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
-    #if defined(__FRAMAC__)
     usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    #else
-    volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    #endif/*!__FRAMAC__*/
 
     ctx = ctx;
     /* FIXME: TODO */

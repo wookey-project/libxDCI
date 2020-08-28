@@ -14,7 +14,7 @@
 
 #if defined(__FRAMAC__)
 
-static volatile bool conf_set = false;
+static bool conf_set = false;
 
 /*@
     @ assigns conf_set;
@@ -22,7 +22,7 @@ static volatile bool conf_set = false;
 
 void usbctrl_configuration_set(void)
 {
-    conf_set = true;
+    set_bool_with_memsync(&conf_set, true);
 }
 
 #endif/*__FRAMAC__*/
