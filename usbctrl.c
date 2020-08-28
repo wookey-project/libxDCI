@@ -27,6 +27,7 @@
 #include "autoconf.h"
 #include "libc/types.h"
 #include "libc/string.h"
+#include "libc/sync.h"
 //#include <string.h>
 #include "usbctrl.h"
 #include "usbctrl_state.h"
@@ -47,8 +48,9 @@
 #else
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 #define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG
-static volatile uint8_t num_ctx = 0;
-volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
+static uint8_t num_ctx = 0;
+//PTH volatile usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
+usbctrl_context_t    ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 #endif/*!__FRAMAC__*/
 
 /*@
@@ -119,14 +121,16 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
     }
 
     /* @ assert ctx_list[GHOST_num_ctx] == ctx_list[num_ctx] ; */
-    ctx_list[num_ctx].dev_id = dev_id;
+    set_u32_with_memsync(&(ctx_list[num_ctx].dev_id), dev_id);
+    //PTH ctx_list[num_ctx].dev_id = dev_id;
     *ctxh = num_ctx;
 
     #if defined(__FRAMAC__)
         usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
         /* @ assert ctx == &(ctx_list[GHOST_num_ctx]); */
     #else
-        volatile usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
+        usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
+        //PTH volatile usbctrl_context_t *ctx = &(ctx_list[num_ctx]);
     #endif/*!__FRAMAC__*/
 
     /* @ assert \valid(ctx_list + (0..(GHOST_num_ctx))) ;  */
