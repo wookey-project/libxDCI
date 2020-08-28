@@ -259,7 +259,7 @@ static inline bool is_class_requests_allowed(usbctrl_context_t *ctx)
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
     @   ensures \result == MBED_ERROR_NONE   ;
-    @   ensures ctx->ctrl_req_processing == \false;   // Cyril :  ne marche pas si ctx->ctrl_req_processing est déclaré en volatile bool
+    @   ensures ctx->ctrl_req_processing == \false;
 
     @ complete behaviors ;
     @ disjoint behaviors ;

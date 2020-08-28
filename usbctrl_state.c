@@ -209,7 +209,6 @@ usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx)
   @ ensures (ctx != \null && is_valid_state(ctx->state) && newstate <= USB_DEVICE_STATE_INVALID)  <==> (\result == MBED_ERROR_NONE && ctx->state == newstate) ;
 */
 
-#if defined(__FRAMAC__)
 mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
                                __in usb_device_state_t newstate)
 {
@@ -226,25 +225,6 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
 
     return MBED_ERROR_NONE;
 }
-#else
-mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
-                               __in usb_device_state_t newstate)
-{
-    /* FIXME: transient, maybe we need to lock here. */
-   if (ctx == NULL) {
-       return MBED_ERROR_INVPARAM;
-   }
-    if (newstate > USB_DEVICE_STATE_INVALID) {
-        log_printf("[USBCTRL] invalid state transition !\n");
-        return MBED_ERROR_INVPARAM;
-    }
-    log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
-    ctx->state = newstate;
-
-    return MBED_ERROR_NONE;
-}
-#endif/*!__FRAMAC__*/
-
 
 
 /******************************************************

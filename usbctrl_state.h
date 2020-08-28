@@ -249,13 +249,8 @@ usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx);
  * set the current state of the USB device
  */
 
-#if defined(__FRAMAC__)
 mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
                                __in usb_device_state_t newstate);
-#else
-mbed_error_t usbctrl_set_state(__out volatile usbctrl_context_t *ctx,
-                               __in usb_device_state_t newstate);
-#endif/*!__FRAMAC__*/
 
 
 uint8_t usbctrl_next_state(usb_device_state_t current_state,
