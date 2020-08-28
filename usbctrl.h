@@ -221,7 +221,7 @@ typedef struct usbctrl_context {
     uint8_t                 state;          /*< USB state machine current state */
     uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
     bool                    ctrl_fifo_state; /*< RECV FIFO of control plane state */
-    volatile bool           ctrl_req_processing; /* a control level request is being processed */
+    bool                    ctrl_req_processing; /* a control level request is being processed */
 } usbctrl_context_t;
 
 

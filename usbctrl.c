@@ -206,7 +206,7 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
     #if defined(__FRAMAC__)
         usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #else
-        volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
+        usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #endif/*!__FRAMAC__*/
 
 
@@ -258,7 +258,7 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
 
     /* control pipe recv FIFO is ready to be used */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-    ctx->ctrl_req_processing = false;
+    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
 
     /* default config is 0. In it, first free EP id is 1 */
     ctx->cfg[0].first_free_epid = 1;
@@ -640,7 +640,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     #if defined(__FRAMAC__)
         usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #else
-        volatile usbctrl_context_t *ctx = &(ctx_list[ctxh]);
+        usbctrl_context_t *ctx = &(ctx_list[ctxh]);
     #endif/*!__FRAMAC__*/
 
     /* check space */
@@ -748,7 +748,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        }
 
     #else
-        volatile usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]) ;
+        usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]) ;
         ep->configured = false;
 
        if (ep->type == USB_EP_TYPE_CONTROL) {
