@@ -22,7 +22,7 @@ static bool conf_set = false;
 
 void usbctrl_configuration_set(void)
 {
-    set_bool_with_memsync(&conf_set, true);
+    set_bool_with_membarrier(&conf_set, true);
 }
 
 #endif/*__FRAMAC__*/
@@ -282,7 +282,7 @@ static mbed_error_t usbctrl_std_req_handle_clear_feature(usbctrl_setup_pkt_t *pk
     pkt = pkt;
     ctx = ctx;
     /*request finish here */
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
 err:
     return errcode;
 }
@@ -365,7 +365,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
              * undefined. We can, for example, stall out. (FIXME) */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             /*request finish here */
-            set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+            set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
             break;
         case USB_DEVICE_STATE_ADDRESS:
            if (usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_ENDPOINT &&
@@ -375,7 +375,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                 /* request error: sending STALL on status or data */
                 usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
             if ((pkt->wIndex & 0xf) != 0) {
@@ -383,7 +383,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                 /* request error: sending STALL on status or data */
                usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
             /* handling get_status() for other cases */
@@ -395,7 +395,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                     if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
                         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                         /*request finish here */
-                        set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                         goto err;
                     }
                     /* FIXME: check EP direction too before returning status */
@@ -421,7 +421,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
             /*request finish here */
-            set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+            set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
     }
@@ -554,7 +554,7 @@ static mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t *pk
             break;
     }
 err:
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
     return errcode;
 }
 
@@ -659,7 +659,7 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t *pkt,
 
 err:
     /*request finish here */
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
     return errcode;
 }
 
@@ -889,7 +889,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     pkt = pkt;
 
     /*request finish here */
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
     /*@ assert ctx->state == USB_DEVICE_STATE_CONFIGURED ; */
     /*@ assert errcode == MBED_ERROR_NONE ; */
     return errcode;
@@ -897,7 +897,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     err:
     usb_backend_drv_stall(0, USB_EP_DIR_OUT);
     /*request finish here */
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
     /*@ assert errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NOSTORAGE || errcode == MBED_ERROR_INVPARAM ; */
     return errcode;
 }
@@ -1124,7 +1124,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
     if (maxlength == 0) {
         /* nothing to send */
         /*request finish here */
-        set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
         goto err;
     }
     /* FIXME: we should calculate the maximum descriptor we can genrate and compare
@@ -1138,14 +1138,14 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             log_printf("[USBCTRL] Std req: get device descriptor\n");
             if (pkt->wIndex != 0) {
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
 
             if ((errcode = usbctrl_get_descriptor(USB_DESC_DEVICE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                     log_printf("[USBCTRL] Failure while generating descriptor !!!\n");
                     /*request finish here */
-                    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                     goto err;
             }
             log_printf("[USBCTRL] sending dev desc (%d bytes req, %d bytes needed)\n", maxlength, size);
@@ -1169,12 +1169,12 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
                 if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                     /*request finish here */
-                    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                     goto err;
                 }
                 usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
@@ -1199,7 +1199,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             log_printf("[USBCTRL] Std req: get string descriptor\n");
             if ((errcode = usbctrl_get_descriptor(USB_DESC_STRING, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
                 if (maxlength > size) {
@@ -1218,13 +1218,13 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             log_printf("[USBCTRL] Std req: get interface descriptor\n");
             if (pkt->wIndex != 0) {
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
                 if ((errcode = usbctrl_get_descriptor(USB_DESC_INTERFACE, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                     // Cyril : comme on est dans le cas USB_DESC_INTERFACE, size == 0, donc on n'entrera jamais dans le test ligne 2074 (else) ; code non atteignable par EVA
                     /*request finish here */
-                    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                     goto err;
                 }
                 if (maxlength > size) {
@@ -1243,13 +1243,13 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
             if ((errcode = usbctrl_get_descriptor(USB_DESC_ENDPOINT, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
                 // Cyril : comme on est dans le cas USB_DESC_ENDPOINT, size == 0, donc on n'entrera jamais dans le test ligne 2074 (else) ; code non atteignable par EVA
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
             if (maxlength > size) {
@@ -1268,12 +1268,12 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
             /*TODO */
             /*request finish here */
-            set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+            set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         case USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG:
@@ -1286,7 +1286,7 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             }
             /*TODO */
             /*request finish here */
-            set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+            set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         case USB_REQ_DESCRIPTOR_INTERFACE_POWER:
@@ -1294,12 +1294,12 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
             /* wIndex (language ID) should be zero */
             if (pkt->wIndex != 0) {
                 /*request finish here */
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
             /*TODO */
             /*request finish here */
-            set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+            set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         default:
@@ -1370,7 +1370,7 @@ static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *p
         /* error handling, invalid state */
         errcode = MBED_ERROR_INVSTATE;
         /*request finish here */
-        set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
         goto err;
     }
     /* handling standard Request */
@@ -1381,7 +1381,7 @@ static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *p
 
     usb_backend_drv_send_zlp(0);
     /*request finish here */
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
 err:
     return errcode;
 }
@@ -1481,7 +1481,7 @@ static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
             break;
     }
 err:
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
     return errcode;
 }
 
@@ -1598,7 +1598,7 @@ static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pk
             break;
     }
 err:
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
     return errcode;
 }
 
@@ -1740,7 +1740,7 @@ static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt,
 
     }
 err:
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
     return errcode;
 }
 
@@ -1924,7 +1924,7 @@ static inline mbed_error_t usbctrl_handle_vendor_requests(usbctrl_setup_pkt_t *p
     pkt = pkt;
 
     /* request finish here */
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
 err:
     return errcode;
 }
@@ -2172,7 +2172,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     switch(type){
         case USB_REQ_TYPE_STD:
             if(usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE){
-                set_bool_with_memsync(&(ctx->ctrl_req_processing), true);
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), true);
                 /* For current request of current context, is the current context is a standard
                 * request ? If yes, handle localy */
                 errcode = usbctrl_handle_std_requests(pkt, ctx);
@@ -2184,7 +2184,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
             /* ... or, is the current request is a vendor request, then handle locally
             * for vendor */
             /* @ assert (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;  */
-            set_bool_with_memsync(&(ctx->ctrl_req_processing), true);
+            set_bool_with_membarrier(&(ctx->ctrl_req_processing), true);
             /* @ assert \separated(pkt,ctx_list + (0..(num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
             errcode = usbctrl_handle_vendor_requests(pkt, ctx);
             /* @ assert (errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NONE) ; */

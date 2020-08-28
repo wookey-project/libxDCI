@@ -120,7 +120,7 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
     }
 
     /* @ assert ctx_list[GHOST_num_ctx] == ctx_list[num_ctx] ; */
-    set_u32_with_memsync(&(ctx_list[num_ctx].dev_id), dev_id);
+    set_u32_with_membarrier(&(ctx_list[num_ctx].dev_id), dev_id);
     *ctxh = num_ctx;
 
     #if defined(__FRAMAC__)
@@ -258,7 +258,7 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
 
     /* control pipe recv FIFO is ready to be used */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
-    set_bool_with_memsync(&(ctx->ctrl_req_processing), false);
+    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
 
     /* default config is 0. In it, first free EP id is 1 */
     ctx->cfg[0].first_free_epid = 1;
