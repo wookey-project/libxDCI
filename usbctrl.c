@@ -815,8 +815,6 @@ err:
 
 mbed_error_t usbctrl_start_device(uint32_t ctxh)
 {
-
-
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* sanitize */
     if (ctxh >= num_ctx) {
