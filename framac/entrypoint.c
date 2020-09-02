@@ -463,7 +463,7 @@ void test_fcn_driver_eva(){
     usbotghs_ctx.in_eps[EP0].fifo_lck = 1 ; // pour avoir une erreur dans xmit_fifo dans send_data
     usb_backend_drv_send_data((uint8_t *)&resp, size, EP0);
     usbotghs_ctx.in_eps[EP0].fifo_lck = 0 ;
-    usb_backend_drv_send_data((uint8_t *)&resp, 513, EP0);  // pour rentrer dans la boucle residual_size >= fifo_size
+    usb_backend_drv_send_data((uint8_t *)&resp, 514, EP0);  // pour rentrer dans la boucle residual_size >= fifo_size
     usbotghs_ctx.in_eps[4].mpsize = Frama_C_interval_16(0,65535);
     usbotghs_ctx.in_eps[4].id = 4 ;
     usbotghs_ctx.in_eps[4].fifo_lck = 0 ;

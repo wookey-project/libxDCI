@@ -457,7 +457,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
             uint8_t max_ep_number ;  // new variable for variant and invariant proof
 
-            /* @
+            /*
                 @ loop invariant 0 <= iface_id <= iface_num ;
                 @ loop invariant 0 <= curr_offset <=  255 ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num -1))) ;
@@ -479,7 +479,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         cfg->bAlternateSetting = 0;
 
                         uint8_t num_ep = 0;
-                /* @
+                /*
                     @ loop invariant 0 <= ep <= ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1))) ;
                     @ loop assigns num_ep, ep ;
@@ -551,7 +551,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                         uint8_t poll ;
 
                         max_ep_number = ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;  // variable change in loop
-                /* @
+                /*
                     @ loop invariant \at(max_ep_number,LoopEntry) == \at(max_ep_number,LoopCurrent) ;
                     @ loop invariant 0 <= ep_number <= max_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1))) ;

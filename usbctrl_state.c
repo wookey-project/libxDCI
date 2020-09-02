@@ -315,12 +315,12 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
 
     for (uint8_t i = 0; i < MAX_TRANSITION_STATE; ++i) {
         if (usb_automaton[current_state].req_trans[i].request == transition) {
-          /* @ assert (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ; */
-          /* @ assert (transition == USB_DEVICE_TRANS_RESET) ==> !(current_state == USB_DEVICE_STATE_INVALID
+          /*  assert (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ; */
+          /*  assert (transition == USB_DEVICE_TRANS_RESET) ==> !(current_state == USB_DEVICE_STATE_INVALID
                                                         || current_state == USB_DEVICE_STATE_SUSPENDED_POWER
                                                         || current_state == USB_DEVICE_STATE_ATTACHED) ; */
-          /* @ assert current_state != USB_DEVICE_STATE_INVALID ; */
-          /* @ assert ctx->state ==\at(ctx->state, Pre); */
+          /*  assert current_state != USB_DEVICE_STATE_INVALID ; */
+          /*  assert ctx->state ==\at(ctx->state, Pre); */
             return true;
         }
     }
@@ -330,7 +330,7 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
      */
     log_printf("%s: invalid transition from state %d, request %d\n", __func__, current_state, transition);
 
-    /* @ assert (transition == USB_DEVICE_TRANS_RESET) ==> (current_state == USB_DEVICE_STATE_INVALID
+    /*  assert (transition == USB_DEVICE_TRANS_RESET) ==> (current_state == USB_DEVICE_STATE_INVALID
                                                         || current_state == USB_DEVICE_STATE_SUSPENDED_POWER
                                                         || current_state == USB_DEVICE_STATE_ATTACHED) ; */
 

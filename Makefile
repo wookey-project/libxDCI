@@ -259,6 +259,8 @@ FRAMAC_WP_FLAGS:=\
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
    			-wp-timeout $(TIMEOUT) \
+			-wp-smoke-tests \
+			-wp-no-smoke-dead-code \
    			-wp-log a:frama-c-rte-eva-wp.log
 
 

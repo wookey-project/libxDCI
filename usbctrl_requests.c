@@ -111,18 +111,6 @@ typedef enum {
     USB_REQ_DESCRIPTOR_INTERFACE_POWER  = 8,
 } usbctrl_req_descriptor_type_t;
 
-/*@ predicate is_valid_req_descriptor_type(usbctrl_req_descriptor_type_t i) =
-    i == USB_REQ_DESCRIPTOR_DEVICE ||
-    i == USB_REQ_DESCRIPTOR_CONFIGURATION ||
-    i == USB_REQ_DESCRIPTOR_STRING ||
-    i == USB_REQ_DESCRIPTOR_INTERFACE ||
-    i == USB_REQ_DESCRIPTOR_ENDPOINT ||
-    i == USB_REQ_DESCRIPTOR_DEVICE_QUALIFIER ||
-    i == USB_REQ_DESCRIPTOR_OTHER_SPEED_CFG ||
-    i == USB_REQ_DESCRIPTOR_INTERFACE_POWER ;
-*/
-
-
 /*@
     @ requires \valid_read(pkt);
     @ assigns \nothing ;
@@ -791,7 +779,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
         goto err;
     }
 
-    /* @ assert ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
+    /* assert ((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ; */
 
@@ -809,13 +797,13 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     requested_configuration = (pkt->wValue & 0xff);
     /* sanity on requested configuration */
     if ((requested_configuration == 0) || (requested_configuration > ctx->num_cfg)) {
-        /* @ assert ( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ) ; */
+        /*  assert ( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ) ; */
         log_printf("[USBCTRL] Invalid requested configuration!\n");
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
 
-    /* @ assert !( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ) ; */
+    /*  assert !( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ) ; */
 
     /* in USB standard, starting from 1, not 0. curr_cfg is a C table index */
     ctx->curr_cfg = requested_configuration - 1;
@@ -2007,8 +1995,8 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
         errcode = MBED_ERROR_INVPARAM ;
         goto err ;
     }
-    /* @ assert ((pkt->wIndex) & 0xff) != 0 ; */
-    /* @ assert ((pkt->wIndex) & 0xff) > 0 ; */
+    /*  assert ((pkt->wIndex) & 0xff) != 0 ; */
+    /*  assert ((pkt->wIndex) & 0xff) > 0 ; */
 
     iface_idx = (((pkt->wIndex) & 0xff) -1 );  // Cyril : faux positif, déchargé par WP
      if (!usbctrl_is_interface_exists(ctx, iface_idx)) {
@@ -2021,17 +2009,17 @@ static inline mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pk
     /* interface found, call its dedicated request handler */
     uint32_t handler ;
 
-    /* @ assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
+    /*  assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
 
     if ((errcode = usbctrl_get_handler(ctx, &handler)) != MBED_ERROR_NONE) {
-        /* @ assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
-        /* @ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> &(ctx_list[i]) != ctx ; */
-        /* @ assert errcode == MBED_ERROR_NOTFOUND || errcode == MBED_ERROR_INVPARAM ;  */
+        /*  assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
+        /*  assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> &(ctx_list[i]) != ctx ; */
+        /*  assert errcode == MBED_ERROR_NOTFOUND || errcode == MBED_ERROR_INVPARAM ;  */
         log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
         goto err ;  // Cyril : ajout pour avoir un retour d'erreur et pour initialiser handler avant d'entrer dans le pointeur de fonction
     }
-    /* @ assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
-    /* @ assert \exists integer i ; 0 <= i < GHOST_num_ctx && &(ctx_list[i]) == ctx ; */
+    /*  assert \at(GHOST_num_ctx,Here) == \at(GHOST_num_ctx,Pre) ; */
+    /*  assert \exists integer i ; 0 <= i < GHOST_num_ctx && &(ctx_list[i]) == ctx ; */
     if (iface->rqst_handler) {   // Cyril : ajout d'un test sur la valeur du pointeur de fonction
 
 #ifndef __FRAMAC__
@@ -2147,9 +2135,9 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
 
     /* Detect which context is assocated to current request and set local ctx */
         if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
-        /* @ assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ; */
+        /*  assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ; */
         /* trapped on oepint() from a device which is not handled here ! what ? */
-        /* @ assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
+        /*  assert \separated(pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
         errcode = MBED_ERROR_UNKNOWN;
         usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
         goto err_init;
@@ -2162,9 +2150,9 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     }
 
 
-  /* @ assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id; */
-  /* @ assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx == &ctx_list[i]; */ ;
-    /* @ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
+  /*  assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id; */
+  /*  assert \exists integer i; 0 ≤ i < GHOST_num_ctx && ctx == &ctx_list[i]; */ ;
+    /*  assert ctx == &ctx_list[GHOST_idx_ctx] ; */
 
 
     usbctrl_req_type_t type = usbctrl_std_req_get_type(pkt);
@@ -2183,11 +2171,11 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         case USB_REQ_TYPE_VENDOR:
             /* ... or, is the current request is a vendor request, then handle locally
             * for vendor */
-            /* @ assert (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;  */
+            /*  assert (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;  */
             set_bool_with_membarrier(&(ctx->ctrl_req_processing), true);
-            /* @ assert \separated(pkt,ctx_list + (0..(num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
+            /*  assert \separated(pkt,ctx_list + (0..(num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
             errcode = usbctrl_handle_vendor_requests(pkt, ctx);
-            /* @ assert (errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NONE) ; */
+            /*  assert (errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NONE) ; */
             break;
         case USB_REQ_TYPE_CLASS:
             if(usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE){
@@ -2218,7 +2206,6 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                             goto err;
                         }
 #endif
-                /*@ assert \separated(&handler,pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
                 /*@ assert ctx->cfg[curr_cfg].interfaces[i].rqst_handler ∈ {&class_rqst_handler}; */
                 /*@ calls class_rqst_handler; */
 
