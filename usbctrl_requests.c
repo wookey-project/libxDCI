@@ -2168,18 +2168,17 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
 
 
     usbctrl_req_type_t type = usbctrl_std_req_get_type(pkt);
-    printf("bmrequesttype: %x\n", pkt->bmRequestType);
 
     switch(type){
         case USB_REQ_TYPE_STD:
             if(usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE){
                 set_bool_with_membarrier(&(ctx->ctrl_req_processing), true);
-                printf("[CTRL] std request for control (recipient = 0)\n");
+                log_printf("[USBCTRL] std request for control (recipient = 0)\n");
                 /* For current request of current context, is the current context is a standard
                 * request ? If yes, handle localy */
                 errcode = usbctrl_handle_std_requests(pkt, ctx);
             }else{
-                printf("[CTRL] std request for iface/ep/other: %x\n", usbctrl_std_req_get_recipient(pkt));
+                log_printf("[USBCTRL] std request for iface/ep/other: %x\n", usbctrl_std_req_get_recipient(pkt));
                 uint8_t curr_cfg = ctx->curr_cfg;
                 mbed_error_t upper_stack_err = MBED_ERROR_INVPARAM;  // Cyril c'est errcode qui est important non pour savoir si tout se termine bien?
 
@@ -2225,7 +2224,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
             }
             break;
         case USB_REQ_TYPE_VENDOR:
-            printf("[CTRL] vendor request\n");
+            log_printf("[USBCTRL] vendor request\n");
             /* ... or, is the current request is a vendor request, then handle locally
             * for vendor */
             /* @ assert (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;  */
@@ -2236,7 +2235,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
             break;
         case USB_REQ_TYPE_CLASS:
             if(usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE){
-                printf("[CTRL] class request for iface\n");
+                log_printf("[USBCTRL] class request for iface\n");
                 //if(usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE){
                 log_printf("[USBCTRL] receiving class Request\n");
                 /* ... or, is the current request is a class request or target a dedicated
@@ -2282,12 +2281,12 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                 /* upgrade local errcode with upper stack errcode received */
                 errcode = upper_stack_err;
             }else{
-                printf("[CTRL] class request for other(s)\n");
+                log_printf("[USBCTRL] class request for other(s)\n");
                 errcode = usbctrl_handle_unknown_requests(pkt, ctx);
             }
             break;
         default:
-            printf("[CTRL] unknown request\n");
+            log_printf("[USBCTRL] unknown request\n");
             errcode = usbctrl_handle_unknown_requests(pkt, ctx);
             break;
     }
