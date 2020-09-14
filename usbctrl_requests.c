@@ -854,10 +854,21 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
 
         for (uint8_t i = 0; i < max_ep; ++i) {
             usb_backend_drv_ep_dir_t dir;
-            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_OUT) {
-                dir = USB_BACKEND_DRV_EP_DIR_OUT;
-            } else {
-                dir = USB_BACKEND_DRV_EP_DIR_IN;
+            switch (ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir) {
+                case USB_EP_DIR_OUT:
+                    dir = USB_BACKEND_DRV_EP_DIR_OUT;
+                    break;
+                case USB_EP_DIR_IN:
+                    dir = USB_BACKEND_DRV_EP_DIR_IN;
+                    break;
+                case USB_EP_DIR_BOTH:
+                    dir = USB_BACKEND_DRV_EP_DIR_BOTH;
+                    break;
+                default:
+                    log_printf("[USBCTRL] invalid EP type !\n");
+                    errcode = MBED_ERROR_INVPARAM;
+                    goto err;
+                    break;
             }
            log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir);
 
@@ -878,7 +889,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
                 }
 
             }
-            ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true ;
+            ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true;
         }
 
     }

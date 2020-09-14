@@ -734,7 +734,10 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        } else {
         ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num = ctx->cfg[iface_config].first_free_epid;
            iface->eps[i].ep_num = ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num;
-           printf("declare EP (not control) id %d\n", ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num);
+           printf("[USBCTRL] declare EP (not control) id %d\n", ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num);
+           if (iface->eps[i].dir == USB_EP_DIR_BOTH) {
+               printf("[USBCTRL] EP set as full duplex\n");
+           }
            ctx->cfg[iface_config].first_free_epid++;
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
            /* check that declared ep mpsize is compatible with backend driver */
@@ -756,9 +759,12 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
            ep->ep_num = 0;
            iface->eps[i].ep_num = 0;
        } else {
-        ep->ep_num = ctx->cfg[iface_config].first_free_epid;
+           ep->ep_num = ctx->cfg[iface_config].first_free_epid;
            iface->eps[i].ep_num = ep->ep_num;
            printf("declare EP (not control) id %d\n", ep->ep_num);
+           if (iface->eps[i].dir == USB_EP_DIR_BOTH) {
+               printf("[USBCTRL] EP set as full duplex\n");
+           }
            ctx->cfg[iface_config].first_free_epid++;
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
            /* check that declared ep mpsize is compatible with backend driver */
