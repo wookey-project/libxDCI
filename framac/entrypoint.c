@@ -101,7 +101,7 @@ void test_fcn_usbctrl(){
     uint8_t iface = Frama_C_interval_8(0,MAX_INTERFACES_PER_DEVICE-1);
     uint8_t ep_number = Frama_C_interval_8(0,MAX_EP_PER_INTERFACE);
     uint8_t EP_type = Frama_C_interval_8(0,3);
-    uint8_t EP_dir = Frama_C_interval_8(0,1);
+    uint8_t EP_dir = Frama_C_interval_8(0,2);
     uint8_t USB_class = Frama_C_interval_8(0,17);
     uint32_t USBdci_handler = Frama_C_interval_32(0,4294967295) ;
     usb_device_trans_t transition = Frama_C_interval_8(0,MAX_TRANSITION_STATE-1) ;
