@@ -280,10 +280,11 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_declare(dev_id, bad_ctxh);
 
 /*    ctxh = 1 ;
-    usbctrl_declare(8, &ctxh);  // pour tester dev_id !=6 et != 7
+    usbctrl_declare(8, &ctxh);  // pour tester dev_id !=6 et != 7 */
 
     ctxh = 1 ;
-    num_ctx = 2;*/
+    num_ctx = 3;
+    //@ ghost GHOST_num_ctx = num_ctx ;
     usbctrl_declare(dev_id, &ctxh);
 
 
@@ -294,6 +295,7 @@ void test_fcn_usbctrl_erreur(){
 
     ctxh = 0 ;
     num_ctx = 1 ;
+    //@ ghost GHOST_num_ctx = num_ctx ;
     usbctrl_initialize(ctxh);
 
 
@@ -312,10 +314,12 @@ void test_fcn_usbctrl_erreur(){
 
     ctxh = 2 ;
     num_ctx = 1 ;
+    //@ ghost GHOST_num_ctx = num_ctx ;
     usbctrl_declare_interface(ctxh, &iface_1) ;
 
     ctxh = 0 ;
     num_ctx = 1 ;
+    //@ ghost GHOST_num_ctx = num_ctx ;
     usbctrl_interface_t *iface_null = NULL ;
     usbctrl_declare_interface(ctxh, iface_null) ;
 

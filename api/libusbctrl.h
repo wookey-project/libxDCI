@@ -152,7 +152,8 @@ typedef enum {
  */
 typedef enum {
     USB_EP_DIR_OUT, /* EP OUT, receiving in device mode */
-    USB_EP_DIR_IN   /* EP IN, sending in device mode */
+    USB_EP_DIR_IN,  /* EP IN, sending in device mode */
+    USB_EP_DIR_BOTH /* EP OUT, full-duplex endpoint */
 } usb_ep_dir_t;
 
 /*

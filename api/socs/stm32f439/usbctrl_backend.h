@@ -114,7 +114,8 @@ typedef enum {
 
 typedef enum {
     USB_BACKEND_DRV_EP_DIR_IN  = 0,
-    USB_BACKEND_DRV_EP_DIR_OUT = 1
+    USB_BACKEND_DRV_EP_DIR_OUT = 1,
+    USB_BACKEND_DRV_EP_DIR_BOTH = 2
 } usb_backend_drv_ep_dir_t;
 
 typedef enum {
@@ -131,7 +132,7 @@ typedef enum {
     USB_BACKEND_DRV_EP_STATE_STATUS       = 3,
     USB_BACKEND_DRV_EP_STATE_STALL        = 4,
     USB_BACKEND_DRV_EP_STATE_DATA_IN_WIP  = 5,
-    USB_BACKEND_DRV_EP_STATE_DATA_in      = 6,
+    USB_BACKEND_DRV_EP_STATE_DATA_IN      = 6,
     USB_BACKEND_DRV_EP_STATE_DATA_OUT_WIP = 7,
     USB_BACKEND_DRV_EP_STATE_DATA_OUT     = 8,
     USB_BACKEND_DRV_EP_STATE_INVALID      = 9
@@ -174,7 +175,8 @@ mbed_error_t usb_backend_drv_configure_endpoint(uint8_t               ep,
                                          usb_backend_drv_ep_toggle_t  dtoggle,
                                          usb_backend_drv_ioep_handler_t handler);
 
-mbed_error_t usb_backend_drv_get_ep_state(uint8_t epnum, usb_backend_drv_ep_dir_t dir);
+/* needed for full-duplex EP */
+usb_backend_drv_ep_state_t usb_backend_drv_get_ep_state(uint8_t epnum, usb_backend_drv_ep_dir_t dir);
 mbed_error_t usb_backend_drv_send_data(uint8_t *src, uint32_t size, uint8_t ep);
 mbed_error_t usb_backend_drv_send_zlp(uint8_t ep);
 void         usb_backend_drv_set_address(uint16_t addr);

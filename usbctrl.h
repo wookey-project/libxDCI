@@ -94,7 +94,7 @@ typedef enum {
 
 #if defined(__FRAMAC__)
 
-static   uint8_t num_ctx = 0;
+  uint8_t num_ctx = 0;
 
 /*@ lemma u16_and_is_u16:
     \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;

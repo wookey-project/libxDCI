@@ -842,10 +842,21 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
 
         for (uint8_t i = 0; i < max_ep; ++i) {
             usb_backend_drv_ep_dir_t dir;
-            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_OUT) {
-                dir = USB_BACKEND_DRV_EP_DIR_OUT;
-            } else {
-                dir = USB_BACKEND_DRV_EP_DIR_IN;
+            switch (ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir) {
+                case USB_EP_DIR_OUT:
+                    dir = USB_BACKEND_DRV_EP_DIR_OUT;
+                    break;
+                case USB_EP_DIR_IN:
+                    dir = USB_BACKEND_DRV_EP_DIR_IN;
+                    break;
+                case USB_EP_DIR_BOTH:
+                    dir = USB_BACKEND_DRV_EP_DIR_BOTH;
+                    break;
+                default:
+                    log_printf("[USBCTRL] invalid EP type !\n");
+                    errcode = MBED_ERROR_INVPARAM;
+                    goto err;
+                    break;
             }
            log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir);
 
@@ -866,7 +877,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
                 }
 
             }
-            ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true ;
+            ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true;
         }
 
     }
@@ -2161,14 +2172,58 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         case USB_REQ_TYPE_STD:
             if(usbctrl_std_req_get_recipient(pkt) != USB_REQ_RECIPIENT_INTERFACE){
                 set_bool_with_membarrier(&(ctx->ctrl_req_processing), true);
+                log_printf("[USBCTRL] std request for control (recipient = 0)\n");
                 /* For current request of current context, is the current context is a standard
                 * request ? If yes, handle localy */
                 errcode = usbctrl_handle_std_requests(pkt, ctx);
             }else{
+                log_printf("[USBCTRL] std request for iface/ep/other: %x\n", usbctrl_std_req_get_recipient(pkt));
+                uint8_t curr_cfg = ctx->curr_cfg;
+                mbed_error_t upper_stack_err = MBED_ERROR_INVPARAM;  // Cyril c'est errcode qui est important non pour savoir si tout se termine bien?
+
+            /*@
+                @ loop invariant 0 <= i <= ctx->cfg[curr_cfg].interface_num ;
+                @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(ctx->cfg[curr_cfg].interface_num-1))) ;
+                @ loop assigns i, upper_stack_err ;  // Cyril : supposition forte ici que le pointeur de fonction n'a pas d'effet de bord (assigns \nothing)
+                @ loop variant (ctx->cfg[curr_cfg].interface_num - i);
+            */
+                for (uint8_t i = 0; i < ctx->cfg[curr_cfg].interface_num; ++i) {
+                    if (ctx->cfg[curr_cfg].interfaces[i].rqst_handler) {
+                        log_printf("[USBCTRL] execute iface class handler\n");
+                        uint32_t handler;
+                        if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {  // cyril : il manque pas un break ici aussi? : ajout d'un goto err, sinon pb d'initialisation pour rqst_handler
+                            log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
+                            goto err ;
+                        }
+
+#ifndef __FRAMAC__
+                        if (handler_sanity_check((physaddr_t)ctx->cfg[curr_cfg].interfaces[i].rqst_handler)) {
+                            goto err;
+                        }
+#endif
+                /*@ assert \separated(&handler,pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
+                /*@ assert ctx->cfg[curr_cfg].interfaces[i].rqst_handler ∈ {&class_rqst_handler}; */
+                /*@ calls class_rqst_handler; */
+
+                        if ((upper_stack_err = ctx->cfg[curr_cfg].interfaces[i].rqst_handler(handler, pkt)) == MBED_ERROR_NONE) {  // Cyril : mais que devient errcode? c'est lui qui est return à la fin
+                            /* upper class handler found, we can leave the loop */
+                            break;
+                        }
+                    }
+                }
+
+                /* fallback if no upper stack class request handler was able to handle the received CLASS request */
+                if (upper_stack_err != MBED_ERROR_NONE) {
+                    usb_backend_drv_stall(0, USB_EP_DIR_OUT);
+                }
+                /* upgrade local errcode with upper stack errcode received */
+                errcode = upper_stack_err;
+
                 errcode = usbctrl_handle_unknown_requests(pkt, ctx);
             }
             break;
         case USB_REQ_TYPE_VENDOR:
+            log_printf("[USBCTRL] vendor request\n");
             /* ... or, is the current request is a vendor request, then handle locally
             * for vendor */
             /*  assert (((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_VENDOR) ;  */
@@ -2179,7 +2234,8 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
             break;
         case USB_REQ_TYPE_CLASS:
             if(usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE){
-            //if(usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE){
+                log_printf("[USBCTRL] class request for iface\n");
+                //if(usbctrl_std_req_get_recipient(pkt) == USB_REQ_RECIPIENT_INTERFACE){
                 log_printf("[USBCTRL] receiving class Request\n");
                 /* ... or, is the current request is a class request or target a dedicated
                 * interface, then handle in upper layer*/
@@ -2223,10 +2279,12 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                 /* upgrade local errcode with upper stack errcode received */
                 errcode = upper_stack_err;
             }else{
+                log_printf("[USBCTRL] class request for other(s)\n");
                 errcode = usbctrl_handle_unknown_requests(pkt, ctx);
             }
             break;
         default:
+            log_printf("[USBCTRL] unknown request\n");
             errcode = usbctrl_handle_unknown_requests(pkt, ctx);
             break;
     }

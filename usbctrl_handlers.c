@@ -124,10 +124,10 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
         log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
 
-        /*@ assert  ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID ; */
+    /*@ assert  ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID ; */
     /*@ assert !(\exists integer i; 0 <= i < GHOST_num_ctx && i!= GHOST_idx_ctx && \at(ctx_list,Pre)[i].state != ctx_list[i].state) ; */
-    /*  assert ctx == &ctx_list[GHOST_idx_ctx] ; */
-        /*  assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, beforeif)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
+    /* @ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
+    /* @ assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, beforeif)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
     /*@ assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ; */
         errcode = MBED_ERROR_INVSTATE;

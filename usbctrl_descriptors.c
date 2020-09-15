@@ -387,6 +387,10 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                     if (ctx->cfg[curr_cfg].interfaces[i].eps[ep].type != USB_EP_TYPE_CONTROL) {
                         ++num_ep;
                     }
+                    /* a full-duplex endpoint consume 2 descriptors */
+                    if (ctx->cfg[curr_cfg].interfaces[i].eps[ep].dir == USB_EP_DIR_BOTH) {
+                        ++num_ep;
+                    }
                 }
                 descriptor_size += sizeof(usbctrl_interface_descriptor_t) + num_ep * sizeof(usbctrl_endpoint_descriptor_t);
             }
@@ -490,6 +494,9 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                             if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep].type != USB_EP_TYPE_CONTROL) {
                                 ++num_ep;
                             }
+                            if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep].dir == USB_EP_DIR_BOTH) {
+                                ++num_ep;
+                            }
                         }
 
                         cfg->bNumEndpoints = num_ep;
@@ -562,6 +569,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 */
 
                         for (uint8_t ep_number = 0; ep_number < max_ep_number; ++ep_number) {
+                            bool full_duplex_ep = false;
                             if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].type == USB_EP_TYPE_CONTROL) {
                                 /* Control EP (EP0 usage) are not declared here */
                                 continue;
@@ -573,6 +581,11 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
                             if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].dir == USB_EP_DIR_IN) {
                                 cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for IN EPs */
+                            }
+                            if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].dir == USB_EP_DIR_BOTH) {
+                                /* full duplex EP, first handling IP EP descriptor, then handling OUT just after */
+                                cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for IN EPs */
+                                full_duplex_ep = true;
                             }
 
                             cfg->bmAttributes =
@@ -630,6 +643,69 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                                 cfg->bInterval = 0;
                             }
                             curr_offset += sizeof(usbctrl_endpoint_descriptor_t);
+                            if (full_duplex_ep == true) {
+                                /* another descriptor, for the second part of the full duplex EP, is required */
+                                usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)&(buf[curr_offset]);
+                                cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
+                                cfg->bDescriptorType = USB_DESC_ENDPOINT;
+                                cfg->bEndpointAddress = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].ep_num;
+
+                                cfg->bmAttributes =
+                                    ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].type       |
+                                    ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].attr << 2  |
+                                    ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].usage << 4;
+                                cfg->wMaxPacketSize = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].pkt_maxsize;
+
+                                /* See table 9.3: microframe interval: bInterval specification */
+                                if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].type == USB_EP_TYPE_INTERRUPT) {
+                                    /* in case of HS driver, bInterval == 2^(interval-1), where interval is the
+                                     * uframe length. In FS, the interval is free between 1 and 255. To simplify
+                                     * the handling of bInterval, knowing that drivers both set uFrame interval to 3
+                                     * we use the same 2^(interval-1) calculation for HS and FS */
+                                    /* TODO: here, we consider that the usb backend driver set the uFrame interval to 3,
+                                     * it would be better to get back the uFrame interval from the driver and calculate
+                                     * the bInterval value */
+                                    /* calculating interval depending on backend driver, to get
+                                     * back the same polling interval (i.e. 64 ms, hardcoded by now */
+                                    poll = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].poll_interval;
+                                    /* falling back to 1ms polling, if not set */
+                                    if (poll == 0) {
+                                        log_printf("[USBCTRL] invalid poll interval %d\n", poll);
+                                        poll = 1;
+                                    }
+                                    if (usb_backend_drv_get_speed() == USB_BACKEND_DRV_PORT_HIGHSPEED) {
+                                        /* value in poll is set in ms, in HS, value is 2^(interval-1)*125us
+                                         * here, we get the position of the first bit at 1 in poll value, and add 2 to this
+                                         * value, to get the same result as the above */
+                                        uint8_t i = 0;  // Cyril : on a déjà une boucle avec i déclaré, je pense qu'il faut nommer deux variables différentes (variable renommé en ep_number)
+                                        /* get back the position of the first '1' bit */
+
+                                        uint8_t compteur_poll = 9;  // add compteur_poll for framac
+                                        /* @
+                                           @ loop invariant i >= 0 ;
+                                           @ loop invariant poll >= 0 ;
+                                           @ loop invariant 0 <= compteur_poll <= 9 ;
+                                           @ loop assigns poll, i, compteur_poll;
+                                           @ loop variant compteur_poll;
+                                           */
+                                        while (!(poll & 0x1) && compteur_poll > 0) {
+                                            poll >>= 1;
+                                            i++;
+                                            compteur_poll -- ;
+                                        }
+                                        /* binary shift left by 2, to handle (interval-1)*125us from a value in milisecond */
+                                        i+=2;
+                                        cfg->bInterval = i;
+                                    } else {
+                                        /* in Fullspeed, the bInterval field is directly set in ms, between 1 and 255 */
+                                        cfg->bInterval = poll;
+                                    }
+                                } else {
+                                    /* for BULK EP, we set bInterval to 0 */
+                                    cfg->bInterval = 0;
+                                }
+                                curr_offset += sizeof(usbctrl_endpoint_descriptor_t);
+                            }
                         }
 
                     }
