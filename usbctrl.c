@@ -56,29 +56,39 @@ usbctrl_context_t ctx_list[MAX_USB_CTRL_CTX] = { 0 };
     @ requires \separated(&usbotghs_ctx,ctxh+(..), ctx_list+ (..));
     @ ensures GHOST_num_ctx == num_ctx ;
 
+    @ assigns *ctxh, num_ctx, usbotghs_ctx, GHOST_num_ctx, ctx_list[\old(num_ctx)] ;
+
     @ behavior bad_ctxh:
     @   assumes ctxh == \null;
-    @   assigns GHOST_num_ctx ;
+    @   ensures *ctxh == \old(*ctxh) ;
+    @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
+    @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @
     @ behavior bad_num_ctx:
     @   assumes num_ctx >= MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null  ;
-    @   assigns GHOST_num_ctx ;
+    @   ensures *ctxh == \old(*ctxh) ;
+    @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
+    @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_NOMEM ;
     @
     @ behavior bad_dev_id:
     @   assumes num_ctx < MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null  ;
     @   assumes dev_id != USB_OTG_HS_ID && dev_id != USB_OTG_FS_ID ;
-    @   assigns GHOST_num_ctx ;
+    @   ensures *ctxh == \old(*ctxh) ;
+    @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
+    @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_NOBACKEND ;
     @
     @ behavior ok:
     @   assumes (dev_id == USB_OTG_HS_ID || dev_id == USB_OTG_FS_ID) ;
     @   assumes num_ctx < MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null ;
-    @   assigns *ctxh, num_ctx, usbotghs_ctx, GHOST_num_ctx, ctx_list[\old(num_ctx)] ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
     @   ensures *ctxh == \old(GHOST_num_ctx) ;
     @   ensures GHOST_num_ctx == \old(GHOST_num_ctx) +1 ;
