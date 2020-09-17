@@ -512,7 +512,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
                         if (ctx->cfg[curr_cfg].interfaces[iface_id].class_desc_handler) {
                             uint8_t *cfg = &(buf[curr_offset]); // cyril : à quoi sert cette variable?
-                            uint32_t handler;
                             if (usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE) {
                                 log_printf("[LIBCTRL] Unable to get back handler from ctx\n");
                             }

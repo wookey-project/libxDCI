@@ -186,16 +186,17 @@ err:
 /*@
     @ requires GHOST_num_ctx == num_ctx ;
     @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
+    @ assigns ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)];
+    @ assigns ctx_list[ctxh];
 
     @ behavior bad_ctxh :
     @   assumes ctxh >= GHOST_num_ctx ;
-    @   assigns \nothing ;
+    @   ensures ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)] == \old(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)]) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior ok:
     @   assumes ctxh < GHOST_num_ctx ;
-    @   assigns ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)] ;
-    @   assigns ctx_list[ctxh];
     @   ensures \result == MBED_ERROR_NONE ;
     @   ensures ctx_list[ctxh].state == USB_DEVICE_STATE_POWERED ;
 
@@ -570,23 +571,27 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
     @ requires 0 <= ctxh ;
     @ requires GHOST_num_ctx == num_ctx ;
     @ ensures GHOST_num_ctx == num_ctx ;
+    @ assigns *iface, ctx_list[ctxh] ;
 
     @ behavior bad_ctxh :
     @   assumes ctxh >= num_ctx ;
-    @   assigns \nothing ;
+    @   ensures *iface == \old(*iface) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior invalid_iface :
     @   assumes iface == \null ;
     @   assumes ctxh < num_ctx ;
-    @   assigns \nothing ;
+    @   ensures *iface == \old(*iface) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior too_many_interfaces :
     @   assumes ctxh < num_ctx ;
     @   assumes iface != \null ;
     @   assumes ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE ;
-    @   assigns \nothing ;
+    @   ensures *iface == \old(*iface) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
     @   ensures \result == MBED_ERROR_NOMEM ;
 
     @ behavior too_many_config :
@@ -595,7 +600,6 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
     @   assumes !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) ;
     @   assumes (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) ;
     @   assumes (ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1) ;
-    @   assigns ctx_list[ctxh] ;
     @   ensures \result == MBED_ERROR_NOMEM ;
 
     @ behavior too_many_ctrl_config :
@@ -605,7 +609,7 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
     @   assumes ((iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && !((ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1))
                 && ((ctx_list[ctxh].num_cfg +1) >= MAX_USB_CTRL_CFG ))
                 ||  (( (iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 ) ) && ctx_list[ctxh].curr_cfg >= MAX_USB_CTRL_CFG ) ;
-    @   assigns ctx_list[ctxh] ;
+    @   ensures *iface == \old(*iface) ;
     @   ensures \result == MBED_ERROR_NOMEM ;
 
     @ behavior ok :
@@ -615,7 +619,6 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
     @   assumes ((iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && !((ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1))
                 && ((ctx_list[ctxh].num_cfg +1) < MAX_USB_CTRL_CFG ))
                 ||  (( (iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 ) ) && ctx_list[ctxh].curr_cfg < MAX_USB_CTRL_CFG ) ;
-    @   assigns *iface, ctx_list[ctxh] ;
     @   ensures \result == MBED_ERROR_NONE ;
 
     @ complete behaviors;
@@ -806,15 +809,19 @@ err:
     @ requires GHOST_num_ctx == num_ctx ;
     @ ensures GHOST_num_ctx == num_ctx ;
 
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+    @ assigns ctx_list[ctxh] ;
+    @ assigns usbotghs_ctx ;
+
     @ behavior bad_ctxh :
     @   assumes ctxh >= GHOST_num_ctx ;
-    @   assigns \nothing ;
+    @   ensures *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) == \old(*((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
+    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior other :
     @   assumes ctxh < GHOST_num_ctx ;
-    @	assigns usbotghs_ctx ;
-    @	assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), ctx_list[ctxh] ;
     @   ensures is_valid_error(\result) ;
 
     @ complete behaviors ;
