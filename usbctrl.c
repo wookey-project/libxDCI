@@ -815,7 +815,6 @@ err:
 
     @ behavior bad_ctxh :
     @   assumes ctxh >= GHOST_num_ctx ;
-    @   ensures *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) == \old(*((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ;
     @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
     @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
