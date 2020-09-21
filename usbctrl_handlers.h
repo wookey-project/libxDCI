@@ -22,7 +22,7 @@
  *
  */
 #ifndef USBCTRL_HANDLERS_H_
-#define USBTCTL_HANDLERS_H_
+#define USBCTRL_HANDLERS_H_
 
 #include "libc/types.h"
 
