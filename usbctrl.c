@@ -44,12 +44,13 @@
 
 
 
-#if defined(__FRAMAC__)
-#else
+#ifndef __FRAMAC__
+
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 #define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG
 static uint8_t num_ctx = 0;
 usbctrl_context_t ctx_list[MAX_USB_CTRL_CTX] = { 0 };
+
 #endif/*!__FRAMAC__*/
 
 /*@
@@ -399,7 +400,7 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
 
     for (uint8_t i = 0; i < num_ctx; ++i) {
         if (ctx_list[i].dev_id == device_id) {
-            *ctx = (usbctrl_context_t*)&(ctx_list[i]);
+            *ctx = &(ctx_list[i]);
             /*@ ghost GHOST_idx_ctx = i ; */
 
             /*  assert  \exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i]; */
@@ -636,7 +637,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     uint8_t iface_config = 0;
     uint8_t i = 0 ;
     mbed_error_t errcode = MBED_ERROR_NONE;
-    uint32_t drv_ep_mpsize ;
+    uint16_t drv_ep_mpsize ;
 
 //  assert GHOST_num_ctx == num_ctx ;
 
@@ -862,7 +863,7 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
 
 
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
-    if ((errcode = usb_backend_drv_set_recv_fifo((uint8_t*)&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
+    if ((errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
         printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
         goto end;
     }
@@ -887,10 +888,6 @@ mbed_error_t usbctrl_stop_device(uint32_t ctxh)
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
-    usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-
-    ctx = ctx;
-    /* FIXME: TODO */
 err:
     return errcode;
 }

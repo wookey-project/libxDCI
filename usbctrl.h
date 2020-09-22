@@ -92,6 +92,26 @@ typedef enum {
                                      it, no provider is accessing it */
 } ctrl_plane_rx_fifo_state_t;
 
+
+typedef struct usbctrl_context {
+    /* first, about device driver interactions */
+    uint32_t               dev_id;              /*< device id, from the USB device driver */
+    uint16_t               address;             /*< device address, to be set by std req */
+    /* then current context state, associated to the USB standard state automaton  */
+    uint8_t                 num_cfg;        /*< number of different onfigurations */
+    uint8_t                 curr_cfg;       /*< current configuration */
+    usbctrl_configuration_t cfg[CONFIG_USBCTRL_MAX_CFG]; /* configurations list */
+    uint8_t                 state;          /*< USB state machine current state */
+    uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
+    ctrl_plane_rx_fifo_state_t ctrl_fifo_state; /*< RECV FIFO of control plane state */
+    bool           ctrl_req_processing; /* a control level request is being processed */
+} usbctrl_context_t;
+
+
+
+
+
+
 #if defined(__FRAMAC__)
 
   uint8_t num_ctx = 0;
@@ -175,24 +195,11 @@ void usbctrl_reset_received(void){
 }
 
 
-typedef struct usbctrl_context {
-    /* first, about device driver interactions */
-    uint32_t               dev_id;              /*< device id, from the USB device driver */
-    uint16_t               address;             /*< device address, to be set by std req */
-    /* then current context state, associated to the USB standard state automaton  */
-    uint8_t                 num_cfg;        /*< number of different onfigurations */
-    uint8_t                 curr_cfg;       /*< current configuration */
-    usbctrl_configuration_t cfg[CONFIG_USBCTRL_MAX_CFG]; /* configurations list */
-    uint8_t                 state;          /*< USB state machine current state */
-    uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
-    bool                    ctrl_fifo_state; /*< RECV FIFO of control plane state */
-    bool           ctrl_req_processing; /* a control level request is being processed */
-} usbctrl_context_t;
-usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = {0} ;
-
-
 uint8_t SIZE_DESC_FIXED ;
 bool FLAG ;
+
+/* avoid Ghosting for getters in other files than usbctrl.c */
+usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = {0} ;
 
 /*@
     @ requires \separated(buf,desc_size,&ctx_list, &FLAG,&SIZE_DESC_FIXED);
@@ -208,26 +215,8 @@ mbed_error_t  class_get_descriptor(uint8_t             iface_id,
                                         uint8_t           *desc_size,
                                         uint32_t            usbdci_handler ) ;
 
-#else
-
-typedef struct usbctrl_context {
-    /* first, about device driver interactions */
-    uint32_t               dev_id;              /*< device id, from the USB device driver */
-    uint16_t               address;             /*< device address, to be set by std req */
-    /* then current context state, associated to the USB standard state automaton  */
-    uint8_t                 num_cfg;        /*< number of different onfigurations */
-    uint8_t                 curr_cfg;       /*< current configuration */
-    usbctrl_configuration_t cfg[CONFIG_USBCTRL_MAX_CFG]; /* configurations list */
-    uint8_t                 state;          /*< USB state machine current state */
-    uint8_t                 ctrl_fifo[CONFIG_USBCTRL_EP0_FIFO_SIZE]; /* RECV FIFO for EP0 */
-    bool                    ctrl_fifo_state; /*< RECV FIFO of control plane state */
-    bool                    ctrl_req_processing; /* a control level request is being processed */
-} usbctrl_context_t;
-
 
 #endif/*!__FRAMAC__*/
-
-
 
 /*********************************************************
  * Core API

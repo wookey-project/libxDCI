@@ -33,10 +33,11 @@
     @ ensures \result == MBED_ERROR_NONE ;
 */
 
-mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
+mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id __attribute__((unused)))
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    dev_id = dev_id;
+    /* INFO: early suspend is executed very early, before starting DEFAULT state. There is
+     * nothing to do here by now (no power handling support by now) */
     return errcode;
 }
 
@@ -46,10 +47,10 @@ mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id)
 */
 
 
-mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id)
+mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)))
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    dev_id = dev_id;
+    /* INFO: There is nothing to do here by now (no power handling support by now) */
     return errcode;
 }
 
@@ -364,7 +365,6 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
             }
         }
     }
-    dev_id = dev_id;
 err:
     return errcode;
 }
@@ -471,13 +471,13 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
                 /* first, we should not accept setup pkt from other EP than 0.
                  * Although, this is not forbidden by USB 2.0 standard. */
                 /* Second, we must convert received data into current endianess */
-                uint8_t *setup_packet = ctx->ctrl_fifo;
+                const uint8_t *setup_packet = ctx->ctrl_fifo;
                 usbctrl_setup_pkt_t formated_pkt = {
                     setup_packet[0],
                     setup_packet[1],
-                    setup_packet[3] << 8 | setup_packet[2],
-                    setup_packet[5] << 8 | setup_packet[4],
-                    setup_packet[7] << 8 | setup_packet[6]
+                    (uint16_t)(setup_packet[3] << 8 | setup_packet[2]),
+                    (uint16_t)(setup_packet[5] << 8 | setup_packet[4]),
+                    (uint16_t)(setup_packet[7] << 8 | setup_packet[6])
                 };
                 errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
                 return errcode;
@@ -578,9 +578,9 @@ err:
 
 */
 
-mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id)
+mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id __attribute__((unused)))
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    dev_id = dev_id;
+    /* INFO: nothing to do by now (no power management) */
     return errcode;
 }
