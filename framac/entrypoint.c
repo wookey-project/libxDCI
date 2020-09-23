@@ -156,7 +156,7 @@ void test_fcn_usbctrl(){
 
     //usbctrl_get_context(dev_id, &ctx1);
 
-    usbctrl_declare_interface(ctxh1, &iface_1) ;
+    usbctrl_declare_interface(ctxh1, &iface_1);
     usbctrl_declare_interface(ctxh1, &iface_2);
     //usbctrl_declare_interface(ctxh1, &iface_3);  // Cyril : le temps de calcul augmente exponentiellement avec une 3ème interface, à cause de la fonction usbctrl_get_descriptor (toutes les boucles...)
     usbctrl_get_interface(ctx1, iface);
@@ -209,20 +209,26 @@ void test_fcn_usbctrl(){
     ctx_list[0].ctrl_req_processing = true;  // pour atteindre un cas avec EVA
     usbctrl_handle_inepevent(dev_id, size, ep);
 
-    usbotghs_ctx.out_eps[0].state = Frama_C_interval_8(0,9); // pour EVA, pour avoir tous les états possibles, mais que pour les ep pour lesquels il n'y a pas de RTE dans  usbotghs_ctx.out_eps[ep]
-    usbctrl_handle_outepevent(dev_id, size, ep);
+    usbotghs_ctx.out_eps[0].state = Frama_C_interval_8(0,9);
+
+    // CDE : after inepevent, dev_id is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
+    uint32_t dev_id_2 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
+
+    usbctrl_handle_outepevent(dev_id_2, size, ep);
     usbctrl_handle_earlysuspend(dev_id) ;
     usbctrl_handle_usbsuspend(dev_id);
     usbctrl_handle_wakeup(dev_id) ;
     usbctrl_std_req_get_dir(&pkt) ;
-    usbctrl_handle_reset(dev_id);
+
+    // CDE : after outepevent, dev_id_2 is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
+    uint32_t dev_id_3 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
+    usbctrl_handle_reset(dev_id_3);
 
     usbctrl_next_state(current_state,request);  // requires is_valid_state && is_valid_request : pas de test d'erreur sur les entrées du coup
-    //usbctrl_handle_requests(&pkt, dev_id) ;
-    //SIZE_DESC_FIXED = 100 ;
-    usbctrl_handle_requests(&pkt, dev_id) ;  // fonction qui appelle bcp de fonction, EVA prend bcp de temps du coup
-   	// c'est l'appel à usbctrl_handle_std_requests qui appelle notamment usbctrl_std_req_handle_get_descriptor qui augmente le temps de calcul (x10...)
-   	// car usbctrl_std_req_handle_get_descriptor est appelé 5 fois...donc 2 contexte, ça fait 10 fois en tout, et il y a 12000 états dans get descriptor
+
+    uint32_t dev_id_4 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
+    // CDE : after reset, dev_id_3 is 6 or 7, i don't know why... so i declare a new dev_id
+    usbctrl_handle_requests(&pkt, dev_id_4) ;
 }
 
 /*

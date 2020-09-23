@@ -159,6 +159,8 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
      *
      * the overall descriptor size in bytes must be smaller or equal to the given buffer size (MAX_DESCRIPTOR_LEN).
      */
+
+    //@ split descriptor_size ;
     if(descriptor_size + class_desc_size > MAX_DESCRIPTOR_LEN) {
         log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
         errcode = MBED_ERROR_UNSUPORTED_CMD;
@@ -169,6 +171,7 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
     *total_size = descriptor_size + class_desc_size ;
 #if defined(__FRAMAC__)
             SIZE_DESC_FIXED = class_desc_size ;
+            /*@ assert class_desc_size + descriptor_size <= MAX_DESCRIPTOR_LEN; */
 #endif/*__FRAMAC__*/
 
 err:

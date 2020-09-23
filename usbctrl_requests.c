@@ -216,7 +216,7 @@ static inline bool is_class_requests_allowed(usbctrl_context_t const * const ctx
  */
 
 /*@
-    @ requires \valid(ctx) && \valid(pkt) ;
+    @ requires \valid(ctx) ;
     @ requires \separated(ctx,pkt);
     @ assigns *pkt, *ctx ;
 
@@ -400,7 +400,7 @@ err:
 }
 
 /*@
-    @ requires \valid(ctx) && \valid(pkt) ;
+    @ requires \valid(ctx) ;
     @ requires \separated(ctx+ (..),pkt);
     @ assigns *ctx ;
     @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
@@ -529,7 +529,7 @@ err:
 }
 
 /*@
-    @ requires \valid(ctx) && \valid(pkt) ;
+    @ requires \valid(ctx) ;
     @ requires \separated(ctx+(..),pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
     @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ assigns *ctx;
@@ -634,7 +634,7 @@ err:
 }
 
 /*@
-    @ requires \valid(ctx) && \valid(pkt) ;
+    @ requires \valid(ctx) ;
     @ requires \separated(ctx, pkt, &usbotghs_ctx, (uint32_t *)(USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END));
     @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),usbotghs_ctx, usbotghs_ctx.in_eps[EP0];
 
@@ -709,7 +709,7 @@ err:
 }
 
 /*@
-    @ requires \valid(pkt) && \valid(ctx);
+    @ requires  \valid(ctx);
     @ requires \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
     @ ensures ctx->ctrl_req_processing == \false;
     @   assigns conf_set, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], *ctx ;
