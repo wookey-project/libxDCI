@@ -243,6 +243,7 @@ FRAMAC_EVA_FLAGS:=\
 		    -eva \
 		    -eva-show-perf \
 		    -eva-slevel 500 \
+		    -eva-slevel-function usbctrl_get_descriptor:30000 \
 		    -eva-domains symbolic-locations\
 		    -eva-domains equality \
 		    -eva-split-return auto \

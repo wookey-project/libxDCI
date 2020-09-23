@@ -734,7 +734,7 @@ err:
                 (ctx->state == USB_DEVICE_STATE_ADDRESS) ||
                 (ctx->state == USB_DEVICE_STATE_CONFIGURED)) ;
     @   assumes !( (pkt->wValue & 0xff) == 0 || (pkt->wValue & 0xff) > ctx->num_cfg ) ;
-    @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_NOSTORAGE ;
+    @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_NOSTORAGE || \result == MBED_ERROR_INVPARAM ;
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -742,8 +742,6 @@ err:
 */
 
 /*
-    ajout de uint8_t max_iface = ctx->cfg[curr_cfg].interface_num et de uint8_t max_ep = ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number
-    pour passer le variant de la boucle alors que je fais assigns *ctx
     TODO : be more precise with configure endpoint behavior (ep_num)
 */
 

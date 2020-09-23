@@ -206,9 +206,9 @@ usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = {0} ;
     @ assigns *desc_size ;
     @ ensures (buf == \null || desc_size == \null) ==> \result == MBED_ERROR_INVPARAM ;
     @ ensures (!(buf == \null || desc_size == \null) && FLAG == \false)
-             ==> (is_valid_error(\result) && 0 <= *desc_size <=  255) ;
+             ==> (\result == MBED_ERROR_NONE && 0 <= *desc_size <=  255) ;
     @ ensures (!(buf == \null || desc_size == \null) && FLAG == \true)
-             ==> (is_valid_error(\result) && *desc_size ==  SIZE_DESC_FIXED) ;
+             ==> (\result == MBED_ERROR_NONE && *desc_size ==  SIZE_DESC_FIXED) ;
 */
 mbed_error_t  class_get_descriptor(uint8_t             iface_id,
                                         uint8_t            *buf,

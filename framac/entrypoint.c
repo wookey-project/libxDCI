@@ -133,7 +133,8 @@ void test_fcn_usbctrl(){
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
     usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval};
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
     usbctrl_context_t *ctx1 = NULL;
@@ -158,7 +159,7 @@ void test_fcn_usbctrl(){
 
     usbctrl_declare_interface(ctxh1, &iface_1);
     usbctrl_declare_interface(ctxh1, &iface_2);
-    //usbctrl_declare_interface(ctxh1, &iface_3);  // Cyril : le temps de calcul augmente exponentiellement avec une 3ème interface, à cause de la fonction usbctrl_get_descriptor (toutes les boucles...)
+    //usbctrl_declare_interface(ctxh1, &iface_3);
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);
     usbctrl_is_interface_exists(ctx1, iface);
@@ -218,7 +219,7 @@ void test_fcn_usbctrl(){
     usbctrl_handle_earlysuspend(dev_id) ;
     usbctrl_handle_usbsuspend(dev_id);
     usbctrl_handle_wakeup(dev_id) ;
-    usbctrl_std_req_get_dir(&pkt) ;
+    //usbctrl_std_req_get_dir(&pkt) ;
 
     // CDE : after outepevent, dev_id_2 is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
     uint32_t dev_id_3 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
