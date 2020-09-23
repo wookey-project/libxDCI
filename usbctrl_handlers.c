@@ -255,8 +255,7 @@ err:
 /*@
     @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx,&GHOST_idx_ctx);
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
-    @   assigns ctx_list[0..(GHOST_num_ctx-1)],GHOST_idx_ctx ;  // cyril :c'est large mais ça passe, je ne sais pas comment faire un assigns plus précise (ctx_list[i])
-
+    @   assigns ctx_list[0..(GHOST_num_ctx-1)],GHOST_idx_ctx ;
     @ behavior ctx_not_found:
     @   assumes !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ;
     @   ensures \result == MBED_ERROR_NOTFOUND  ;
