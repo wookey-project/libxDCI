@@ -22,9 +22,10 @@
  */
 
 
-#if defined(__FRAMAC__)
- // CYRIL : ce qu'il y a dans le #else est reporté dans le .h, dans un if defined(__FRAMAC__). Car les variables déclarées dans les .c sont ignorées par frama dans les autres .c...
-#else
+#ifndef __FRAMAC__
+ /*
+    All variables declared here are reported in state.h, so that they can be used in other function specifications (in other files)
+ */
 
 /*
  * Association between a request and a transition to a next state. This couple
@@ -315,12 +316,6 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
 
     for (uint8_t i = 0; i < MAX_TRANSITION_STATE; ++i) {
         if (usb_automaton[current_state].req_trans[i].request == transition) {
-          /*  assert (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ; */
-          /*  assert (transition == USB_DEVICE_TRANS_RESET) ==> !(current_state == USB_DEVICE_STATE_INVALID
-                                                        || current_state == USB_DEVICE_STATE_SUSPENDED_POWER
-                                                        || current_state == USB_DEVICE_STATE_ATTACHED) ; */
-          /*  assert current_state != USB_DEVICE_STATE_INVALID ; */
-          /*  assert ctx->state ==\at(ctx->state, Pre); */
             return true;
         }
     }
@@ -329,10 +324,6 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
      * valid transition. We should stall the request.
      */
     log_printf("%s: invalid transition from state %d, request %d\n", __func__, current_state, transition);
-
-    /*  assert (transition == USB_DEVICE_TRANS_RESET) ==> (current_state == USB_DEVICE_STATE_INVALID
-                                                        || current_state == USB_DEVICE_STATE_SUSPENDED_POWER
-                                                        || current_state == USB_DEVICE_STATE_ATTACHED) ; */
 
     usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
     /*@ assert ctx->state ==  USB_DEVICE_STATE_INVALID; */

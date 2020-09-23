@@ -101,7 +101,7 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
     /*@
       @ loop invariant 0 <= i <= iface_num ;
       @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num-1)));
-      @ loop assigns i, descriptor_size  ;
+      @ loop assigns i, descriptor_size, FLAG, errcode,  class_desc_size ;
       @ loop variant (iface_num -i);
       */
 
@@ -205,6 +205,33 @@ err:
 
 }
 
+/*@
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset);
+
+    @ behavior INVPARAM:
+    @   assumes (curr_offset == \null || buf == \null) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   assigns \nothing ;
+
+    @ behavior NOSTORAGE:
+    @   assumes !(curr_offset == \null || buf == \null) ;
+    @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
+    @   ensures \result == MBED_ERROR_NOSTORAGE ;
+    @   assigns \nothing ;
+
+    @ behavior OK:
+    @   assumes !(curr_offset == \null || buf == \null) ;
+    @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
+    @   ensures \result == MBED_ERROR_NONE ;
+    @   ensures *curr_offset == \old(*curr_offset) + (uint32_t)sizeof(usbctrl_configuration_descriptor_t) ;
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
+
+/*
+  CDE : not possible to validate assigns clause because of cast : (usbctrl_configuration_descriptor_t *)&(buf[*curr_offset]) (WP memory model)
+*/
 
 static mbed_error_t usbctrl_handle_configuration_write_config_desc(uint8_t *buf,
                                                            uint32_t descriptor_size,
@@ -240,6 +267,42 @@ static mbed_error_t usbctrl_handle_configuration_write_config_desc(uint8_t *buf,
 err:
     return errcode;
 }
+
+/*@
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset, ctx + (..));
+
+    @ behavior INVPARAM:
+    @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   assigns \nothing ;
+
+    @ behavior NOSTORAGE:
+    @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+    @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
+    @   ensures \result == MBED_ERROR_NOSTORAGE ;
+    @   assigns \nothing ;
+
+    @ behavior bad_iface:
+    @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+    @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
+    @   assumes iface_id == 255 ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   assigns \nothing ;
+
+    @ behavior OK:
+    @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+    @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
+    @   assumes iface_id != 255 ;
+    @   ensures \result == MBED_ERROR_NONE ;
+    @   ensures *curr_offset == \old(*curr_offset) + sizeof(usbctrl_interface_descriptor_t) ;
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
+
+/*
+  CDE : not possible to validate assigns clause because of cast : (usbctrl_interface_descriptor_t*)&(buf[*curr_offset]) (WP memory model)
+*/
 
 static mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
                                                                   usbctrl_context_t const * const ctx,
@@ -297,6 +360,36 @@ static mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
 err:
     return errcode;
 }
+
+/*@
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset, ctx + (..));
+
+    @ behavior INVPARAM:
+    @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   assigns \nothing ;
+
+    @ behavior bad_iface:
+    @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+    @   assumes iface_id == 255 ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   assigns \nothing ;
+
+    @ behavior OTHER:
+    @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+    @   assumes iface_id != 255 ;
+    @   ensures \result == MBED_ERROR_NONE ||
+                (\result == MBED_ERROR_NOBACKEND && (*curr_offset == \old(*curr_offset))) ||
+                (\result == MBED_ERROR_INVPARAM && (*curr_offset == \old(*curr_offset))) ;
+    @   assigns  *curr_offset, FLAG ;
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
+
+/*
+  TODO : be more precise with OTHER behavior (pb is with get_handler errcode and class_desc_handler errcode : not possible to try errcode != MBED_ERROR_NONE )
+*/
 
 static mbed_error_t usbctrl_handle_configuration_write_class_desc(usbctrl_context_t * ctx,
                                                                   uint8_t  * buf,
@@ -368,6 +461,27 @@ static mbed_error_t usbctrl_handle_configuration_write_class_desc(usbctrl_contex
 err:
     return errcode;
 }
+
+/*@
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset, ctx + (..));
+
+    @ behavior INVPARAM:
+    @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   assigns \nothing ;
+
+    @ behavior OK:
+    @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+    @   ensures \result == MBED_ERROR_NONE ;
+    @   ensures *curr_offset == \old(*curr_offset) + sizeof(usbctrl_endpoint_descriptor_t) ;
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
+
+/*
+  CDE : not possible to validate assigns clause because of cast : (usbctrl_endpoint_descriptor_t*)&(buf[*curr_offset]) (WP memory model)
+*/
 
 static mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t const * const ctx,
                                                                uint8_t  * buf,
@@ -449,6 +563,7 @@ static mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t
         cfg->bInterval = 0;
     }
     *curr_offset += sizeof(usbctrl_endpoint_descriptor_t);
+    /*@ assert *curr_offset == \at(*curr_offset,Pre) + sizeof(usbctrl_endpoint_descriptor_t) ; */
 
 err:
     return errcode;
@@ -611,7 +726,7 @@ err:
  * This is the only function exported.
  */
 
-/* @
+/*@
     @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),desc_size+(..),ctx+(..),pkt+(..));
 
     @ behavior invaparam:
@@ -778,15 +893,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              * of the complete interface descriptor, including EP. */
             uint8_t max_ep_number ;  // new variable for variant and invariant proof
 
-            /*@
+            /* @
                 @ loop invariant 0 <= iface_id <= iface_num ;
                 @ loop invariant 0 <= curr_offset <=  255 ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num -1))) ;
                 @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1))) ;
                 @ loop invariant \valid(buf + (0..255));
                 @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1)),buf + (0..255));
-                @ loop assigns iface_id, curr_offset, errcode, buf[0..255] ;
-                @ loop variant (iface_num - iface_id) ;
             */
 
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
@@ -815,14 +928,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
 
                 max_ep_number = ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;  // variable change in loop
-                /*@
+
+                /* @
                     @ loop invariant \at(max_ep_number,LoopEntry) == \at(max_ep_number,LoopCurrent) ;
                     @ loop invariant 0 <= ep_number <= max_ep_number ;
                     @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1))) ;
                     @ loop invariant \valid(buf + (0..255));
                     @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1)),buf + (0..255));
-                    @ loop assigns ep_number, curr_offset, buf[0..255];
-                    @ loop variant (max_ep_number - ep_number);
                 */
 
                 for (uint8_t ep_number = 0; ep_number < max_ep_number; ++ep_number) {

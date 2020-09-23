@@ -114,7 +114,14 @@ typedef struct usbctrl_context {
 
 #if defined(__FRAMAC__)
 
+/*
+    this variable must be global and no static for eva (so that entrypoint can modify it)
+    but for WP proof, it must be considered as a static variable (and thus, be replaced with ghost variable in function specifications for WP)
+*/
   uint8_t num_ctx = 0;
+//@ ghost  uint8_t GHOST_num_ctx;
+//@ ghost  uint8_t GHOST_idx_ctx = 0;
+
 
 /*@ lemma u16_and_is_u16:
     \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
@@ -158,8 +165,6 @@ typedef struct usbctrl_context {
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 #define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG
 
-//@ ghost  uint8_t GHOST_num_ctx;
-//@ ghost  uint8_t GHOST_idx_ctx = 0;
 
 /*@
     @ requires \valid(packet);

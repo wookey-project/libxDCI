@@ -224,9 +224,6 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
 
     printf("[USBCTRL] initializing automaton\n");
 
-/*
- TODO FRAMA-c : memcpy
-*/
         /*@
             @ loop invariant 0 <= i <= MAX_INTERFACES_PER_DEVICE ;
             @ loop invariant \valid(ctx->cfg[ctx->curr_cfg].interfaces + (0..(MAX_INTERFACES_PER_DEVICE-1))) ;
@@ -658,25 +655,24 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     #endif/*!__FRAMAC__*/
 
     /* check space */
-    if (ctx->cfg[ctx->curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) {   // RTE : Cyril : == before
+    if (ctx->cfg[ctx->curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) {
         errcode = MBED_ERROR_NOMEM;
         goto err;
     }
 
     if (iface->dedicated == true && ctx->cfg[ctx->curr_cfg].interface_num != 0) {
             /*
-                Cyril : ajout d'un test sur le nombre de config max :
                 check space
             */
 
-    	ctx->num_cfg++;   // RTE before, this line was moved (and no test on ctx->num_cfg before)
+    	ctx->num_cfg++;
 
         if(ctx->num_cfg > (CONFIG_USBCTRL_MAX_CFG - 1)){
             errcode = MBED_ERROR_NOMEM;
             goto err;
         }
 
-        iface_config = ctx->num_cfg;    // Cyril : je ne peux pas arriver ici avec CONFIG_USBCTRL_MAX_CFG == 2
+        iface_config = ctx->num_cfg;
         ctx->cfg[iface_config].first_free_epid = 1;
     } else {
         iface_config = ctx->curr_cfg;
@@ -697,10 +693,11 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
    /* 1) make a copy of interface. The interface identifier is its cell number  */
 
     #if defined(__FRAMAC__)
-    /*
-        en attendant de définir correctement memcpy avec frama-c, je copie manuellement la struct iface dans ctx->cfg[iface_config].interfaces[iface_num]
-        les paramètres copiés sont ceux définis dans la struct iface dans le main... (donc c'est un exemple pour passer le code à frama-c)
-    */
+
+        /*
+            TODO FRAMA-c : memcpy with instantiate
+        */
+
        ctx->cfg[iface_config].interfaces[iface_num].usb_class = iface->usb_class ;
        ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number = iface->usb_ep_number ;
        ctx->cfg[iface_config].interfaces[iface_num].dedicated = iface->dedicated ;
@@ -719,7 +716,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
    /* 2) set the interface identifier */
    ctx->cfg[iface_config].interfaces[iface_num].id = iface_num;
    iface->id = iface_num;
-   uint8_t max_ep = ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number ;  // cyril : ajout de la variable
+   uint8_t max_ep = ctx->cfg[iface_config].interfaces[iface_num].usb_ep_number ;
    /* 3) or, depending on the interface flags, add it to current config or to a new config */
    /* at declaration time, all interface EPs are disabled  and calculate EP identifier for the interface */
 
@@ -737,7 +734,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
 
     #if defined(__FRAMAC__)
 
-    // Cyril : je n'utilise pas usb_ep_infos_t *ep = &(ctx->cfg[iface_config].interfaces[iface_num].eps[i]) ; parce que wp ne valide pas le assigns de la fonction
+    /* No variable change for framac, to validate global assigns  */
 
         ctx->cfg[iface_config].interfaces[iface_num].eps[i].configured = false ;
 
@@ -831,9 +828,7 @@ err:
 */
 
 /*
-    TODO : specifier plus en détail avec configure et set_recv_fifo
-            problème : la spec de usbotghs_configure est pas très précise, car usbotghs_ulpi_reset, usbotghs_initialize_core, usbotghs_initialize_host et usbotghs_initialize_device
-
+    TODO : be more precise with configure and set_recv_fifo behavior
 */
 
 mbed_error_t usbctrl_start_device(uint32_t ctxh)

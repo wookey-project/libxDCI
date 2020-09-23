@@ -85,10 +85,7 @@ uint32_t Frama_C_interval_32(uint32_t min, uint32_t max)
 }
 
 /*
-
- test_fcn_usbctrl : test des fonctons définies dans usbctrl.c avec leurs paramètres
- 					correctement définis (pas de débordement de tableaux, pointeurs valides...)
-
+ test_fcn_usbctrl : test functions defined in usbctrl.c, generally with correct parameters
 */
 
 void test_fcn_usbctrl(){
@@ -108,21 +105,17 @@ void test_fcn_usbctrl(){
     usb_device_state_t current_state = Frama_C_interval_8(0,9);
     usbctrl_request_code_t request = Frama_C_interval_8(0x0,0xc);
     uint8_t interval = Frama_C_interval_8(0,255);
-    //uint8_t class_descriptor_size = Frama_C_interval_8(0,255);
 
-
-
-
-/*
-    def d'une nouvelle interface pour test de la fonction usbctrl_declare_interface
-    Déclaration d'une structure usb_rqst_handler_t utilisée dans les interfaces, qui nécessite aussi une structure usbctrl_setup_pkt_t
-*/
 
     uint8_t RequestType = Frama_C_interval_8(0,255);
     uint8_t Request = Frama_C_interval_8(0,0xd);
     uint16_t Value = Frama_C_interval_16(0,65535);
     uint16_t Index = Frama_C_interval_16(0,65535);
     uint16_t Length = Frama_C_interval_16(0,65535);
+
+/*
+    interface definition with variable parameters
+*/
 
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
@@ -146,7 +139,7 @@ void test_fcn_usbctrl(){
 
 
     ///////////////////////////////////////////////////
-    //        premier context
+    //        first context
     ///////////////////////////////////////////////////
     usbctrl_declare(8, &ctxh1);  // in order to check dev_id !=6 and != 7 ;
     usbctrl_declare(6, &ctxh1);
@@ -155,11 +148,9 @@ void test_fcn_usbctrl(){
     /*@ assert ctxh1 == 0 ; */
     usbctrl_get_context(6, &ctx1);
 
-    //usbctrl_get_context(dev_id, &ctx1);
-
     usbctrl_declare_interface(ctxh1, &iface_1);
     usbctrl_declare_interface(ctxh1, &iface_2);
-    //usbctrl_declare_interface(ctxh1, &iface_3);
+    //usbctrl_declare_interface(ctxh1, &iface_3);  // this should be decommented only for test in usbctrl_descriptors.c, but very costly to analyse with EVA
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);
     usbctrl_is_interface_exists(ctx1, iface);
@@ -168,7 +159,7 @@ void test_fcn_usbctrl(){
     usbctrl_stop_device(ctxh1) ;
 
     if(ctx1 != NULL){
-        ctx1->state = Frama_C_interval_8(0,9); // pour EVA, pour avoir tous les états possibles
+        ctx1->state = Frama_C_interval_8(0,9);
             usbctrl_is_valid_transition(ctx1->state,transition,ctx1);
             usbctrl_handle_class_requests(&pkt,ctx1) ;
     }
@@ -198,45 +189,41 @@ void test_fcn_usbctrl(){
     usbctrl_stop_device(ctxh2) ;
 
     if(ctx2 != NULL){
-        ctx2->state = Frama_C_interval_8(0,9); // pour EVA, pour avoir tous les états possibles
+        ctx2->state = Frama_C_interval_8(0,9);
         usbctrl_is_valid_transition(ctx2->state,transition,ctx2);
         usbctrl_handle_class_requests(&pkt,ctx2) ;
     }
 
-    //////////////////////////////////////////////////////////////////////////////
-    //        fonctions qui vont utiliser les deux contextes (inepevent et outepevent)
-    //////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////
+    //        functions that use both contexts
+    ////////////////////////////////////////////////
 
-    ctx_list[0].ctrl_req_processing = true;  // pour atteindre un cas avec EVA
+    ctx_list[0].ctrl_req_processing = true;  // to reach a state with EVA
     usbctrl_handle_inepevent(dev_id, size, ep);
 
     usbotghs_ctx.out_eps[0].state = Frama_C_interval_8(0,9);
 
-    // CDE : after inepevent, dev_id is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
+    // after inepevent, dev_id is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
     uint32_t dev_id_2 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
 
     usbctrl_handle_outepevent(dev_id_2, size, ep);
     usbctrl_handle_earlysuspend(dev_id) ;
     usbctrl_handle_usbsuspend(dev_id);
     usbctrl_handle_wakeup(dev_id) ;
-    //usbctrl_std_req_get_dir(&pkt) ;
 
-    // CDE : after outepevent, dev_id_2 is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
+    // after outepevent, dev_id_2 is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
     uint32_t dev_id_3 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
     usbctrl_handle_reset(dev_id_3);
 
-    usbctrl_next_state(current_state,request);  // requires is_valid_state && is_valid_request : pas de test d'erreur sur les entrées du coup
+    usbctrl_next_state(current_state,request);
 
     uint32_t dev_id_4 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
-    // CDE : after reset, dev_id_3 is 6 or 7, i don't know why... so i declare a new dev_id
+    // after reset, dev_id_3 is 6 or 7, i don't know why... so i declare a new dev_id
     usbctrl_handle_requests(&pkt, dev_id_4) ;
 }
 
 /*
-
- test_fcn_erreur : test des fonctons définies dans usbctrl.c afin d'atteindre les portions de code défensif
-                    (pointeurs nulls, débordement de tableaux...)
-
+ test_fcn_usbctrl_erreur : test functions defined in usbctrl.c, with bad parameters (error code, defensif code to be checked)
 */
 
 void test_fcn_usbctrl_erreur(){
@@ -253,10 +240,6 @@ void test_fcn_usbctrl_erreur(){
     uint8_t  USB_class = Frama_C_interval_8(0,17);
     uint32_t USBdci_handler = Frama_C_interval_32(0,4294967295) ;
 
-/*
-    def d'une nouvelle interface pour test de la fonction usbctrl_declare_interface
-    Déclaration d'une structure usb_rqst_handler_t utilisée dans les interfaces, qui nécessite aussi une structure usbctrl_setup_pkt_t
-*/
 
     uint8_t RequestType = Frama_C_interval_8(0,255);
     uint8_t Request = Frama_C_interval_8(0,255);
@@ -273,31 +256,25 @@ void test_fcn_usbctrl_erreur(){
                                    .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
 /*
-    ctx_test : context different de ctx_list, pour trigger certains cas dans get_handler
+    ctx_test : context different from ctx_list, to trigger some cases in get_handler
 */
     usbctrl_context_t ctx_test = { .dev_id = 8, .address= 2};
 
     /*
-        usbctrl_declare : cas d'erreur - pointeur ctxh null
+        usbctrl_declare : error case - null pointer ctxh null
                                        - num_ctx >= 2
-                        deux appels à la fonction pour tester ces cas d'erreur
     */
 
     uint32_t *bad_ctxh = NULL;
     usbctrl_declare(dev_id, bad_ctxh);
-
-/*    ctxh = 1 ;
-    usbctrl_declare(8, &ctxh);  // pour tester dev_id !=6 et != 7 */
 
     ctxh = 1 ;
     num_ctx = 3;
     //@ ghost GHOST_num_ctx = num_ctx ;
     usbctrl_declare(dev_id, &ctxh);
 
-
-
     /*
-        usbctrl_initialize : cas d'erreur : ctxh >= num_ctx
+        usbctrl_initialize : error case : ctxh >= num_ctx
     */
 
     ctxh = 0 ;
@@ -310,12 +287,10 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_initialize(ctxh);
 
     /*
-        usbctrl_declare_interface : cas d'erreur - ctxh >= num_ctx
-                                                 - pointeur iface == null
+        usbctrl_declare_interface : error case - ctxh >= num_ctx
+                                                 - null pointer iface
                                                  - interface_num >= MAX_INTERFACES_PER_DEVICE
                                                  - pkt_maxsize > usbotghs_get_ep_mpsize()
-        Dans le cas nominal, avec le test sur 2 interfaces, num_cfg >= MAX_USB_CTRL_CTX-1 donc une partie du code n'est pas atteinte. Cas traité ci-dessous, quand on rajoute
-        une interface de contrôle
     */
 
 
@@ -340,18 +315,14 @@ void test_fcn_usbctrl_erreur(){
         .eps[0].type = 3, .eps[0].handler = handler_ep, .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
         .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor };
     ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE - 1 ;
-    //ctx_list[ctxh].cfg[0].interfaces[0].eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1 ;
     usbctrl_declare_interface(ctxh, &iface_4) ;
 
-    //ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE - 1 ;
-    //ctx_list[ctxh].num_cfg < MAX_USB_CTRL_CTX -1  ;
-    //usbctrl_declare_interface(ctxh, &iface_3) ;
 
 
 
     /*
-        usbctrl_get_interface : cas d'erreur - pointeur ctx null
-        cas iface < ctx->cfg[ctx->curr_cfg].interface_num pas atteint dans le cas nominal
+        usbctrl_get_interface : error case - null pointer ctx null
+        case iface < ctx->cfg[ctx->curr_cfg].interface_num not reached in nominal case
     */
     usbctrl_context_t *bad_ctx = NULL ;
     usbctrl_get_interface(bad_ctx, iface);
@@ -360,17 +331,16 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_get_interface((usbctrl_context_t *)&(ctx_list[ctxh]), iface);
 
     /*
-        usbctrl_get_handler: cas d'erreur - pointeur ctx null
-                                           - pointeur handler null
-        comme num_ctx < MAX_USB_CTRL_CTX pour ne pas avoir de débordement de tableau, la boucle n'est parcourue qu'une fois dans la fonction
+        usbctrl_get_handler: error case - null pointer ctx null
+                                           - null pointer handler null
     */
 
     usbctrl_get_handler(bad_ctx, &handler);
-    usbctrl_get_handler(&ctx_test, &handler);  // pour tester behavior not_found
+    usbctrl_get_handler(&ctx_test, &handler);
 
 
     /*
-        usbctrl_get_context, usbctrl_is_endpoint_exists &&  usbctrl_is_interface_exists  : cas d'erreur - pointeur ctx null
+        usbctrl_get_context, usbctrl_is_endpoint_exists &&  usbctrl_is_interface_exists  : null pointer - pointeur ctx null
     */
 
     usbctrl_get_context(dev_id,     NULL);
@@ -378,19 +348,16 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_is_interface_exists(bad_ctx, iface);
 
     /*
-        test erreur avec un numéro de ctx >= num_ctx (qui vaut 1 au max dans mon cas, avec un max de cfg de 2)
+        error case with ctx >= num_ctx
     */
 
     usbctrl_start_device(4) ;
     usbctrl_stop_device(4) ;
 
     /*
-        test erreur sur get_descriptor : parcourir tous les types possibles, incluant un faux type
+        error case on get_descriptor : reach all possible types, including false one
                                          pointeurs null
-                                         ctx != ctx_list[i] pour error_not_found dans get_handler
-                                         class_get_descriptor : error_none forcément, donc je ne rentre pas dans errcode != error_none (modifier la fonction class_get_descriptor?)
-                                         while( poll ..) : je ne rentre qu'une fois dans la boucle
-                                         cfg->bInterval = poll : pas atteint car driver high speed dans la config actuelle
+                                         ctx != ctx_list[i] for error_not_found in get_handler
     */
 
     uint8_t buf[255] = {0} ;
@@ -409,7 +376,7 @@ void test_fcn_usbctrl_erreur(){
 
 
 /*
-    test des fonctions de usbctrl_state avec pointeur null ou état invalide (>= 10)
+    test functions in usbctrl_state with null pointers or invalid state (>= 10)
 */
 
     usbctrl_get_state(NULL) ;
@@ -418,22 +385,22 @@ void test_fcn_usbctrl_erreur(){
 
 
 /*
-    usbctrl_handle_class_requests : test avec get_handler qui renvoie error not found (donc un contexte différent de ctx_list )
+    usbctrl_handle_class_requests : test with get_handler returning error not found
 */
 usbctrl_context_t ctx2 = ctx_list[0] ;
 ctx2.state = Frama_C_interval_8(0,9);
 usbctrl_handle_class_requests(&pkt, &ctx2);
 
-usbctrl_handle_requests(NULL, dev_id);  // pointeur null, les autres erreurs ne sont pas atteignables..
-
-/*
-    usbctrl_std_req_handle_get_descriptor : je n'arrive pas à aller dans tous les cas d'erreur (maxlength == 0 ou get_descriptor != error_none )
-    usbctrl_std_req_handle_get_status : un cas avec endpoint_exists qui doit retourner false, mais comme je rentre avec ep == EP0, je renvoie true
-                                        je ne sais pas comment rentrer dans is_endpoint_exists avec ep != EP0
-*/
+usbctrl_handle_requests(NULL, dev_id);
 
 
 }
+
+/*
+    test for functions defined in driver USB (not all function analysed, only the functions needed for libxDCI)
+    nominal and bad parameters
+
+*/
 
 void test_fcn_driver_eva(){
 
@@ -469,18 +436,18 @@ void test_fcn_driver_eva(){
     usbotghs_endpoint_stall(ep_id, dir) ;
     usbotghs_get_ep_state(ep_id, dir) ;
 
-    usbotghs_ctx.in_eps[EP0].mpsize = Frama_C_interval_16(0,65535); // tentative pour entrer dans while(residual_size >= size), mais à revoir
+    usbotghs_ctx.in_eps[EP0].mpsize = Frama_C_interval_16(0,65535);
     uint8_t resp[1024] = { 0 };
-    usbotghs_ctx.in_eps[EP0].fifo_lck = 1 ; // pour avoir une erreur dans xmit_fifo dans send_data
+    usbotghs_ctx.in_eps[EP0].fifo_lck = 1 ;
     usb_backend_drv_send_data((uint8_t *)&resp, size, EP0);
     usbotghs_ctx.in_eps[EP0].fifo_lck = 0 ;
-    usb_backend_drv_send_data((uint8_t *)&resp, 514, EP0);  // pour rentrer dans la boucle residual_size >= fifo_size
+    usb_backend_drv_send_data((uint8_t *)&resp, 514, EP0);
     usbotghs_ctx.in_eps[4].mpsize = Frama_C_interval_16(0,65535);
     usbotghs_ctx.in_eps[4].id = 4 ;
     usbotghs_ctx.in_eps[4].fifo_lck = 0 ;
     usbotghs_ctx.in_eps[4].configured = 1 ;
     usb_backend_drv_send_data((uint8_t *)&resp, size, 4);
-    usb_backend_drv_send_data((uint8_t *)&resp, size, 8);   // pour entrer dans un cas d'erreur (je n'arrive pas à généraliser ep)
+    usb_backend_drv_send_data((uint8_t *)&resp, size, 8);
     usbotghs_send_zlp(ep_id);
     usbotghs_txfifo_flush(ep_id);
     usb_backend_drv_configure_endpoint(ep_id,type,dir,64,USB_BACKEND_EP_ODDFRAME,&handler_ep);
@@ -490,6 +457,10 @@ void test_fcn_driver_eva(){
     usbotghs_configure(mode, & usbctrl_handle_inepevent,& usbctrl_handle_outepevent);
     usbotghs_set_recv_fifo((uint8_t *)&resp, size, 0);
     usbotghs_set_recv_fifo((uint8_t *)&resp, size, 1);
+
+    /*
+        TODO : send_data analyse is not enough generalised
+    */
 
 }
 

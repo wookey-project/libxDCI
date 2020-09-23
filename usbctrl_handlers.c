@@ -55,8 +55,6 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)))
 }
 
 
-// PMO suppression des behaviors
-
 /*@
     @ requires 0 < GHOST_num_ctx ; // reset after usbctrl_declare ok, so 0 < GHOST_num_ctx
     @ requires \separated(((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx, &GHOST_idx_ctx); // PMO addition GHOST_idx_ctx
@@ -88,25 +86,21 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     usbctrl_context_t *ctx = NULL;
     log_printf("[USBCTRL] Handling reset\n");
     /* TODO: support for multiple drivers in the same time.
+
     This requires a driver table with callbacks or a preprocessing mechanism
     to select the corresponding driver API. While the libctrl is not yet fully
     operational, we handle only usbotghs driver API */
-
-    //dev_id = dev_id;
 
     log_printf("[USBCTRL] reset: get context for dev_id %d\n", dev_id);
     /*@ assert &ctx != NULL ; */
     if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] reset: no ctx found!\n");
-     /*  assert ctx == &ctx_list[GHOST_idx_ctx] ; */
-    /*@ assert &ctx != NULL ; */
+        /*@ assert &ctx != NULL ; */
         /*@ assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
-        /*  assert !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && GHOST_idx_ctx == i ) ; */
-    /*  assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx == &ctx_list[i] && GHOST_idx_ctx == i ) ; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id) ; */
     /*@ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
     /*@ assert ctx->state == ctx_list[GHOST_idx_ctx].state ; */
@@ -127,8 +121,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
 
     /*@ assert  ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID ; */
     /*@ assert !(\exists integer i; 0 <= i < GHOST_num_ctx && i!= GHOST_idx_ctx && \at(ctx_list,Pre)[i].state != ctx_list[i].state) ; */
-    /* @ assert ctx == &ctx_list[GHOST_idx_ctx] ; */
-    /* @ assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, beforeif)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
     /*@ assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ; */
         errcode = MBED_ERROR_INVSTATE;
@@ -143,7 +135,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     /*@ assert (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[ctx_list[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id && ctx_list[i].dev_id == \at(ctx_list,Pre)[i].dev_id); */
-    /*  assert state == ctx_list[GHOST_idx_ctx].state ; */
 
     log_printf("[USBCTRL] reset: execute transition from state %d\n", state);
     /* handling RESET event depending on current state */
@@ -153,7 +144,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
              * are handled at SetConfiguration & SetInterface time */
             /* as USB Reset action reinitialize the EP0 FIFOs (flush, purge and deconfigure) they must
              * be reconfigure for EP0 here. */
-            /*  assert ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_POWERED ; */
             log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
 
@@ -280,11 +270,6 @@ err:
     @ disjoint behaviors ;
 */
 
-/*
-    TODO : spec très large pour ctx_found : possible de raffiner? pb, comment dire ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep && ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_IN
-            à partir de ctx_list  ? même probleme pour reset et outepevent (mais bon, j'ai prouvé la terminaison de la fonction pour le moment)
-*/
-
 mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -358,7 +343,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
                         /* XXX: c'est ma FIFO ? oui, c'est pour moi. Non, c'est pour au dessus :-)*/
                             /*@ assert ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler ∈ {&handler_ep}; */
                             /*@ calls handler_ep; */
-                        errcode = ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);  // Cyril : ajout de errcode = (comme pour class_desc_handler)
+                        errcode = ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler(dev_id, size, ep);
                     }
                     break;
                 }
@@ -376,7 +361,6 @@ err:
 
 
 /*@
-
     @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx,((uint32_t *)(USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) );
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
 
@@ -437,11 +421,8 @@ err:
 */
 
 /*
-    TODO :  assigns pour behavior state_USB_BACKEND_DRV_EP_STATE_SETUP_size_8 : en attente des assigns de usbctrl_handle_requests
-
-            state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_not_0 : possiblité de plus préciser ce behavior, mais ça dépend de ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num == ep
-            && ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir == USB_EP_DIR_OUT   ==> problème, ctx c'est ctx_list[i], et c'est compliqué de dire ça...
-
+    TODO :  assigns for behavior state_USB_BACKEND_DRV_EP_STATE_SETUP_size_8 : need assigns for usbctrl_handle_requests to be validated
+            these assigns are for now impossible to validate due to some casts in usbctrl_descriptors functions (incompatible with WP memory model)
 */
 
 
