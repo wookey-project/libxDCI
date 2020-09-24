@@ -324,15 +324,10 @@ mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
     for (uint8_t i = 0; i < num_ctx; ++i) {
         if (&(ctx_list[i]) == ctx) {
             *handler = i;
-            /*  assert \exists integer i ; 0 <= i < GHOST_num_ctx && &(ctx_list[i]) == ctx ; */
             goto end;
         }
     }
 
-    /*  assert \at(handler,Here) == \at(handler,Pre) ; */
-    /*  assert \separated(&ctx_list + (0..(GHOST_num_ctx-1)),ctx,handler); */
-    /*  assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> &(ctx_list[i]) != ctx ; */
-    /*  assert \valid_read(ctx_list + (0..(GHOST_num_ctx-1))) ; */
 
     errcode = MBED_ERROR_NOTFOUND;
 end:
@@ -399,17 +394,10 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
         if (ctx_list[i].dev_id == device_id) {
             *ctx = &(ctx_list[i]);
             /*@ ghost GHOST_idx_ctx = i ; */
-
-            /*  assert  \exists integer i ; 0 <= i < GHOST_num_ctx && *ctx == &ctx_list[i]; */
-            /*  assert *ctx == &ctx_list[i]; */
-            /*  assert *ctx == &ctx_list[GHOST_idx_ctx]; */
             goto end;
         }
     }
 
-   /*  assert \at(ctx,Here) == \at(ctx,Pre) ; */
-    /* assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != device_id ; */
-    /*  assert \forall integer i ; 0 <= i < GHOST_num_ctx ==> &ctx_list[i] != *ctx ; */
     errcode = MBED_ERROR_NOTFOUND;
 
 end:

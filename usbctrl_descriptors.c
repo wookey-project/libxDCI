@@ -125,6 +125,7 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
             /*@ assert ctx->cfg[curr_cfg].interfaces[i].class_desc_handler ∈ {&class_get_descriptor}; */
             /*@ calls class_get_descriptor; */
             errcode = ctx->cfg[curr_cfg].interfaces[i].class_desc_handler(i, buf, &max_buf_size, handler);
+            
             if (errcode != MBED_ERROR_NONE) {
                 log_printf("[LIBCTRL] failure while getting class desc: %d\n", errcode);
                 errcode = MBED_ERROR_UNKNOWN;
@@ -132,6 +133,8 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
             }
             log_printf("[LIBCTRL] found one class level descriptor of size %d\n", max_buf_size);
             class_desc_size += max_buf_size; // CDE in order to calculate size of all class descriptor
+            
+
         } else {
             class_desc_size += 0;
         }
@@ -191,15 +194,16 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
         log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
         errcode = MBED_ERROR_UNSUPORTED_CMD;
         *desc_size = 0;
+        /*@ assert class_desc_size + descriptor_size > MAX_DESCRIPTOR_LEN; */
         goto err;
     }
-
+    /*@ assert class_desc_size + descriptor_size <= MAX_DESCRIPTOR_LEN; */
     *total_size = descriptor_size + class_desc_size ;
+
 #if defined(__FRAMAC__)
             SIZE_DESC_FIXED = class_desc_size ;
-            /*@ assert class_desc_size + descriptor_size <= MAX_DESCRIPTOR_LEN; */
+            
 #endif/*__FRAMAC__*/
-
 err:
     return errcode;
 
@@ -985,6 +989,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             }
             /*@ assert descriptor_size == curr_offset ; */
             *desc_size = descriptor_size;
+            //@ merge SIZE_DESC_FIXED ;
             break;
         }
         case USB_DESC_DEV_QUALIFIER:

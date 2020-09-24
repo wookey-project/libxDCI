@@ -244,6 +244,8 @@ FRAMAC_EVA_FLAGS:=\
 		    -eva-show-perf \
 		    -eva-slevel 500 \
 		    -eva-slevel-function usbctrl_get_descriptor:20000 \
+		    -eva-slevel-function usbctrl_handle_configuration_size:10000 \
+		    -eva-split-limit 256 \
 		    -eva-domains symbolic-locations\
 		    -eva-domains equality \
 		    -eva-split-return auto \
@@ -259,7 +261,7 @@ FRAMAC_WP_FLAGS:=\
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \
-   			-wp-timeout $(TIMEOUT) \
+   			-wp-timeout $(TIMEOUT)+ \
 			-wp-smoke-tests \
 			-wp-no-smoke-dead-code \
    			-wp-log a:frama-c-rte-eva-wp.log
