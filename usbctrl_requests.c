@@ -1382,7 +1382,7 @@ err:
 */
 
 
-static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t *pkt __attribute__((unused)),
+static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t * const pkt __attribute__((unused)),
                                                           usbctrl_context_t *ctx)
 {
     /* TODO: this implementation is more complex.
@@ -1471,7 +1471,7 @@ err:
 */
 
 
-static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t *pkt,
+static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t * const pkt,
                                                        usbctrl_context_t *ctx)
 {
     /* SET_FEATURE is made to activate device/interface and endpoint testing modes.
@@ -1577,7 +1577,7 @@ err:
 
 */
 
-static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t *pkt,
+static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t * const pkt,
                                                          usbctrl_context_t *ctx)
 {
     /* This request permit to select interfaces of a same configuration which
@@ -1699,7 +1699,7 @@ err:
 
 */
 
-static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t *pkt,
+static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t * const pkt,
                                                        usbctrl_context_t *ctx)
 {
     /* Set an endpoint syncrhonization frame
@@ -1942,7 +1942,7 @@ static inline mbed_error_t usbctrl_handle_std_requests(usbctrl_setup_pkt_t *pkt,
 
 */
 
-static inline mbed_error_t usbctrl_handle_vendor_requests(usbctrl_setup_pkt_t *pkt __attribute__((unused)),
+static inline mbed_error_t usbctrl_handle_vendor_requests(usbctrl_setup_pkt_t * const pkt __attribute__((unused)),
                                                           usbctrl_context_t   *ctx)
 
 {
@@ -1981,8 +1981,8 @@ err:
 */
 
 
-static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *pkt __attribute__((unused)),
-                                                           usbctrl_context_t   *ctx __attribute__((unused)))
+static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *const pkt __attribute__((unused)),
+                                                           usbctrl_context_t   *const ctx __attribute__((unused)))
 {
     log_printf("[USBCTRL] Unknown Request type %d/%x\n", pkt->bmRequestType, pkt->bRequest);
     usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);

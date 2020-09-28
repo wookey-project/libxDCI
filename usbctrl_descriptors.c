@@ -146,7 +146,6 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
         /* for endpoint, we must not declare CONTROL eps in interface descriptor */
         uint8_t num_ep = 0;
 
-        /* TODO: we should assert that usb_ep_number is smaller or equal to than 8 */
         /*@
           @ loop invariant 0 <= ep <= ctx->cfg[curr_cfg].interfaces[i].usb_ep_number ;
           @ loop assigns num_ep, ep ;
@@ -643,7 +642,7 @@ static void usbctrl_handle_device_desc(uint8_t                   *buf,
 
 static mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
                                     __out uint32_t              *desc_size,
-                                    __in usbctrl_setup_pkt_t    *pkt)
+                                    __in usbctrl_setup_pkt_t    * const pkt)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     const char *USB_DEV_MANUFACTURER = CONFIG_USB_DEV_MANUFACTURER;
