@@ -185,6 +185,160 @@ static inline bool is_vendor_requests_allowed(usbctrl_context_t const * const ct
     return false;
 }
 
+/***********************************
+ * About configuration set/unset utilities (used by set_configuration function)
+ */
+
+/*
+ * Deactivate currently configured endpoints
+ */
+
+/*@
+    @ requires \separated(ctx,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], *ctx ;
+ */
+static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+
+    if (ctx == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+
+    uint8_t curr_cfg = ctx->curr_cfg;
+    uint8_t max_iface = ctx->cfg[curr_cfg].interface_num ;
+
+    /*@
+        @ loop invariant 0 <= iface <= max_iface ;
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
+        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
+                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+        @ loop assigns iface, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
+                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop variant (max_iface - iface);
+        */
+
+    for (uint8_t iface = 0; iface < max_iface; ++iface) {
+
+        uint8_t max_ep = ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
+
+    /*@
+        @ loop invariant 0 <= i <= max_ep ;
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
+        @ loop invariant \separated(ctx, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
+                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+        @ loop assigns i, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
+                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop variant (max_ep - i) ;
+    */
+
+        for (uint8_t i = 0; i < max_ep; ++i) {
+
+            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured == true) {
+                errcode = usb_backend_drv_deconfigure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num);
+                if (errcode != MBED_ERROR_NONE) {
+                    log_printf("[USBCTRL] failure while deconfiguring EP %x\n",
+                            usb_backend_drv_deconfigure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num));
+                }
+                ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = false;
+            }
+        }
+    }
+
+err:
+    return errcode;
+
+}
+
+
+/*@
+    @ requires \separated(ctx,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], *ctx ;
+ */
+/*
+ * Active endpoint for current configuration
+ */
+static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+
+    if (ctx == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+
+    uint8_t curr_cfg = ctx->curr_cfg;
+    uint8_t max_iface = ctx->cfg[curr_cfg].interface_num ;
+
+    /*@
+        @ loop invariant 0 <= iface <= max_iface ;
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
+        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
+                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+        @ loop assigns iface, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
+                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop variant (max_iface - iface);
+    */
+    for (uint8_t iface = 0; iface < max_iface; ++iface) {
+
+        uint8_t max_ep = ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
+
+    /*@
+        @ loop invariant 0 <= i <= max_ep ;
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
+        @ loop invariant \separated(ctx, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
+                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+        @ loop assigns i, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
+                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop variant (max_ep - i) ;
+    */
+
+        for (uint8_t i = 0; i < max_ep; ++i) {
+            usb_backend_drv_ep_dir_t dir;
+            switch (ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir) {
+                case USB_EP_DIR_OUT:
+                    dir = USB_BACKEND_DRV_EP_DIR_OUT;
+                    break;
+                case USB_EP_DIR_IN:
+                    dir = USB_BACKEND_DRV_EP_DIR_IN;
+                    break;
+                case USB_EP_DIR_BOTH:
+                    dir = USB_BACKEND_DRV_EP_DIR_BOTH;
+                    break;
+                default:
+                    log_printf("[USBCTRL] invalid EP type !\n");
+                    errcode = MBED_ERROR_INVPARAM;
+                    goto err;
+                    break;
+            }
+           log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir);
+
+           if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].type != USB_EP_TYPE_CONTROL) {
+                errcode = usb_backend_drv_configure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num,
+                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].type,
+                        dir,
+                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].pkt_maxsize,
+                        USB_BACKEND_EP_ODDFRAME,
+                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler);
+                /*@ assert errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NONE  || errcode == MBED_ERROR_NOSTORAGE ; */
+
+                 if (errcode != MBED_ERROR_NONE) {
+                    log_printf("[LIBCTRL] unable to configure EP %d (dir %d): err %d\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir, errcode);
+                    goto err;
+                }
+
+            }
+            ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true;
+        }
+
+    }
+err:
+    return errcode;
+
+}
 
 /*
  * About standard requests handling.
@@ -744,57 +898,11 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
         goto err;
     }
 
-
-
-    uint8_t curr_cfg = ctx->curr_cfg;
-    uint8_t max_iface = ctx->cfg[curr_cfg].interface_num ;
-
     /* request is allowed, meaning that we are in ADDRESS state. We
      * can move along to CONFIGURED state and start nominal behavior from now on. */
 
     usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
     /*@ assert ctx->state == USB_DEVICE_STATE_CONFIGURED ; */
-
-    /* deactivate previous EPs */
-    /*@
-        @ loop invariant 0 <= iface <= max_iface ;
-        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), pkt, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
-                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-        @ loop assigns iface, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
-                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
-        @ loop variant (max_iface - iface);
-        */
-
-    for (uint8_t iface = 0; iface < max_iface; ++iface) {
-
-        uint8_t max_ep = ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
-
-    /*@
-        @ loop invariant 0 <= i <= max_ep ;
-        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
-        @ loop invariant \separated(ctx,pkt, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
-                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-        @ loop assigns i, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
-                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
-        @ loop variant (max_ep - i) ;
-    */
-
-        for (uint8_t i = 0; i < max_ep; ++i) {
-
-            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured == true) {
-                errcode = usb_backend_drv_deconfigure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num);
-                if (errcode != MBED_ERROR_NONE) {
-                    log_printf("[USBCTRL] failure while deconfiguring EP %x\n",
-                            usb_backend_drv_deconfigure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num));
-                }
-                ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = false;
-            }
-        }
-    }
-
-    /* all previously configured endpoint are not unconfigured. */
 
     requested_configuration = (pkt->wValue & 0xff);
     /* sanity on requested configuration */
@@ -804,78 +912,24 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
         goto err;
     }
 
+    /* deactivate previous EPs */
+    errcode = usbctrl_unset_active_endpoints(ctx);
+    if (errcode != MBED_ERROR_NONE) {
+        log_printf("[USBCTRL] failure while deactivating endpoints\n");
+        goto err;
+    }
+    /* all previously configured endpoint are not unconfigured. */
 
     /* in USB standard, starting from 1, not 0. curr_cfg is a C table index */
     ctx->curr_cfg = requested_configuration - 1;
 
-
-
     /* activate endpoints... */
-
-
-    /*@
-        @ loop invariant 0 <= iface <= max_iface ;
-        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), pkt, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
-                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-        @ loop assigns iface, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
-                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
-        @ loop variant (max_iface - iface);
-    */
-    for (uint8_t iface = 0; iface < max_iface; ++iface) {
-
-        uint8_t max_ep = ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
-
-    /*@
-        @ loop invariant 0 <= i <= max_ep ;
-        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
-        @ loop invariant \separated(ctx,pkt, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
-                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-        @ loop assigns i, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
-                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
-        @ loop variant (max_ep - i) ;
-    */
-
-        for (uint8_t i = 0; i < max_ep; ++i) {
-            usb_backend_drv_ep_dir_t dir;
-            switch (ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir) {
-                case USB_EP_DIR_OUT:
-                    dir = USB_BACKEND_DRV_EP_DIR_OUT;
-                    break;
-                case USB_EP_DIR_IN:
-                    dir = USB_BACKEND_DRV_EP_DIR_IN;
-                    break;
-                case USB_EP_DIR_BOTH:
-                    dir = USB_BACKEND_DRV_EP_DIR_BOTH;
-                    break;
-                default:
-                    log_printf("[USBCTRL] invalid EP type !\n");
-                    errcode = MBED_ERROR_INVPARAM;
-                    goto err;
-                    break;
-            }
-           log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir);
-
-           if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].type != USB_EP_TYPE_CONTROL) {
-                errcode = usb_backend_drv_configure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num,
-                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].type,
-                        dir,
-                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].pkt_maxsize,
-                        USB_BACKEND_EP_ODDFRAME,
-                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].handler);
-                /*@ assert errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NONE  || errcode == MBED_ERROR_NOSTORAGE ; */
-
-                 if (errcode != MBED_ERROR_NONE) {
-                    log_printf("[LIBCTRL] unable to configure EP %d (dir %d): err %d\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir, errcode);
-                    goto err;
-                }
-
-            }
-            ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true;
-        }
-
+    errcode = usbctrl_set_active_endpoints(ctx);
+    if (errcode != MBED_ERROR_NONE) {
+        log_printf("[USBCTRL] failure while activating endpoints\n");
+        goto err;
     }
+
     usbctrl_configuration_set();
     usb_backend_drv_send_zlp(0);
     /* handling standard Request */
