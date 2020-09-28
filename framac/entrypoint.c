@@ -161,7 +161,6 @@ void test_fcn_usbctrl(){
     if(ctx1 != NULL){
         ctx1->state = Frama_C_interval_8(0,9);
             usbctrl_is_valid_transition(ctx1->state,transition,ctx1);
-            usbctrl_handle_class_requests(&pkt,ctx1) ;
     }
 
 
@@ -191,7 +190,6 @@ void test_fcn_usbctrl(){
     if(ctx2 != NULL){
         ctx2->state = Frama_C_interval_8(0,9);
         usbctrl_is_valid_transition(ctx2->state,transition,ctx2);
-        usbctrl_handle_class_requests(&pkt,ctx2) ;
     }
 
     ////////////////////////////////////////////////
@@ -384,12 +382,8 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_set_state(NULL,10);
 
 
-/*
-    usbctrl_handle_class_requests : test with get_handler returning error not found
-*/
 usbctrl_context_t ctx2 = ctx_list[0] ;
 ctx2.state = Frama_C_interval_8(0,9);
-usbctrl_handle_class_requests(&pkt, &ctx2);
 
 usbctrl_handle_requests(NULL, dev_id);
 

@@ -186,27 +186,6 @@ static inline bool is_vendor_requests_allowed(usbctrl_context_t const * const ct
 }
 
 
-/*@
-    @ requires \valid_read(ctx);
-    @ requires ctx != \null ;
-    @ assigns \nothing ;
-    @ ensures (ctx->state == USB_DEVICE_STATE_CONFIGURED) ==> \result == \true ;
-    @ ensures !(ctx->state == USB_DEVICE_STATE_CONFIGURED) ==> \result == \false ;
-
-*/
-
-static inline bool is_class_requests_allowed(usbctrl_context_t const * const ctx)
-{
-
-    if ( usbctrl_get_state(ctx) == USB_DEVICE_STATE_CONFIGURED)
-    {
-        return true;
-    }
-
-    return false;
-}
-
-
 /*
  * About standard requests handling.
  *
@@ -1778,10 +1757,8 @@ err:
     @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @   ensures is_valid_error(\result);
 
-
     @ complete behaviors ;
     @ disjoint behaviors ;
-
 */
 
 
@@ -1890,42 +1867,6 @@ err:
  * to find which one is able to respond to the current setup pkt.
  * this function is a dispatcher between the various registered personalities
  */
-
-/*@
-
-    @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt);
-    @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
-
-    @ behavior std_requests_not_allowed:
-    @   assumes !(ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
-    @   assigns \nothing ;
-    @   ensures \result == MBED_ERROR_INVSTATE ;
-
-    @ behavior no_iface:
-    @   assumes (ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
-    @   assumes (((pkt->wIndex) & 0xff) - 1 ) >= ctx->cfg[ctx->curr_cfg].interface_num ;  // condition pour is_interface_exists : iface_idx >= ctx->cfg[ctx->curr_cfg].interface_num
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
-    @   ensures \result == MBED_ERROR_NOTFOUND || \result == MBED_ERROR_UNKNOWN ;
-
-    @ behavior handler_not_found :
-    @   assumes (ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
-    @   assumes !((((pkt->wIndex) & 0xff) - 1) >= ctx->cfg[ctx->curr_cfg].interface_num) ;
-    @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> &(ctx_list[i]) != ctx ;
-    @   assigns \nothing ;
-    @   ensures \result == MBED_ERROR_NOTFOUND || \result == MBED_ERROR_INVPARAM ;
-
-    @ behavior handler_found :
-    @   assumes (ctx->state == USB_DEVICE_STATE_CONFIGURED) ;
-    @   assumes !((((pkt->wIndex) & 0xff) - 1) >= ctx->cfg[ctx->curr_cfg].interface_num) ;
-    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && &(ctx_list[i]) == ctx ;
-    @   assigns \nothing ;
-    @   ensures is_valid_error(\result) ;
-
-    @ complete behaviors ;
-    @ disjoint behaviors ;
-
-*/
 
 
 
