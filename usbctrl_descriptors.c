@@ -822,11 +822,29 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
         }
         case USB_DESC_INTERFACE:
             log_printf("[USBCTRL] request iface desc\n");
-            *desc_size = 0;
+            uint8_t iface_id = (pkt->wValue & 0xff);
+            errcode = usbctrl_handle_configuration_write_iface_desc(buf, ctx, iface_id, desc_size);
             break;
         case USB_DESC_ENDPOINT:
             log_printf("[USBCTRL] request EP desc\n");
-            *desc_size = 0;
+            uint8_t curr_cfg = ctx->curr_cfg;
+            uint8_t iface_num = ctx->cfg[curr_cfg].interface_num;
+            uint8_t max_ep_number;  // new variable for variant and invariant proof
+            uint8_t target_ep = (pkt->wValue & 0xff);
+
+            for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
+
+                /*
+                 * FRAMAC todo
+                 */
+                max_ep_number = ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;  // variable change in loop
+                for (uint8_t ep_number = 0; ep_number < max_ep_number; ++ep_number) {
+                    if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].ep_num == target_ep) {
+                        uint8_t ep_dir = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].dir;
+                        errcode = usbctrl_handle_configuration_write_ep_desc(ctx, buf, target_ep, ep_dir, iface_id, curr_cfg, desc_size);
+                    }
+                }
+            }
             break;
         case USB_DESC_STRING: {
             log_printf("[USBCTRL] request string desc\n");

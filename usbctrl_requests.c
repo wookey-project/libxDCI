@@ -1623,6 +1623,15 @@ static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t * c
         case USB_DEVICE_STATE_CONFIGURED:
             /* here, we supports only default settings for all our interfaces.
              * we respond a request error */
+            /*
+             * TODO: Idealy, we should be able to handle mutually exclusive interfaces in a same
+             * configuration. In this case, here, the SetInterface should be used by the host
+             * to specify which interface is to be activated.
+             * This behavior differs from the Set_Configuration, which handle set of interfaces
+             * switching.
+             * By now, the libxDCI handles the Set_Configuration to manipulate mutually exclusive
+             * interfaces, instead of Set_Interface().
+             */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         default:
