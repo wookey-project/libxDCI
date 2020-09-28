@@ -222,7 +222,7 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
         return MBED_ERROR_INVPARAM;
     }
     log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
-    ctx->state = newstate;
+    ctx->state = (uint8_t)newstate;
 
     return MBED_ERROR_NONE;
 }
@@ -256,7 +256,7 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
 */
 
 uint8_t usbctrl_next_state(usb_device_state_t current_state,
-                           usbctrl_request_code_t request)
+                           usb_device_trans_t request)
 {
 
   /*@

@@ -256,7 +256,12 @@ static mbed_error_t usbctrl_handle_configuration_write_config_desc(uint8_t *buf,
     }
     usbctrl_configuration_descriptor_t *cfg = (usbctrl_configuration_descriptor_t *)&(buf[*curr_offset]);
     cfg->bLength = sizeof(usbctrl_configuration_descriptor_t);
-    cfg->wTotalLength = descriptor_size;
+    if (descriptor_size > 65535) {
+        /* This should never happen */
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    cfg->wTotalLength = descriptor_size & 0xffff;
     cfg->bDescriptorType = USB_DESC_CONFIGURATION;
     cfg->bNumInterfaces = iface_num;
     cfg->bConfigurationValue = 1;
@@ -355,7 +360,7 @@ static mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
         }
     }
     cfg->bNumEndpoints = num_ep;
-    cfg->bInterfaceClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_class;
+    cfg->bInterfaceClass = (uint8_t)ctx->cfg[curr_cfg].interfaces[iface_id].usb_class;
     cfg->bInterfaceSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
     cfg->bInterfaceProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
     cfg->iInterface = iface_id + 1;
@@ -512,10 +517,10 @@ static mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t
     if (ep_dir == USB_EP_DIR_IN) {
         cfg->bEndpointAddress |= 0x80; /* set bit 7 to 1 for IN EPs */
     }
-    cfg->bmAttributes =
-        ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].type       |
-        ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].attr << 2  |
-        ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].usage << 4;
+    cfg->bmAttributes = (uint8_t)
+        (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].type       |
+         ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].attr << 2  |
+         ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].usage << 4);
     cfg->wMaxPacketSize = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].pkt_maxsize;
 
     /* See table 9.3: microframe interval: bInterval specification */

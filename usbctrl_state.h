@@ -254,7 +254,7 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
 
 
 uint8_t usbctrl_next_state(usb_device_state_t current_state,
-                           usbctrl_request_code_t request);
+                           usb_device_trans_t request);
 
 bool usbctrl_is_valid_transition(usb_device_state_t current_state,
                                  usb_device_trans_t transition,
