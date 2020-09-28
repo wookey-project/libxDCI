@@ -837,9 +837,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
         case USB_DESC_CONFIGURATION: {
             log_printf("[USBCTRL] request configuration desc\n");
             /* configuration descriptor is dynamic, depends on current config and its number of endpoints... */
-            /* FIXME, we should be able to return a config descriptor with more
-             * than one interface if needed, including potential successive
-             * iface & EPs descriptors */
             /* 1) calculating desc size */
             //uint8_t requested_configuration = pkt->wValue; /* TODO to be used */
             uint8_t curr_cfg = ctx->curr_cfg;
@@ -878,9 +875,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              * C scoping is used for each descriptor handling to avoid any variable shadowing. Each typed
              * descriptor pointer is named 'cfg' and its scope is reduced to the currently being handled descriptor
              * only.
-             *
-             * FIXME: move each block (configuration, iface desc, class desc and ep desc) to a dedicated small function.
-             * This should be easy to do.
              */
             uint32_t curr_offset = 0;
 

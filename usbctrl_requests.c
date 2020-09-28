@@ -297,7 +297,7 @@ err:
 
 */
 
-static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
+static mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t *pkt,
                                                       usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -311,7 +311,7 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
     switch (usbctrl_get_state(ctx)) {
         case USB_DEVICE_STATE_DEFAULT:
             /* This case is not forbidden by USB2.0 standard, but the behavior is
-             * undefined. We can, for example, stall out. (FIXME) */
+             * undefined. We can, for example, stall out. */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             /*request finish here */
             set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
@@ -340,15 +340,25 @@ static mbed_error_t usbctrl_std_req_handle_get_status(usbctrl_setup_pkt_t *pkt,
                switch (usbctrl_std_req_get_recipient(pkt)) {
                 case USB_REQ_RECIPIENT_ENDPOINT: {
                     /*does requested EP exists ? */
-                    uint8_t epnum = pkt->wIndex & 0xf;  // epnum = 0 à cause du if avant
+                    uint8_t epnum = pkt->wIndex & 0xf;
                     if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
                         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                         /*request finish here */
                         set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                         goto err;
                     }
+                    /* get back the EP direction from the wIndex value (MSB bit) */
+                    bool dir_in = (pkt->wIndex >> 7) & 0x1;
+                    usb_ep_dir_t epdir = usbctrl_get_endpoint_direction(ctx, epnum);
+                    /* check that such an EP exists in current configuration */
+                    if (dir_in && (epdir == USB_EP_DIR_OUT || USB_EP_DIR_NONE)) {
+                        /* inexistant endpoint. These are not local invalid behavior but
+                         * nominal NAK response to host */
+                        usb_backend_drv_nak(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
+                        goto err;
+                    }
                     /* FIXME: check EP direction too before returning status */
-                    //bool dir_in = (pkt->wIndex >> 7) & 0x1;
                     /* return the recipient status (2 bytes, or wLength if smaller) */
                     uint8_t resp[2] = { 0 };
 
@@ -597,7 +607,7 @@ static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t const
             break;
         case USB_DEVICE_STATE_CONFIGURED:
             /* This case is not forbidden by USB2.0 standard, but the behavior is
-             * undefined. We can, for example, stall out. (FIXME) */
+             * undefined. We can, for example, stall out. */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             break;
         default:
@@ -736,6 +746,9 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
 
 
 
+    uint8_t curr_cfg = ctx->curr_cfg;
+    uint8_t max_iface = ctx->cfg[curr_cfg].interface_num ;
+
     /* request is allowed, meaning that we are in ADDRESS state. We
      * can move along to CONFIGURED state and start nominal behavior from now on. */
 
@@ -743,9 +756,45 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     /*@ assert ctx->state == USB_DEVICE_STATE_CONFIGURED ; */
 
     /* deactivate previous EPs */
-    /* FIXME: for previous potential configuration & interface, deconfigure EPs */
-    /* this should be done by detecting any configured EP of any registered iface that is set
-     * 'configured' just now */
+    /*@
+        @ loop invariant 0 <= iface <= max_iface ;
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
+        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), pkt, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
+                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+        @ loop assigns iface, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
+                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop variant (max_iface - iface);
+        */
+
+    for (uint8_t iface = 0; iface < max_iface; ++iface) {
+
+        uint8_t max_ep = ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
+
+    /*@
+        @ loop invariant 0 <= i <= max_ep ;
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
+        @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
+        @ loop invariant \separated(ctx,pkt, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
+                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+        @ loop assigns i, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
+                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop variant (max_ep - i) ;
+    */
+
+        for (uint8_t i = 0; i < max_ep; ++i) {
+
+            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured == true) {
+                errcode = usb_backend_drv_deconfigure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num);
+                if (errcode != MBED_ERROR_NONE) {
+                    log_printf("[USBCTRL] failure while deconfiguring EP %x\n",
+                            usb_backend_drv_deconfigure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num));
+                }
+                ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = false;
+            }
+        }
+    }
+
+    /* all previously configured endpoint are not unconfigured. */
 
     requested_configuration = (pkt->wValue & 0xff);
     /* sanity on requested configuration */
@@ -759,8 +808,6 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     /* in USB standard, starting from 1, not 0. curr_cfg is a C table index */
     ctx->curr_cfg = requested_configuration - 1;
 
-    uint8_t curr_cfg = ctx->curr_cfg;
-    uint8_t max_iface = ctx->cfg[curr_cfg].interface_num ;
 
 
     /* activate endpoints... */
@@ -775,7 +822,6 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
                                                                 usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
         @ loop variant (max_iface - iface);
     */
-
     for (uint8_t iface = 0; iface < max_iface; ++iface) {
 
         uint8_t max_ep = ctx->cfg[curr_cfg].interfaces[iface].usb_ep_number ;
@@ -1064,8 +1110,6 @@ static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *p
         set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
         goto err;
     }
-    /* FIXME: we should calculate the maximum descriptor we can genrate and compare
-     * to current buffer */
 
     uint8_t buf[MAX_DESCRIPTOR_LEN] = { 0 };
     uint32_t size = 0;

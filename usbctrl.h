@@ -157,6 +157,7 @@ typedef struct usbctrl_context {
 #define usb_backend_drv_set_address usbotghs_set_address
 #define usb_backend_drv_send_zlp usbotghs_send_zlp
 #define usb_backend_drv_configure_endpoint usbotghs_configure_endpoint
+#define usb_backend_drv_deconfigure_endpoint usbotghs_deconfigure_endpoint
 #define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
 #define usb_backend_drv_get_ep_state usbotghs_get_ep_state
 #define usb_backend_drv_configure usbotghs_configure
@@ -231,11 +232,14 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
 
 bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep);
 
+usb_ep_dir_t usbctrl_get_endpoint_direction(usbctrl_context_t *ctx, uint8_t ep);
+
 bool usbctrl_is_interface_exists(usbctrl_context_t *ctx, uint8_t iface);
 
 usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface);
 
 mbed_error_t usbctrl_get_handler(usbctrl_context_t *ctx,
                                  uint32_t *handler);
+
 
 #endif/*!USBCTRL_H_*/

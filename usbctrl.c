@@ -410,6 +410,85 @@ end:
 
     @ behavior bad_ctx:
     @   assumes ctx == \null ;
+    @   ensures \result == USB_EP_DIR_NONE ;
+
+    @ behavior EP_not_found:
+    @   assumes ctx != \null ;
+    @   assumes ep != EP0 ;
+    @   assumes !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) ;
+    @   ensures \result == USB_EP_DIR_NONE;
+
+    @ behavior EP0_found:
+    @   assumes ctx != \null ;
+    @   assumes ep == EP0 ;
+    @   ensures \result == USB_EP_DIR_BOTH ;
+
+    @ behavior EPx_found:
+    @   assumes ctx != \null ;
+    @   assumes ep != EP0 ;
+    @   assumes (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) || ep == EP0 ;
+    @   ensures (\result == USB_EP_DIR_IN || \result == USB_EP_DIR_OUT || \result == USB_EP_DIR_BOTH ) ;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
+*/
+
+usb_ep_dir_t usbctrl_get_endpoint_direction(usbctrl_context_t *ctx, uint8_t ep)
+{
+    uint8_t i = 0 ;
+    uint8_t j = 0 ;
+
+
+    /* sanitize */
+    if (ctx == NULL) {
+        return USB_EP_DIR_NONE;
+    }
+
+    if (ep == EP0) {
+        return USB_EP_DIR_BOTH;
+    }
+
+/*@
+        @ loop invariant 0 <= i <= ctx->cfg[ctx->curr_cfg].interface_num ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
+        @ loop invariant (\forall integer prei; 0<=prei<i ==>(\forall integer jj;
+            0 <= jj < ctx->cfg[ctx->curr_cfg].interfaces[prei].usb_ep_number ==>  ctx->cfg[ctx->curr_cfg].interfaces[prei].eps[jj].ep_num != ep));
+        @ loop assigns i, j ;
+        @ loop variant (ctx->cfg[ctx->curr_cfg].interface_num - i);
+*/
+
+    for (i = 0; i < ctx->cfg[ctx->curr_cfg].interface_num; ++i) {
+
+/*@
+        @ loop invariant 0 <= j <= ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
+        @ loop invariant (\forall integer prej ; 0<=prej<j ==> ctx->cfg[ctx->curr_cfg].interfaces[i].eps[prej].ep_num != ep) ;
+        @ loop assigns j ;
+        @ loop variant (ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number - j);
+*/
+
+        for ( j = 0; j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number; ++j) {
+            if (ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) {
+                return ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].dir;
+            }
+        }
+    }
+
+    return USB_EP_DIR_NONE;
+}
+
+
+
+/*@
+    @ requires 0 <= ep <= 255 ;
+    @ assigns \nothing ;
+
+    @ behavior bad_ctx:
+    @   assumes ctx == \null ;
     @   ensures \result == \false ;
 
     @ behavior EP_not_found:
@@ -765,8 +844,10 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                printf("[USBCTRL] EP set as full duplex\n");
            }
            ctx->cfg[iface_config].first_free_epid++;
-           /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
-           /* check that declared ep mpsize is compatible with backend driver */
+           /* max supported EP by device driver is handled at set_configuration time, as the
+            * configure_endpoint will fail. This is not the usbctrl responsability to handle
+            * the max number of hardware EP. Thus, the device driver should pretty print
+            * that there is no more space to help debugging this behavior. */
 
            drv_ep_mpsize = usb_backend_get_ep_mpsize();
 

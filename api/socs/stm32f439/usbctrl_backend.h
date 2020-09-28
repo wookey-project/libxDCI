@@ -175,6 +175,8 @@ mbed_error_t usb_backend_drv_configure_endpoint(uint8_t               ep,
                                          usb_backend_drv_ep_toggle_t  dtoggle,
                                          usb_backend_drv_ioep_handler_t handler);
 
+mbed_error_t usb_backend_drv_deconfigure_endpoint(uint8_t ep);
+
 /* needed for full-duplex EP */
 usb_backend_drv_ep_state_t usb_backend_drv_get_ep_state(uint8_t epnum, usb_backend_drv_ep_dir_t dir);
 mbed_error_t usb_backend_drv_send_data(uint8_t *src, uint32_t size, uint8_t ep);

@@ -122,24 +122,6 @@ typedef struct __packed {
 
 
 
-/**
- * FIXME: this DFU functional descriptor should be handled at DFU level (not here)
-typedef struct __packed usb_functional_descriptor {
-    uint8_t bLength;
-    uint8_t bDescriptorType;
-    struct {
-        uint8_t bitCanDnload:1;
-        uint8_t bitCanUpload:1;
-        uint8_t bitManifestationTolerant:1;
-        uint8_t bitWillDetach:1;
-        uint8_t reserved:4;
-    } bmAttributes;
-    uint16_t wDetachTimeOut;
-    uint16_t wTransferSize;
-    uint16_t bcdDFUVersion;
-} usb_dfu_functional_descriptor_t;
- */
-
 /*
  * A given interface descriptor hold its interface descriptor,
  * one descriptor for each of its EPs
