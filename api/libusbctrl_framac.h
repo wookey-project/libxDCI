@@ -181,6 +181,45 @@ typedef enum {
         i == USB_DEVICE_STATE_INVALID ;
 */
 
+/*****************************************************************
+ * Initially unexported API, used in order to simulate triggers
+ * for upper layers. The goal here is to handle full coverage with EVA,
+ * by calling various triggers that driver & control plane should have
+ * executed on external events, manually. To handle this, upper layer
+ * framaC entrypoints need to emulate the control plane and driver plane
+ * internal structures updates as if effective interrupts had risen.
+ */
+
+/*@
+    @ requires GHOST_num_ctx == num_ctx ;
+    @ requires \separated(&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx);
+    @ requires \valid_read(ctx_list + (0..(GHOST_num_ctx-1))) ;
+    @ assigns *ctx, GHOST_idx_ctx;
+
+    @ behavior bad_pointer :
+    @   assumes ctx == \null ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   ensures GHOST_idx_ctx == MAX_USB_CTRL_CTX ;
+
+    @ behavior not_found :
+    @   assumes ctx != \null ;
+    @   assumes !(\exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id) ;
+    @   ensures \result == MBED_ERROR_NOTFOUND ;
+    @   ensures GHOST_idx_ctx == MAX_USB_CTRL_CTX ;
+
+    @ behavior found :
+    @   assumes ctx != \null ;
+    @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == device_id ;
+    @   ensures \exists integer i ; 0 <= i < GHOST_num_ctx && \old(ctx_list[i].dev_id) == device_id && GHOST_idx_ctx==i ;
+    @   ensures 0 <= GHOST_idx_ctx < GHOST_num_ctx ;
+    @   ensures \result == MBED_ERROR_NONE ;
+    @	ensures *ctx == &ctx_list[GHOST_idx_ctx];
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+*/
+mbed_error_t usbctrl_get_context(uint32_t device_id,
+                                 usbctrl_context_t **ctx);
 
 
 #endif/*!__FRAMAC__*/
