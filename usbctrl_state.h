@@ -33,6 +33,11 @@
  * Figure 9.1
  */
 
+#ifndef __FRAMAC__
+/* this enumerate is declared in libusbctrl_framac.h to handle specs usage
+ * of libusbctrl proof
+ */
+
 typedef enum {
     USB_DEVICE_STATE_ATTACHED = 0,         /* Attached but not powered. Should never be reached from device side */
     USB_DEVICE_STATE_POWERED,              /* Attached and powered, first reset not received yet */
@@ -46,18 +51,7 @@ typedef enum {
     USB_DEVICE_STATE_INVALID               /* Not defined in the USB standard. exists as an INVALID case. Should not be reached */
 } usb_device_state_t;
 
-/*@ predicate is_valid_state(usb_device_state_t i) =
-        i == USB_DEVICE_STATE_ATTACHED ||
-        i == USB_DEVICE_STATE_POWERED ||
-        i == USB_DEVICE_STATE_SUSPENDED_POWER ||
-        i == USB_DEVICE_STATE_SUSPENDED_DEFAULT ||
-        i == USB_DEVICE_STATE_SUSPENDED_ADDRESS ||
-        i == USB_DEVICE_STATE_SUSPENDED_CONFIGURED ||
-        i == USB_DEVICE_STATE_DEFAULT ||
-        i == USB_DEVICE_STATE_ADDRESS ||
-        i == USB_DEVICE_STATE_CONFIGURED ||
-        i == USB_DEVICE_STATE_INVALID ;
-*/
+#endif/*!__FRAMAC__*/
 
 /*
  * device standard transitions (USB 2.0 standard, figure 9.1)

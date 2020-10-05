@@ -28,13 +28,8 @@
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"
 
-#if defined(__FRAMAC__)
-#include "usbotghs.h"
-#include "usbotghs_fifos.h"
-#include "api/libusbotghs.h"
-#else
+#ifndef __FRAMAC__
 #include "libc/sanhandlers.h"
-#endif
 
 /*
  * Here, we handle the case of differenciated FW/DFU mode.
@@ -60,6 +55,8 @@
 # endif
 #endif
 
+#endif
+
 /*********************************************************
  * General tooling
  */
@@ -73,6 +70,8 @@
 /************************************************
  * about libctrl context
  ***********************************************/
+
+#ifndef __FRAMAC__
 
 #define MAX_INTERFACES_PER_DEVICE 4
 
@@ -108,64 +107,10 @@ typedef struct usbctrl_context {
 } usbctrl_context_t;
 
 
-
-
+#endif
 
 
 #if defined(__FRAMAC__)
-
-/*
-    this variable must be global and no static for eva (so that entrypoint can modify it)
-    but for WP proof, it must be considered as a static variable (and thus, be replaced with ghost variable in function specifications for WP)
-*/
-  uint8_t num_ctx = 0;
-//@ ghost  uint8_t GHOST_num_ctx;
-//@ ghost  uint8_t GHOST_idx_ctx = 0;
-
-
-/*@ lemma u16_and_is_u16:
-    \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
-*/
-
-/*@ predicate is_valid_error(mbed_error_t i) =
-    i == MBED_ERROR_NONE ||
-    i == MBED_ERROR_NOMEM ||
-    i == MBED_ERROR_NOSTORAGE ||
-    i == MBED_ERROR_NOBACKEND ||
-    i == MBED_ERROR_INVCREDENCIALS ||
-    i == MBED_ERROR_UNSUPORTED_CMD ||
-    i == MBED_ERROR_INVSTATE ||
-    i == MBED_ERROR_NOTREADY ||
-    i == MBED_ERROR_BUSY ||
-    i == MBED_ERROR_DENIED ||
-    i == MBED_ERROR_UNKNOWN ||
-    i == MBED_ERROR_INVPARAM ||
-    i == MBED_ERROR_WRERROR ||
-    i == MBED_ERROR_RDERROR ||
-    i == MBED_ERROR_INITFAIL ||
-    i == MBED_ERROR_TOOBIG ||
-    i == MBED_ERROR_NOTFOUND  ;
-*/
-
-
-#define usb_backend_drv_declare usbotghs_declare
-#define usb_backend_drv_get_speed usbotghs_get_speed
-#define usb_backend_drv_stall usbotghs_endpoint_stall
-#define usb_backend_drv_send_data usbotghs_send_data
-#define usb_backend_drv_ack usbotghs_endpoint_clear_nak
-#define usb_backend_drv_nak usbotghs_endpoint_set_nak
-#define usb_backend_drv_set_address usbotghs_set_address
-#define usb_backend_drv_send_zlp usbotghs_send_zlp
-#define usb_backend_drv_configure_endpoint usbotghs_configure_endpoint
-#define usb_backend_drv_deconfigure_endpoint usbotghs_deconfigure_endpoint
-#define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
-#define usb_backend_drv_get_ep_state usbotghs_get_ep_state
-#define usb_backend_drv_configure usbotghs_configure
-#define usb_backend_get_ep_mpsize usbotghs_get_ep_mpsize
-
-#define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
-#define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG
-
 
 /*@
     @ requires \valid(packet);
@@ -189,7 +134,6 @@ mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
 void test_fcn_driver_eva(void) ;
 
 
-bool reset_requested = false;
 
 /*@
     @ assigns reset_requested ;
@@ -200,12 +144,6 @@ void usbctrl_reset_received(void){
     reset_requested = true;
 }
 
-
-uint8_t SIZE_DESC_FIXED ;
-bool FLAG ;
-
-/* avoid Ghosting for getters in other files than usbctrl.c */
-usbctrl_context_t  ctx_list[MAX_USB_CTRL_CTX] = {0} ;
 
 /*@
     @ requires \separated(buf,desc_size,&ctx_list, &FLAG,&SIZE_DESC_FIXED);

@@ -54,7 +54,6 @@
 #endif
 
 
-
 /*********************************************************************************
  * About handlers
  *
@@ -290,6 +289,20 @@ typedef struct {
                                                       informations */
 } usbctrl_interface_t;
 
+/*********************************************************************************
+ * About Frama-C header
+ * When using Frama-C, some static globals may need to be moved here instead of in
+ * local C or header files in order to define properly function contacts.
+ * There is no variables or type collisioning, and the behavior of the programs is the
+ * same.
+ */
+
+#ifdef __FRAMAC__
+#include "libusbctrl_framac.h"
+#endif
+
+
+
 /************************************************
  * about libctrl API
  ***********************************************/
@@ -298,6 +311,52 @@ typedef struct {
  * Declare the USB device through the ctrl interface, get back, for the current context,
  * the associated device identifier in ctx. This part handling the device part only.
  */
+/*@
+    @ requires \separated(&usbotghs_ctx,ctxh+(..), ctx_list+ (..));
+    @ ensures GHOST_num_ctx == num_ctx ;
+
+    @ assigns *ctxh, num_ctx, usbotghs_ctx, GHOST_num_ctx, ctx_list[\old(num_ctx)] ;
+
+    @ behavior bad_ctxh:
+    @   assumes ctxh == \null;
+    @   ensures *ctxh == \old(*ctxh) ;
+    @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
+    @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @
+    @ behavior bad_num_ctx:
+    @   assumes num_ctx >= MAX_USB_CTRL_CTX ;
+    @   assumes ctxh != \null  ;
+    @   ensures *ctxh == \old(*ctxh) ;
+    @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
+    @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
+    @   ensures \result == MBED_ERROR_NOMEM ;
+    @
+    @ behavior bad_dev_id:
+    @   assumes num_ctx < MAX_USB_CTRL_CTX ;
+    @   assumes ctxh != \null  ;
+    @   assumes dev_id != USB_OTG_HS_ID && dev_id != USB_OTG_FS_ID ;
+    @   ensures *ctxh == \old(*ctxh) ;
+    @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
+    @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
+    @   ensures \result == MBED_ERROR_NOBACKEND ;
+    @
+    @ behavior ok:
+    @   assumes (dev_id == USB_OTG_HS_ID || dev_id == USB_OTG_FS_ID) ;
+    @   assumes num_ctx < MAX_USB_CTRL_CTX ;
+    @   assumes ctxh != \null ;
+    @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
+    @   ensures *ctxh == \old(GHOST_num_ctx) ;
+    @   ensures GHOST_num_ctx == \old(GHOST_num_ctx) +1 ;
+    @   ensures ctx_list[\old(num_ctx)].dev_id == dev_id ;
+    @   ensures ctx_list[GHOST_num_ctx-1] == ctx_list[num_ctx-1] ;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
+*/
 mbed_error_t usbctrl_declare(uint32_t dev_id,
                              uint32_t *ctxh);
 
@@ -311,6 +370,26 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
  * This permits to declare multiple classes/itnerfaces before starting the device and
  * receiving the first requests from the host.
  */
+/*@
+    @ requires GHOST_num_ctx == num_ctx ;
+    @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
+    @ assigns ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)];
+    @ assigns ctx_list[ctxh];
+
+    @ behavior bad_ctxh :
+    @   assumes ctxh >= GHOST_num_ctx ;
+    @   ensures ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)] == \old(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)]) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior ok:
+    @   assumes ctxh < GHOST_num_ctx ;
+    @   ensures \result == MBED_ERROR_NONE ;
+    @   ensures ctx_list[ctxh].state == USB_DEVICE_STATE_POWERED ;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
+*/
 mbed_error_t usbctrl_initialize(uint32_t ctxh);
 
 /*
@@ -343,8 +422,67 @@ mbed_error_t usbctrl_release(uint32_t ctxh);
  * (EP identifiers, etc.) depending on the current global device interface state.
  *
  */
+/*@
+    @ requires \separated(&usbotghs_ctx,iface+(..));
+    @ requires 0 <= ctxh ;
+    @ requires GHOST_num_ctx == num_ctx ;
+    @ ensures GHOST_num_ctx == num_ctx ;
+    @ assigns *iface, ctx_list[ctxh] ;
+
+    @ behavior bad_ctxh :
+    @   assumes ctxh >= num_ctx ;
+    @   ensures *iface == \old(*iface) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior invalid_iface :
+    @   assumes iface == \null ;
+    @   assumes ctxh < num_ctx ;
+    @   ensures *iface == \old(*iface) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior too_many_interfaces :
+    @   assumes ctxh < num_ctx ;
+    @   assumes iface != \null ;
+    @   assumes ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE ;
+    @   ensures *iface == \old(*iface) ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
+    @   ensures \result == MBED_ERROR_NOMEM ;
+
+    @ behavior too_many_config :
+    @   assumes ctxh < num_ctx ;
+    @   assumes iface != \null;
+    @   assumes !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) ;
+    @   assumes (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) ;
+    @   assumes (ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1) ;
+    @   ensures \result == MBED_ERROR_NOMEM ;
+
+    @ behavior too_many_ctrl_config :
+    @   assumes ctxh < num_ctx ;
+    @   assumes iface != \null ;
+    @   assumes !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) ;
+    @   assumes ((iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && !((ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1))
+                && ((ctx_list[ctxh].num_cfg +1) >= MAX_USB_CTRL_CFG ))
+                ||  (( (iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 ) ) && ctx_list[ctxh].curr_cfg >= MAX_USB_CTRL_CFG ) ;
+    @   ensures *iface == \old(*iface) ;
+    @   ensures \result == MBED_ERROR_NOMEM ;
+
+    @ behavior ok :
+    @   assumes ctxh < num_ctx ;
+    @   assumes iface != \null ;
+    @   assumes !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) ;
+    @   assumes ((iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && !((ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1))
+                && ((ctx_list[ctxh].num_cfg +1) < MAX_USB_CTRL_CFG ))
+                ||  (( (iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 ) ) && ctx_list[ctxh].curr_cfg < MAX_USB_CTRL_CFG ) ;
+    @   ensures \result == MBED_ERROR_NONE ;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
+
+*/
 mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
-                                       __out    usbctrl_interface_t  *up);
+                                       __out    usbctrl_interface_t  *iface);
 
 /*
  * Effective device start.
@@ -354,12 +492,42 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
  * By now, it is not possible to declare new interfaces *after* the device
  * is started.
  */
+/*@
+    @ requires GHOST_num_ctx == num_ctx ;
+    @ ensures GHOST_num_ctx == num_ctx ;
+
+    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+    @ assigns ctx_list[ctxh] ;
+    @ assigns usbotghs_ctx ;
+
+    @ behavior bad_ctxh :
+    @   assumes ctxh >= GHOST_num_ctx ;
+    @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
+    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+
+    @ behavior other :
+    @   assumes ctxh < GHOST_num_ctx ;
+    @   ensures is_valid_error(\result) ;
+
+    @ complete behaviors ;
+    @ disjoint behaviors ;
+
+
+*/
 mbed_error_t usbctrl_start_device(uint32_t ctxh);
 
 /*
  * FIXME: Stop the device ? unmap and then ? Sending something to the host ? USB std
  * check is needed here. This feature may be interesting in some cases.
  */
+/*@
+    @ requires GHOST_num_ctx == num_ctx ;
+    @ ensures GHOST_num_ctx == num_ctx ;
+    @ ensures (ctxh >= GHOST_num_ctx)  <==> (\result == MBED_ERROR_INVPARAM) ;
+    @ ensures (ctxh < GHOST_num_ctx) <==> (\result == MBED_ERROR_NONE) ;
+    @ assigns ctx_list[ctxh];
+*/
 mbed_error_t usbctrl_stop_device(uint32_t ctxh);
 
 #endif/*!LIBUSB_CTRL_H_*/
