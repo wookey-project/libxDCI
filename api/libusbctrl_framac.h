@@ -94,7 +94,10 @@ typedef struct usbctrl_context {
     but for WP proof, it must be considered as a static variable (and thus, be replaced with ghost variable in function specifications for WP)
 */
   uint8_t num_ctx = 0;
-//@ ghost  uint8_t GHOST_num_ctx;
+// pmo init ghost
+//@ ghost  uint8_t GHOST_num_ctx = num_ctx;
+
+//pmo init todo? 
 //@ ghost  uint8_t GHOST_idx_ctx = 0;
 
 
