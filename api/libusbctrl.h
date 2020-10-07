@@ -311,8 +311,9 @@ typedef struct {
  * Declare the USB device through the ctrl interface, get back, for the current context,
  * the associated device identifier in ctx. This part handling the device part only.
  */
+// todo pmo size of structured var in separated
 /*@
-    @ requires \separated(&usbotghs_ctx,ctxh+(..), ctx_list+ (..));
+    @ requires \separated(&num_ctx,&GHOST_num_ctx,&usbotghs_ctx,ctxh+(..), ctx_list+ (..));
     @ ensures GHOST_num_ctx == num_ctx ;
 
     @ assigns *ctxh, num_ctx, usbotghs_ctx, GHOST_num_ctx, ctx_list[\old(num_ctx)] ;
@@ -321,6 +322,7 @@ typedef struct {
     @   assumes ctxh == \null;
     @   ensures *ctxh == \old(*ctxh) ;
     @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures GHOST_num_ctx == num_ctx ;
     @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
@@ -330,6 +332,7 @@ typedef struct {
     @   assumes ctxh != \null  ;
     @   ensures *ctxh == \old(*ctxh) ;
     @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures GHOST_num_ctx == num_ctx ;
     @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_NOMEM ;
@@ -340,6 +343,7 @@ typedef struct {
     @   assumes dev_id != USB_OTG_HS_ID && dev_id != USB_OTG_FS_ID ;
     @   ensures *ctxh == \old(*ctxh) ;
     @   ensures num_ctx == \old(num_ctx) ;
+    @   ensures GHOST_num_ctx == num_ctx ;
     @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_NOBACKEND ;
@@ -350,7 +354,8 @@ typedef struct {
     @   assumes ctxh != \null ;
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
     @   ensures *ctxh == \old(GHOST_num_ctx) ;
-    @   ensures GHOST_num_ctx == \old(GHOST_num_ctx) +1 ;
+    @   ensures num_ctx == \old(num_ctx) +1 ;
+    @   ensures GHOST_num_ctx == num_ctx ;
     @   ensures ctx_list[\old(num_ctx)].dev_id == dev_id ;
     @   ensures ctx_list[GHOST_num_ctx-1] == ctx_list[num_ctx-1] ;
 
@@ -422,6 +427,7 @@ mbed_error_t usbctrl_release(uint32_t ctxh);
  * (EP identifiers, etc.) depending on the current global device interface state.
  *
  */
+//todo precise separated with global var
 /*@
     @ requires \separated(&usbotghs_ctx,iface+(..));
     @ requires 0 <= ctxh ;
