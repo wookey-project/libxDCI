@@ -18,19 +18,11 @@ config USR_LIB_USBCTRL_DEV_VENDORID
 
 if !USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
 
-config USR_LIB_USBCTRL_FW_DEV_PRODUCTID
-  hex "FW USB Product Identifier"
+config USR_LIB_USBCTRL_DFU_DEV_PRODUCTID
+  hex "USB Product Identifier"
   default 0xCAFE
   ---help---
-  Device product identifier (PID value of [VID:PID] pair) for
-  firmware mode
-
-config USR_LIB_USBCTRL_DFU_DEV_PRODUCTID
-  hex "DFU USB Product Identifier"
-  default USR_LIB_USBCTRL_FW_DEV_PRODUCTID
-  ---help---
-  Device  product identifier (PID value of [VID:PID] pair) for
-  DFU mode
+  Device product identifier (PID value of [VID:PID] pair)
 
 endif
 
