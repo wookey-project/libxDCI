@@ -26,7 +26,7 @@ CFLAGS := $(LIBS_CFLAGS)
 # libtoken needs libecc
 CFLAGS += $(EXTERNAL_CFLAGS) $(LIBSIGN_CFLAGS)
 CFLAGS += -Iapi
-CFLAGS += -MMD -MP -O2 -std=gnu11
+CFLAGS += -MMD -MP -Os -std=gnu11
 
 #############################################################
 # About library sources

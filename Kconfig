@@ -151,6 +151,12 @@ config USBCTRL_MAX_CTX
   Depending on the hardware (and software) design, it can be 1, 2 or in some rare
   time more.
 
+config USR_LIB_USBCTRL_DEV_PRODUCTID
+  hex "USB Product Identifier"
+  default 0xCAFE
+  ---help---
+  Device  product identifier (PID value of [VID:PID] pair)
+
 endif
 
 config USBCTRL_EP0_FIFO_SIZE
