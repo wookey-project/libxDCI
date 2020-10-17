@@ -58,8 +58,6 @@
 # define CONFIG_USR_LIB_USBCTRL_DEV_PRODUCTID  CONFIG_USR_LIB_USBCTRL_DFU_DEV_PRODUCTID
 #endif
 
-#endif
-
 #define MAX_INTERFACES_PER_DEVICE 4
 
 typedef struct {
@@ -102,7 +100,7 @@ typedef struct usbctrl_context {
 // pmo init ghost
 //@ ghost  uint8_t GHOST_num_ctx = num_ctx;
 
-//pmo init todo? 
+//pmo init todo?
 //@ ghost  uint8_t GHOST_idx_ctx = 0;
 
 
