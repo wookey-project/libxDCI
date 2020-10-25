@@ -3,6 +3,8 @@
 
 #include "libc/types.h"
 
+bool reset_requested = false;
+
 #define MAX_EPx_PKT_SIZE 512
 
 extern volatile uint8_t Frama_C_entropy_source_8 __attribute__((unused)) __attribute__((FRAMA_C_MODEL));
@@ -29,5 +31,46 @@ uint16_t Frama_C_interval_16(uint16_t min, uint16_t max);
     ensures result_bounded: min <= \result <= max ;
  */
 uint32_t Frama_C_interval_32(uint32_t min, uint32_t max);
+
+void usbctrl_reset_received(void);
+
+/*@
+    @ requires \separated(buf,desc_size,&ctx_list, &FLAG,&SIZE_DESC_FIXED);
+    @ assigns *desc_size ;
+    @ ensures (buf == \null || desc_size == \null) ==> \result == MBED_ERROR_INVPARAM ;
+    @ ensures (!(buf == \null || desc_size == \null) && FLAG == \false)
+             ==> (\result == MBED_ERROR_NONE && 0 <= *desc_size <=  255) ;
+    @ ensures (!(buf == \null || desc_size == \null) && FLAG == \true)
+             ==> (\result == MBED_ERROR_NONE && *desc_size ==  SIZE_DESC_FIXED) ;
+*/
+mbed_error_t  class_get_descriptor(uint8_t             iface_id,
+                                        uint8_t            *buf,
+                                        uint8_t           *desc_size,
+                                        uint32_t            usbdci_handler ) ;
+
+
+
+/*@
+    @ requires \valid(packet);
+    @ assigns \nothing ;
+    @ ensures is_valid_error(\result);
+*/
+
+mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
+                                       usbctrl_setup_pkt_t *packet);
+
+/*@
+    @ assigns \nothing ;
+    @ ensures is_valid_error(\result);
+*/
+static inline mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    return errcode;
+}
+
+void test_fcn_driver_eva(void) ;
+
+
 
 #endif/*!ENTRY_H_*/

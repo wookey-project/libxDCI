@@ -97,7 +97,7 @@ typedef struct usbctrl_context {
 // pmo init ghost
 //@ ghost  uint8_t GHOST_num_ctx = num_ctx;
 
-//pmo init todo? 
+//pmo init todo?
 //@ ghost  uint8_t GHOST_idx_ctx = 0;
 
 
@@ -145,8 +145,6 @@ typedef struct usbctrl_context {
 #define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG
 
 
-
-bool reset_requested = false;
 
 uint8_t SIZE_DESC_FIXED ;
 bool FLAG ;

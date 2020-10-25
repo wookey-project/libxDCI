@@ -111,56 +111,9 @@ typedef struct usbctrl_context {
 
 
 #if defined(__FRAMAC__)
-
-/*@
-    @ requires \valid(packet);
-    @ assigns \nothing ;
-    @ ensures is_valid_error(\result);
-*/
-
-mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
-                                       usbctrl_setup_pkt_t *packet);
-
-/*@
-    @ assigns \nothing ;
-    @ ensures is_valid_error(\result);
-*/
-mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-    return errcode;
-}
-
-void test_fcn_driver_eva(void) ;
-
-
-
-/*@
-    @ assigns reset_requested ;
-    @ ensures reset_requested == true ;
-*/
-
-void usbctrl_reset_received(void){
-    reset_requested = true;
-}
-
-
-/*@
-    @ requires \separated(buf,desc_size,&ctx_list, &FLAG,&SIZE_DESC_FIXED);
-    @ assigns *desc_size ;
-    @ ensures (buf == \null || desc_size == \null) ==> \result == MBED_ERROR_INVPARAM ;
-    @ ensures (!(buf == \null || desc_size == \null) && FLAG == \false)
-             ==> (\result == MBED_ERROR_NONE && 0 <= *desc_size <=  255) ;
-    @ ensures (!(buf == \null || desc_size == \null) && FLAG == \true)
-             ==> (\result == MBED_ERROR_NONE && *desc_size ==  SIZE_DESC_FIXED) ;
-*/
-mbed_error_t  class_get_descriptor(uint8_t             iface_id,
-                                        uint8_t            *buf,
-                                        uint8_t           *desc_size,
-                                        uint32_t            usbdci_handler ) ;
-
-
-#endif/*!__FRAMAC__*/
+/* all-level exported callbacks & prototypes */
+# include "framac/entrypoint.h"
+#endif
 
 /*********************************************************
  * Core API

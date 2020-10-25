@@ -15,6 +15,18 @@
  * Support for Frama-C testing
  */
 
+
+/*@
+    @ assigns reset_requested ;
+    @ ensures reset_requested == true ;
+*/
+
+void usbctrl_reset_received(void){
+    reset_requested = true;
+}
+
+
+
 //@ assigns Frama_C_entropy_source_8 \from Frama_C_entropy_source_8;
 void Frama_C_update_entropy_8(void) {
   Frama_C_entropy_source_8 = Frama_C_entropy_source_8;

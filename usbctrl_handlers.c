@@ -27,6 +27,9 @@
 #include "usbctrl_state.h"
 #include "usbctrl.h"
 
+#ifdef __FRAMAC__
+# include "framac/entrypoint.h"
+#endif
 
 /*@
     @ assigns \nothing ;
