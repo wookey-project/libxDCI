@@ -298,7 +298,7 @@ typedef struct {
  */
 
 #ifdef __FRAMAC__
-#include "libusbctrl_framac.h"
+# include "libusbctrl_framac.h"
 #endif
 
 
@@ -536,4 +536,4 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh);
 */
 mbed_error_t usbctrl_stop_device(uint32_t ctxh);
 
-#endif/*!LIBUSB_CTRL_H_*/
+#endif/*!LIBUSBCTRL_H_*/

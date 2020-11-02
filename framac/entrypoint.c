@@ -3,7 +3,6 @@
 #include "autoconf.h"
 #include "libc/types.h"
 #include "libc/string.h"
-//#include <string.h>
 #include "usbctrl.h"
 #include "usbctrl_state.h"
 #include "usbctrl_handlers.h"
@@ -211,7 +210,7 @@ void test_fcn_usbctrl(){
     ctx_list[0].ctrl_req_processing = true;  // to reach a state with EVA
     usbctrl_handle_inepevent(dev_id, size, ep);
 
-    usbotghs_ctx.out_eps[0].state = Frama_C_interval_8(0,9);
+    //usbotghs_ctx.out_eps[0].state = Frama_C_interval_8(0,9);
 
     // after inepevent, dev_id is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
     uint32_t dev_id_2 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
@@ -410,6 +409,7 @@ usbctrl_handle_requests(NULL, dev_id);
 
 void test_fcn_driver_eva(){
 
+#if 0
     uint8_t ep_id = Frama_C_interval_8(0,255);
     uint8_t ep_num = Frama_C_interval_8(0,255);
     uint8_t dir8 = Frama_C_interval_8(0,255);
@@ -467,6 +467,7 @@ void test_fcn_driver_eva(){
     /*
         TODO : send_data analyse is not enough generalised
     */
+#endif
 
 }
 

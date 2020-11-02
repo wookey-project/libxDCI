@@ -26,9 +26,7 @@
 
 #ifdef __FRAMAC__
 
-#include "usbotghs.h"
-#include "usbotghs_fifos.h"
-#include "api/libusbotghs.h"
+#include "libusbotghs.h"
 #include "generated/devlist.h"
 
 /*
