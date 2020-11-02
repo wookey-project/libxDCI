@@ -18,11 +18,11 @@ config USR_LIB_USBCTRL_DEV_VENDORID
 
 if !USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
 
-config USR_LIB_USBCTRL_FW_DEV_PRODUCTID
+config USR_LIB_USBCTRL_DFU_DEV_PRODUCTID
   hex "USB Product Identifier"
   default 0xCAFE
   ---help---
-  Device  product identifier (PID value of [VID:PID] pair)
+  Device product identifier (PID value of [VID:PID] pair)
 
 endif
 
@@ -150,12 +150,6 @@ config USBCTRL_MAX_CTX
   that the libusbctrl can handle in the same time.
   Depending on the hardware (and software) design, it can be 1, 2 or in some rare
   time more.
-
-config USR_LIB_USBCTRL_DEV_PRODUCTID
-  hex "USB Product Identifier"
-  default 0xCAFE
-  ---help---
-  Device  product identifier (PID value of [VID:PID] pair)
 
 endif
 
