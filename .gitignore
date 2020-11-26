@@ -1,3 +1,4 @@
 doc/build
 .scannerwork
 .frama-c
+*.sw[op]
