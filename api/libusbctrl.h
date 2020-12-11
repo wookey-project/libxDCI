@@ -49,6 +49,8 @@
  */
 #if defined(CONFIG_STM32F439)
 # include "socs/stm32f439/usbctrl_backend.h"
+#elif defined(CONFIG_STM32F407)
+# include "socs/stm32f407/usbctrl_backend.h"
 #else
 # error "architecture not yet supported!"
 #endif
