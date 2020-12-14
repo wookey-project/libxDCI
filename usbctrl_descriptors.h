@@ -77,6 +77,16 @@ typedef struct __packed {
 	uint8_t bMaxPower;
 } usbctrl_configuration_descriptor_t;
 
+typedef struct __packed {
+ uint8_t bLength;
+ uint8_t bDescriptorType;
+ uint8_t bFirstInterface;
+ uint8_t bInterfaceCount;
+ uint8_t bFunctionClass;
+ uint8_t bFunctionSubClass;
+ uint8_t bFunctionProtocol;
+ uint8_t iFunction;
+} usbctrl_iad_descriptor_t;
 
 
 typedef struct __packed {

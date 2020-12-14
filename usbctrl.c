@@ -648,6 +648,8 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        ctx->cfg[iface_config].interfaces[iface_num].rqst_handler = iface->rqst_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].class_desc_handler = iface->class_desc_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].poll_interval = iface->eps[0].poll_interval ;
+       ctx->cfg[iface_config].interfaces[iface_num].composite_function = iface->composite_function ;
+       ctx->cfg[iface_config].interfaces[iface_num].composite_function_id = iface->composite_function_id ;
 
     #else
         memcpy((void*)&(ctx->cfg[iface_config].interfaces[iface_num]), (void*)iface, sizeof(usbctrl_interface_t));

@@ -2145,7 +2145,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
     usbctrl_context_t *ctx = NULL;
 
     /* Detect which context is assocated to current request and set local ctx */
-        if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
+    if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         /* trapped on oepint() from a device which is not handled here ! what ? */
         errcode = MBED_ERROR_UNKNOWN;
         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_OUT);

@@ -515,26 +515,24 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
         case USB_BACKEND_DRV_EP_STATE_SETUP:
             /*@ assert (ep < USBOTGHS_MAX_OUT_EP) ; */
             log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
-            if (size == 8) {
 
-                /* first, we should not accept setup pkt from other EP than 0.
-                 * Although, this is not forbidden by USB 2.0 standard. */
-                /* Second, we must convert received data into current endianess */
-                const uint8_t *setup_packet = ctx->ctrl_fifo;
-                usbctrl_setup_pkt_t formated_pkt = {
-                    setup_packet[0],
-                    setup_packet[1],
-                    (uint16_t)(setup_packet[3] << 8 | setup_packet[2]),
-                    (uint16_t)(setup_packet[5] << 8 | setup_packet[4]),
-                    (uint16_t)(setup_packet[7] << 8 | setup_packet[6])
-                };
-                errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
-                return errcode;
-            } else {
-
-                log_printf("[LIBCTRL] recv setup pkt size != 8: %d\n", size);
+            if (size < 8) {
                 usb_backend_drv_stall(ep, USB_BACKEND_DRV_EP_DIR_OUT);
+                break;
             }
+            /* first, we should not accept setup pkt from other EP than 0.
+             * Although, this is not forbidden by USB 2.0 standard. */
+            /* Second, we must convert received data into current endianess */
+            const uint8_t *setup_packet = ctx->ctrl_fifo;
+            usbctrl_setup_pkt_t formated_pkt = {
+                setup_packet[0],
+                setup_packet[1],
+                (uint16_t)(setup_packet[3] << 8 | setup_packet[2]),
+                (uint16_t)(setup_packet[5] << 8 | setup_packet[4]),
+                (uint16_t)(setup_packet[7] << 8 | setup_packet[6])
+            };
+            errcode = usbctrl_handle_requests(&formated_pkt, dev_id);
+            return errcode;
             break;
         case USB_BACKEND_DRV_EP_STATE_DATA_OUT: {
             uint8_t curr_cfg = ctx->curr_cfg;
