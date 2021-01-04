@@ -71,7 +71,7 @@ mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
     }
 
     switch (dev_id){
-#if defined(CONFIG_STM32F429)
+#if defined(CONFIG_STM32F439)
         case USB_OTG_HS_ID:
             errcode = usb_backend_drv_declare() ;
             break;
