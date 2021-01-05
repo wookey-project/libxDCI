@@ -298,6 +298,7 @@ static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
 
         for (uint8_t i = 0; i < max_ep; ++i) {
             usb_backend_drv_ep_dir_t dir;
+            usb_backend_drv_ep_type_t type;
             switch (ctx->cfg[curr_cfg].interfaces[iface].eps[i].dir) {
                 case USB_EP_DIR_OUT:
                     dir = USB_BACKEND_DRV_EP_DIR_OUT;
@@ -309,16 +310,36 @@ static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
                     dir = USB_BACKEND_DRV_EP_DIR_BOTH;
                     break;
                 default:
+                    log_printf("[USBCTRL] invalid EP dir !\n");
+                    errcode = MBED_ERROR_INVPARAM;
+                    goto err;
+                    break;
+            }
+            switch (ctx->cfg[curr_cfg].interfaces[iface].eps[i].type) {
+                case USB_EP_TYPE_CONTROL:
+                    type = USB_BACKEND_DRV_EP_TYPE_CONTROL;
+                    break;
+                case USB_EP_TYPE_ISOCHRONOUS:
+                    type = USB_BACKEND_DRV_EP_TYPE_ISOCHRONOUS;
+                    break;
+                case USB_EP_TYPE_BULK:
+                    type = USB_BACKEND_DRV_EP_TYPE_BULK;
+                    break;
+                case USB_EP_TYPE_INTERRUPT:
+                    type = USB_BACKEND_DRV_EP_TYPE_INT;
+                    break;
+                default:
                     log_printf("[USBCTRL] invalid EP type !\n");
                     errcode = MBED_ERROR_INVPARAM;
                     goto err;
                     break;
             }
+
            log_printf("[LIBCTRL] configure EP %d (dir %d)\n", ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num, dir);
 
            if (ctx->cfg[curr_cfg].interfaces[iface].eps[i].type != USB_EP_TYPE_CONTROL) {
                 errcode = usb_backend_drv_configure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num,
-                        ctx->cfg[curr_cfg].interfaces[iface].eps[i].type,
+                        type,
                         dir,
                         ctx->cfg[curr_cfg].interfaces[iface].eps[i].pkt_maxsize,
                         USB_BACKEND_EP_ODDFRAME,
@@ -941,7 +962,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
     return errcode;
 
     err:
-    usb_backend_drv_stall(0, USB_EP_DIR_OUT);
+    usb_backend_drv_stall(0, USB_BACKEND_DRV_EP_DIR_OUT);
     /*request finish here */
     set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
     /*@ assert errcode == MBED_ERROR_INVSTATE || errcode == MBED_ERROR_NOSTORAGE || errcode == MBED_ERROR_INVPARAM ; */
@@ -2071,13 +2092,13 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         if (usbctrl_get_context(dev_id, &ctx) != MBED_ERROR_NONE) {
         /* trapped on oepint() from a device which is not handled here ! what ? */
         errcode = MBED_ERROR_UNKNOWN;
-        usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_OUT);
         goto err_init;
     }
     /* Sanitation */
     if (pkt == NULL) {
         errcode = MBED_ERROR_INVPARAM;
-        usb_backend_drv_stall(EP0, USB_EP_DIR_OUT);
+        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_OUT);
         goto err;
     }
 
@@ -2129,7 +2150,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
 
                 /* fallback if no upper stack class request handler was able to handle the received CLASS request */
                 if (upper_stack_err != MBED_ERROR_NONE) {
-                    usb_backend_drv_stall(0, USB_EP_DIR_OUT);
+                    usb_backend_drv_stall(0, USB_BACKEND_DRV_EP_DIR_OUT);
                 }
                 /* upgrade local errcode with upper stack errcode received */
                 errcode = usbctrl_handle_unknown_requests(pkt, ctx);
@@ -2184,7 +2205,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
 
                 /* fallback if no upper stack class request handler was able to handle the received CLASS request */
                 if (upper_stack_err != MBED_ERROR_NONE) {
-                    usb_backend_drv_stall(0, USB_EP_DIR_OUT);
+                    usb_backend_drv_stall(0, USB_BACKEND_DRV_EP_DIR_OUT);
                 }
                 /* upgrade local errcode with upper stack errcode received */
                 errcode = upper_stack_err;
