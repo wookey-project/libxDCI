@@ -1,5 +1,6 @@
 #include "libc/types.h"
 #include "libc/stdio.h"
+#include "libc/sync.h"
 #include "usbctrl.h"
 #include "usbctrl_state.h"
 #include "usbctrl_requests.h"
@@ -222,7 +223,7 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
         return MBED_ERROR_INVPARAM;
     }
     log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
-    ctx->state = (uint8_t)newstate;
+    set_u8_with_membarrier(&ctx->state, (uint8_t)newstate);
 
     return MBED_ERROR_NONE;
 }

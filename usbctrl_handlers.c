@@ -22,6 +22,7 @@
  *
  */
 
+#include "libc/sync.h"
 #include "api/libusbctrl.h"
 #include "usbctrl_handlers.h"
 #include "usbctrl_state.h"
@@ -308,7 +309,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
      * have this flag clear syncrhonously. */
     if (ctx->ctrl_req_processing == true) {
         log_printf("[LIBCTRL] end of control level request\n");
-        ctx->ctrl_req_processing = false;
+        set_bool_with_membarrier(&ctx->ctrl_req_processing, false);
     } else {
         log_printf("[LIBCTRL] end of upper layer request\n");
 
@@ -353,6 +354,7 @@ mbed_error_t usbctrl_handle_inepevent(uint32_t dev_id, uint32_t size, uint8_t ep
         }
     }
 err:
+    request_data_membarrier();
     return errcode;
 }
 
@@ -552,6 +554,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
             break;
     }
 err:
+    request_data_membarrier();
     return errcode;
 }
 

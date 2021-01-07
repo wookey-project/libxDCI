@@ -242,7 +242,7 @@ static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx
                     log_printf("[USBCTRL] failure while deconfiguring EP %x\n",
                             usb_backend_drv_deconfigure_endpoint(ctx->cfg[curr_cfg].interfaces[iface].eps[i].ep_num));
                 }
-                ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = false;
+                set_bool_with_membarrier(&ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured, false);
             }
         }
     }
@@ -352,7 +352,7 @@ static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
                 }
 
             }
-            ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured = true;
+            set_bool_with_membarrier(&ctx->cfg[curr_cfg].interfaces[iface].eps[i].configured, true);
         }
 
     }
@@ -2205,6 +2205,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
 
                 /* fallback if no upper stack class request handler was able to handle the received CLASS request */
                 if (upper_stack_err != MBED_ERROR_NONE) {
+                    printf("[USBCTRL] error during iface class rqust handler exec: %d\n", upper_stack_err);
                     usb_backend_drv_stall(0, USB_BACKEND_DRV_EP_DIR_OUT);
                 }
                 /* upgrade local errcode with upper stack errcode received */
