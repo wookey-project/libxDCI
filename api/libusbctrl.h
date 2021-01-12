@@ -315,17 +315,16 @@ typedef struct {
  */
 // todo pmo size of structured var in separated
 /*@
-    @ requires \separated(&num_ctx,&GHOST_num_ctx,&usbotghs_ctx,ctxh+(..), ctx_list+ (..));
+    @ requires \separated(&num_ctx,&GHOST_num_ctx,ctxh+(..), ctx_list+ (..));
     @ ensures GHOST_num_ctx == num_ctx ;
 
-    @ assigns *ctxh, num_ctx, usbotghs_ctx, GHOST_num_ctx, ctx_list[\old(num_ctx)] ;
+    @ assigns *ctxh, num_ctx,  GHOST_num_ctx, ctx_list[\old(num_ctx)] ;
 
     @ behavior bad_ctxh:
     @   assumes ctxh == \null;
     @   ensures *ctxh == \old(*ctxh) ;
     @   ensures num_ctx == \old(num_ctx) ;
     @   ensures GHOST_num_ctx == num_ctx ;
-    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @
@@ -335,7 +334,6 @@ typedef struct {
     @   ensures *ctxh == \old(*ctxh) ;
     @   ensures num_ctx == \old(num_ctx) ;
     @   ensures GHOST_num_ctx == num_ctx ;
-    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_NOMEM ;
     @
@@ -346,7 +344,6 @@ typedef struct {
     @   ensures *ctxh == \old(*ctxh) ;
     @   ensures num_ctx == \old(num_ctx) ;
     @   ensures GHOST_num_ctx == num_ctx ;
-    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) ;
     @   ensures \result == MBED_ERROR_NOBACKEND ;
     @
@@ -431,7 +428,7 @@ mbed_error_t usbctrl_release(uint32_t ctxh);
  */
 //todo precise separated with global var
 /*@
-    @ requires \separated(&usbotghs_ctx,iface+(..));
+    @ requires \separated(iface+(..));
     @ requires 0 <= ctxh ;
     @ requires GHOST_num_ctx == num_ctx ;
     @ ensures GHOST_num_ctx == num_ctx ;
@@ -506,12 +503,10 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
 
     @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ assigns ctx_list[ctxh] ;
-    @ assigns usbotghs_ctx ;
 
     @ behavior bad_ctxh :
     @   assumes ctxh >= GHOST_num_ctx ;
     @   ensures ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
-    @   ensures usbotghs_ctx == \old(usbotghs_ctx) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior other :
