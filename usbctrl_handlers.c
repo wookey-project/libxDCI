@@ -41,20 +41,68 @@ mbed_error_t usbctrl_handle_earlysuspend(uint32_t dev_id __attribute__((unused))
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* INFO: early suspend is executed very early, before starting DEFAULT state. There is
-     * nothing to do here by now (no power handling support by now) */
+     * nothing to do here by now (no power handling support by now). It is also executed
+     * after 3ms of silence on USB interface. Yet the USB state automaton is not updated
+     * while the usbsuspend event is triggered */
     return errcode;
 }
 
 /*@
-    @ assigns \nothing ;
+    @ assigns ctx_list[0..(GHOST_num_ctx-1)]
     @ ensures \result == MBED_ERROR_NONE ;
 */
-
 
 mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)))
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+
+    usbctrl_context_t *ctx = NULL;
+    usbctrl_get_context(dev_id, &ctx);
+    /*@ assert \valid(ctx); */
+    usb_device_state_t state = usbctrl_get_state(ctx);
+
     /* INFO: There is nothing to do here by now (no power handling support by now) */
+    /* Here:
+     * 1. we should be in one of the following states:
+     * - POWERED (no USB control flow has ever been registered)
+     * - DEFAULT (BUS SPEED and enumration done, but RESET not yet received)
+     * - ADDRESS (address assigned, configuration not set)
+     * - CONFIGURED (full enumeration done, interface(s) ready)
+     *
+     * For all these states, the USB automaton allows to enter SUSPENDED state. The USB control
+     * plane state must not be lost but the device can enter sleep mode until a RESUME event (handle_wakeup()) is
+     * received. As a consequence, here we enter the corresponding SUSPENDED state and wait for the resume event.
+     * Other events (but reset) are discarded. */
+    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_BUS_INACTIVE, ctx)) {
+        log_printf("[USBCTRL] USUSPEND transition is invalid in current state !\n");
+        errcode = MBED_ERROR_INVSTATE;
+        goto err;
+    }
+
+    printf("[USBCTRL] Suspended!\n");
+    switch (state) {
+        case USB_DEVICE_STATE_POWERED:
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_SUSPENDED_POWER);
+            break;
+        case USB_DEVICE_STATE_DEFAULT:
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_SUSPENDED_DEFAULT);
+            break;
+        case USB_DEVICE_STATE_ADDRESS:
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_SUSPENDED_ADDRESS);
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_SUSPENDED_CONFIGURED);
+            break;
+        default:
+            printf("[USBCTRL] suspend from state %d!\n", state);
+            /* this should *not* happend ! this is not standard. */
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
+            errcode = MBED_ERROR_INVSTATE;
+            goto err;
+            break;
+    }
+
+err:
     return errcode;
 }
 
@@ -63,7 +111,7 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)))
     @ requires 0 < GHOST_num_ctx ; // reset after usbctrl_declare ok, so 0 < GHOST_num_ctx
     @ requires \separated(((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),&ctx_list + (0..(GHOST_num_ctx-1)),&GHOST_num_ctx,&usbotghs_ctx, &GHOST_idx_ctx); // PMO addition GHOST_idx_ctx
     @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
-    @ assigns reset_requested, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx, GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ; // moins .state PMO ctx_list[0..(GHOST_num_ctx-1)].state passe mais il faut ctx_list[GHOST_idx_ctx].state
+    @ assigns reset_requested, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ; // moins .state PMO ctx_list[0..(GHOST_num_ctx-1)].state passe mais il faut ctx_list[GHOST_idx_ctx].state
     @ ensures GHOST_num_ctx == \old(GHOST_num_ctx) ;
 
     @ ensures \result == MBED_ERROR_INVPARAM
@@ -151,6 +199,20 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
             errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
 
+
+            if (errcode != MBED_ERROR_NONE) {
+                goto err;
+            }
+            /* control pipe recv FIFO is ready to be used */
+            ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
+            break;
+        case USB_DEVICE_STATE_SUSPENDED_POWER:
+            /* initial reset of the device, after SUSPEND, set EP0 FIFO. Other EPs FIFO
+             * are handled at SetConfiguration & SetInterface time */
+            /* as USB Reset action reinitialize the EP0 FIFOs (flush, purge and deconfigure) they must
+             * be reconfigure for EP0 here. */
+            log_printf("[USBCTRL] reset: set reveive FIFO for EP0\n");
+            errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0);
 
             if (errcode != MBED_ERROR_NONE) {
                 goto err;
@@ -559,7 +621,7 @@ err:
 }
 
 /*@
-    @ assigns \nothing ;
+    @ assigns ctx_list[0..(GHOST_num_ctx-1)]
     @ ensures \result == MBED_ERROR_NONE ;
 
 */
@@ -567,6 +629,52 @@ err:
 mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id __attribute__((unused)))
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
-    /* INFO: nothing to do by now (no power management) */
+    usbctrl_context_t *ctx = NULL;
+    usbctrl_get_context(dev_id, &ctx);
+    /*@ assert \valid(ctx); */
+    usb_device_state_t state = usbctrl_get_state(ctx);
+
+    /* INFO: There is nothing to do here by now (no power handling support by now) */
+    /* Here:
+     * 1. we should be in one of the following states:
+     * - POWERED (no USB control flow has ever been registered)
+     * - DEFAULT (BUS SPEED and enumration done, but RESET not yet received)
+     * - ADDRESS (address assigned, configuration not set)
+     * - CONFIGURED (full enumeration done, interface(s) ready)
+     *
+     * For all these states, the USB automaton allows to enter SUSPENDED state. The USB control
+     * plane state must not be lost but the device can enter sleep mode until a RESUME event (handle_wakeup()) is
+     * received. As a consequence, here we enter the corresponding SUSPENDED state and wait for the resume event.
+     * Other events (but reset) are discarded. */
+    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_BUS_ACTIVE, ctx)) {
+        log_printf("[USBCTRL] WAKEUP transition is invalid in current state !\n");
+        errcode = MBED_ERROR_INVSTATE;
+        goto err;
+    }
+
+    printf("[USBCTRL] Wokeup!\n");
+    switch (state) {
+        case USB_DEVICE_STATE_SUSPENDED_POWER:
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
+            break;
+        case USB_DEVICE_STATE_SUSPENDED_DEFAULT:
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_DEFAULT);
+            break;
+        case USB_DEVICE_STATE_SUSPENDED_ADDRESS:
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_ADDRESS);
+            break;
+        case USB_DEVICE_STATE_SUSPENDED_CONFIGURED:
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
+            break;
+        default:
+            /* this should *not* happend ! this is not standard. */
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
+            errcode = MBED_ERROR_INVSTATE;
+            goto err;
+            break;
+    }
+
+err:
+
     return errcode;
 }
