@@ -318,7 +318,7 @@ typedef struct {
     @ requires \separated(&num_ctx,&GHOST_num_ctx,ctxh+(..), ctx_list+ (..));
     @ ensures GHOST_num_ctx == num_ctx ;
 
-    @ assigns *ctxh, num_ctx,  GHOST_num_ctx, ctx_list[\old(num_ctx)] ;
+    @ assigns *ctxh, num_ctx,  GHOST_num_ctx, ctx_list[\old(num_ctx)], GHOST_nopublicvar;
 
     @ behavior bad_ctxh:
     @   assumes ctxh == \null;
@@ -498,10 +498,12 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
  * is started.
  */
 /*@
+    @ requires \separated(GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1),GHOST_out_eps+(0 .. USBOTGHS_MAX_OUT_EP-1), ctx_list+(..));
     @ requires GHOST_num_ctx == num_ctx ;
     @ ensures GHOST_num_ctx == num_ctx ;
 
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+    @ assigns GHOST_in_eps[0].state;
+    @ assigns GHOST_out_eps[0].state;
     @ assigns ctx_list[ctxh] ;
 
     @ behavior bad_ctxh :
