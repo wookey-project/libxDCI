@@ -318,7 +318,7 @@ typedef struct {
     @ requires \separated(&num_ctx,&GHOST_num_ctx,ctxh+(..), ctx_list+ (..));
     @ ensures GHOST_num_ctx == num_ctx ;
 
-    @ assigns *ctxh, num_ctx,  GHOST_num_ctx, ctx_list[\old(num_ctx)], GHOST_nopublicvar;
+    @ assigns *ctxh, num_ctx,  GHOST_num_ctx, ctx_list[\old(num_ctx)], GHOST_opaque_drv_privates;
 
     @ behavior bad_ctxh:
     @   assumes ctxh == \null;

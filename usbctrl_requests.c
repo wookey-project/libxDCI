@@ -194,8 +194,8 @@ static inline bool is_vendor_requests_allowed(usbctrl_context_t const * const ct
  */
 
 /*@
-    @ requires \separated(ctx,&GHOST_nopublicvar);
-    @ assigns  *ctx , GHOST_nopublicvar;
+    @ requires \separated(ctx,&GHOST_opaque_drv_privates);
+    @ assigns  *ctx , GHOST_opaque_drv_privates;
  */
 static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx)
 {
@@ -407,8 +407,8 @@ err:
 
 /*@
     @ requires \valid(ctx) && \valid_read(pkt) ;
-    @ requires \separated(ctx+(..),pkt,&GHOST_nopublicvar);
-    @ assigns *ctx, GHOST_nopublicvar ;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx, GHOST_opaque_drv_privates ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -558,8 +558,8 @@ err:
 
 /*@
     @ requires \valid(ctx) ;
-    @ requires \separated(ctx+ (..),pkt,&GHOST_nopublicvar);
-    @ assigns *ctx, GHOST_nopublicvar ;
+    @ requires \separated(ctx+ (..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx, GHOST_opaque_drv_privates ;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -686,8 +686,8 @@ err:
 
 /*@
     @ requires \valid(ctx) ;
-    @ requires \separated(ctx+(..),pkt,&GHOST_nopublicvar);
-    @ assigns *ctx, GHOST_nopublicvar;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx, GHOST_opaque_drv_privates;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -790,8 +790,8 @@ err:
 
 /*@
     @ requires \valid(ctx) ;
-    @ requires \separated(ctx, pkt, ctx_list+(0 .. GHOST_num_ctx-1), &GHOST_nopublicvar, GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1));
-    @   assigns ctx_list[0 .. GHOST_num_ctx-1].ctrl_req_processing, GHOST_nopublicvar, GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
+    @ requires \separated(ctx, pkt, ctx_list+(0 .. GHOST_num_ctx-1), &GHOST_opaque_drv_privates, GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1));
+    @   assigns ctx_list[0 .. GHOST_num_ctx-1].ctrl_req_processing, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -862,9 +862,9 @@ err:
 
 /*@
     @ requires  \valid(ctx);
-    @ requires \separated(ctx,pkt,&GHOST_nopublicvar,GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1),GHOST_out_eps+(0 .. USBOTGHS_MAX_OUT_EP-1));
+    @ requires \separated(ctx,pkt,&GHOST_opaque_drv_privates,GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1),GHOST_out_eps+(0 .. USBOTGHS_MAX_OUT_EP-1));
     @ ensures ctx->ctrl_req_processing == \false;
-    @   assigns conf_set, *ctx, GHOST_nopublicvar ;
+    @   assigns conf_set, *ctx, GHOST_opaque_drv_privates ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -1373,8 +1373,8 @@ err:
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt, &GHOST_nopublicvar);
-    @   assigns *pkt, *ctx, GHOST_nopublicvar ;
+    @ requires \separated(ctx,pkt, &GHOST_opaque_drv_privates);
+    @   assigns *pkt, *ctx, GHOST_opaque_drv_privates ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -1433,8 +1433,8 @@ err:
 
 /*@
     @ requires \valid_read(pkt) && \valid(ctx);
-    @ requires \separated(ctx+(..),pkt,&GHOST_nopublicvar);
-    @ assigns *ctx , GHOST_nopublicvar;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx , GHOST_opaque_drv_privates;
     @ ensures ctx->ctrl_req_processing == \false;
 
     @ behavior std_requests_not_allowed:
@@ -1531,8 +1531,8 @@ err:
 
 /*@
     @ requires \valid(ctx) && \valid(pkt) ;
-    @ requires \separated(ctx+(..),pkt,&GHOST_nopublicvar);
-    @ assigns *ctx , GHOST_nopublicvar;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx , GHOST_opaque_drv_privates;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -1657,8 +1657,8 @@ err:
 
 /*@
     @ requires \valid(ctx) && \valid_read(pkt) ;
-    @ requires \separated(ctx+(..),pkt,&GHOST_nopublicvar);
-    @ assigns *ctx , GHOST_nopublicvar;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx , GHOST_opaque_drv_privates;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
