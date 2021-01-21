@@ -73,7 +73,7 @@ static const struct {
      },
     {USB_DEVICE_STATE_SUSPENDED_POWER, {
                   {USB_DEVICE_TRANS_BUS_ACTIVE, USB_DEVICE_STATE_POWERED},
-                  {0xff, 0xff},
+                  {USB_DEVICE_TRANS_RESET, USB_DEVICE_STATE_DEFAULT},
                   {0xff, 0xff},
                   {0xff, 0xff},
                   {0xff, 0xff},

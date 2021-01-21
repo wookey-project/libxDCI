@@ -194,8 +194,8 @@ static inline bool is_vendor_requests_allowed(usbctrl_context_t const * const ct
  */
 
 /*@
-    @ requires \separated(ctx,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], *ctx ;
+    @ requires \separated(ctx,&GHOST_opaque_drv_privates);
+    @ assigns  *ctx , GHOST_opaque_drv_privates;
  */
 static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx)
 {
@@ -212,10 +212,8 @@ static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx
     /*@
         @ loop invariant 0 <= iface <= max_iface ;
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
-                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-        @ loop assigns iface, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
-                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
+        @ loop assigns iface, errcode, *ctx;
         @ loop variant (max_iface - iface);
         */
 
@@ -227,10 +225,8 @@ static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx
         @ loop invariant 0 <= i <= max_ep ;
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
-        @ loop invariant \separated(ctx, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
-                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-        @ loop assigns i, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
-                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop invariant \separated(ctx);
+        @ loop assigns i, errcode, *ctx;
         @ loop variant (max_ep - i) ;
     */
 
@@ -254,8 +250,10 @@ err:
 
 
 /*@
-    @ requires \separated(ctx,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], *ctx ;
+    @ requires \separated(ctx);
+    @ assigns *ctx ;
+    @ assigns GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
+    @ assigns GHOST_out_eps[0 .. USBOTGHS_MAX_OUT_EP-1].state;
  */
 /*
  * Active endpoint for current configuration
@@ -275,10 +273,8 @@ static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
     /*@
         @ loop invariant 0 <= iface <= max_iface ;
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)), &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
-                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-        @ loop assigns iface, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
-                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
+        @ loop assigns iface, errcode, *ctx;
         @ loop variant (max_iface - iface);
     */
     for (uint8_t iface = 0; iface < max_iface; ++iface) {
@@ -289,10 +285,8 @@ static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
         @ loop invariant 0 <= i <= max_ep ;
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
-        @ loop invariant \separated(ctx, &usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], &usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)],
-                                                     ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-        @ loop assigns i, errcode, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)],
-                                                                usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)];
+        @ loop invariant \separated(ctx);
+        @ loop assigns i, errcode, *ctx;
         @ loop variant (max_ep - i) ;
     */
 
@@ -413,9 +407,8 @@ err:
 
 /*@
     @ requires \valid(ctx) && \valid_read(pkt) ;
-    @ requires \separated(ctx+(..),pkt,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),&usbotghs_ctx);
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), *ctx ;
-    @ assigns usbotghs_ctx, usbotghs_ctx.in_eps[EP0] ;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx, GHOST_opaque_drv_privates ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -516,6 +509,56 @@ static mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t 
                 case USB_REQ_RECIPIENT_ENDPOINT: {
                     /*does requested EP exists ? */
                     uint8_t epnum = pkt->wIndex & 0xf;
+                    if (!epnum != EP0) {
+                        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+                        /*request finish here */
+                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
+                        goto err;
+                    }
+                    /* get back the EP direction from the wIndex value (MSB bit) */
+                    bool dir_in = (pkt->wIndex >> 7) & 0x1;
+                    usb_ep_dir_t epdir = usbctrl_get_endpoint_direction(ctx, epnum);
+                    /* check that such an EP exists in current configuration */
+                    if (dir_in && (epdir == USB_EP_DIR_OUT || USB_EP_DIR_NONE)) {
+                        /* inexistant endpoint. These are not local invalid behavior but
+                         * nominal NAK response to host */
+                        usb_backend_drv_nak(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
+                        goto err;
+                    }
+                    /* FIXME: check EP direction too before returning status */
+                    /* return the recipient status (2 bytes, or wLength if smaller) */
+                    uint8_t resp[2] = { 0 };
+
+                    usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
+                    break;
+                }
+                case USB_REQ_RECIPIENT_DEVICE: {
+                    /* return the recipient status (2 bytes, or wLength if smaller) */
+                    uint8_t resp[2] = { 0 };
+                    /* FIXME: add remoteWakeup and selfPowered field setting to resp */
+
+                    usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
+                    break;
+                }
+
+                default:
+                    usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+                    goto err;
+            }
+
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            /* check that the recipient exists */
+            /* return the recipient status */
+            switch (usbctrl_std_req_get_recipient(pkt)) {
+                case USB_REQ_RECIPIENT_ENDPOINT: {
+                    /*does requested EP exists ? */
+                    uint8_t epnum = pkt->wIndex & 0xf;
                     if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
                         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                         /*request finish here */
@@ -542,15 +585,41 @@ static mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t 
                     /* std req finishes at the oepint rise */
                     break;
                 }
+                case USB_REQ_RECIPIENT_DEVICE: {
+                    /* return the recipient status (2 bytes, or wLength if smaller) */
+                    uint8_t resp[2] = { 0 };
+                    /* FIXME: add remoteWakeup and selfPowered field setting to resp */
+
+                    usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
+                    break;
+                }
+                case USB_REQ_RECIPIENT_INTERFACE: {
+
+                    /*does requested Iface exists ? */
+                    uint8_t ifaceid = pkt->wIndex & 0xf;
+                    if (!usbctrl_is_interface_exists(ctx, ifaceid)) {
+                        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+                        /*request finish here */
+                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
+                        goto err;
+                    }
+                    /* return the recipient status (2 bytes, all reserved) */
+                    uint8_t resp[2] = { 0 };
+
+                    usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
+                    break;
+                }
+
                 default:
                     usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                     goto err;
             }
 
-            break;
-        case USB_DEVICE_STATE_CONFIGURED:
-            /* check that the recipient exists */
-            /* return the recipient status */
+
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
@@ -565,9 +634,8 @@ err:
 
 /*@
     @ requires \valid(ctx) ;
-    @ requires \separated(ctx+ (..),pkt);
-    @ assigns *ctx ;
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+    @ requires \separated(ctx+ (..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx, GHOST_opaque_drv_privates ;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -694,9 +762,8 @@ err:
 
 /*@
     @ requires \valid(ctx) ;
-    @ requires \separated(ctx+(..),pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
-    @ assigns *ctx;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx, GHOST_opaque_drv_privates;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -799,8 +866,8 @@ err:
 
 /*@
     @ requires \valid(ctx) ;
-    @ requires \separated(ctx, pkt, &usbotghs_ctx, (uint32_t *)(USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END));
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),usbotghs_ctx, usbotghs_ctx.in_eps[EP0];
+    @ requires \separated(ctx, pkt, ctx_list+(0 .. GHOST_num_ctx-1), &GHOST_opaque_drv_privates, GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1));
+    @   assigns ctx_list[0 .. GHOST_num_ctx-1].ctrl_req_processing, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -871,9 +938,9 @@ err:
 
 /*@
     @ requires  \valid(ctx);
-    @ requires \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+    @ requires \separated(ctx,pkt,&GHOST_opaque_drv_privates,GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1),GHOST_out_eps+(0 .. USBOTGHS_MAX_OUT_EP-1));
     @ ensures ctx->ctrl_req_processing == \false;
-    @   assigns conf_set, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], *ctx ;
+    @   assigns conf_set, *ctx, GHOST_opaque_drv_privates ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -983,7 +1050,7 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt, ((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
+    @ requires \separated(ctx,pkt);
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -1382,8 +1449,8 @@ err:
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt,&usbotghs_ctx);
-    @   assigns *pkt, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+    @ requires \separated(ctx,pkt, &GHOST_opaque_drv_privates);
+    @   assigns *pkt, *ctx, GHOST_opaque_drv_privates ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -1442,9 +1509,8 @@ err:
 
 /*@
     @ requires \valid_read(pkt) && \valid(ctx);
-    @ requires \separated(ctx+(..),pkt);
-    @ assigns *ctx ;
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx , GHOST_opaque_drv_privates;
     @ ensures ctx->ctrl_req_processing == \false;
 
     @ behavior std_requests_not_allowed:
@@ -1541,8 +1607,8 @@ err:
 
 /*@
     @ requires \valid(ctx) && \valid(pkt) ;
-    @ requires \separated(ctx+(..),pkt,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)));
-    @ assigns *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx , GHOST_opaque_drv_privates;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -1667,9 +1733,8 @@ err:
 
 /*@
     @ requires \valid(ctx) && \valid_read(pkt) ;
-    @ requires \separated(ctx+(..),pkt);
-    @ assigns *ctx ;
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+    @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
+    @ assigns *ctx , GHOST_opaque_drv_privates;
     @ ensures ctx->ctrl_req_processing == \false ;
 
     @ behavior std_requests_not_allowed:
@@ -1815,13 +1880,12 @@ err:
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),&usbotghs_ctx);
+    @ requires \separated(ctx,pkt);
 
     @ behavior USB_REQ_GET_STATUS:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_STATUS ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), *ctx ;
-    @   assigns usbotghs_ctx, usbotghs_ctx.in_eps[EP0] ;
+    @   assigns *ctx ;
 
     @ behavior USB_REQ_CLEAR_FEATURE:
     @   assumes  pkt->bRequest ==  USB_REQ_CLEAR_FEATURE ;
@@ -1831,13 +1895,11 @@ err:
     @ behavior USB_REQ_SET_FEATURE:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_FEATURE ;
     @   assigns *ctx ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_SET_ADDRESS:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_ADDRESS ;
     @   assigns *ctx ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
 
     @ behavior USB_REQ_GET_DESCRIPTOR:
@@ -1846,35 +1908,31 @@ err:
 
     @ behavior USB_REQ_SET_DESCRIPTOR:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_DESCRIPTOR ;
-	@   assigns *pkt, *ctx, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
+	@   assigns *pkt, *ctx;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
 
     @ behavior USB_REQ_GET_CONFIGURATION:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_CONFIGURATION ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),usbotghs_ctx, usbotghs_ctx.in_eps[EP0];
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
 
     @ behavior USB_REQ_SET_CONFIGURATION:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_CONFIGURATION ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_NOSTORAGE ;
-    @   assigns conf_set, *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), usbotghs_ctx.in_eps[0..(USBOTGHS_MAX_IN_EP-1)], usbotghs_ctx, usbotghs_ctx.out_eps[0..(USBOTGHS_MAX_OUT_EP-1)], *ctx ;
+    @   assigns conf_set, *ctx ;
 
     @ behavior USB_REQ_GET_INTERFACE:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_INTERFACE ;
     @ 	assigns *ctx ;
-    @ 	assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_SET_INTERFACE:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_INTERFACE ;
     @ 	assigns *ctx ;
-    @ 	assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_SYNCH_FRAME:
     @   assumes  pkt->bRequest ==  USB_REQ_SYNCH_FRAME ;
     @ 	assigns *ctx ;
-    @ 	assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior DEFAULT:
@@ -1882,7 +1940,6 @@ err:
                 !(pkt->bRequest ==  USB_REQ_SET_ADDRESS) && !(pkt->bRequest ==  USB_REQ_GET_DESCRIPTOR) && !(pkt->bRequest ==  USB_REQ_SET_DESCRIPTOR) &&
                  !(pkt->bRequest ==  USB_REQ_GET_CONFIGURATION) && !(pkt->bRequest ==  USB_REQ_SET_CONFIGURATION) && !(pkt->bRequest ==  USB_REQ_GET_INTERFACE) &&
                  !(pkt->bRequest ==  USB_REQ_SET_INTERFACE) && !(pkt->bRequest ==  USB_REQ_SYNCH_FRAME)  ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @   ensures is_valid_error(\result);
 
     @ complete behaviors ;
@@ -2006,7 +2063,6 @@ err:
 /*@
     @ requires \valid(pkt) && \valid(ctx) ;
     @ requires \separated(ctx,pkt);
-    @ assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)) ;
     @ ensures \result == MBED_ERROR_UNKNOWN ;
 */
 
@@ -2026,19 +2082,19 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
  */
 
 /*@
-    @ requires \separated(pkt,((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)),&ctx_list[0..(GHOST_num_ctx-1)],&GHOST_idx_ctx) ;
+    @ requires \separated(pkt,&ctx_list[0..(GHOST_num_ctx-1)],&GHOST_idx_ctx) ;
     @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
     @ ensures \old(GHOST_num_ctx) == GHOST_num_ctx ;
 
     @ behavior bad_ctx:
     @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), GHOST_idx_ctx ;
+    @   assigns GHOST_idx_ctx ;
     @   ensures \result == MBED_ERROR_UNKNOWN ;
 
     @ behavior bad_pkt:
     @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
     @   assumes pkt == \null ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ;
+    @   assigns GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_TYPE_STD:
@@ -2059,7 +2115,7 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
     @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
     @   assumes ((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_CLASS ;
     @   ensures is_valid_error(\result) ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ;
+    @   assigns GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ;
 
     @ behavior UNKNOWN:
     @   assumes pkt != \null ;
@@ -2067,7 +2123,7 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
     @   assumes ((pkt->bmRequestType >> 5) & 0x3) != USB_REQ_TYPE_CLASS ;
     @   assumes ((pkt->bmRequestType >> 5) & 0x3) != USB_REQ_TYPE_VENDOR ;
     @   assumes ((pkt->bmRequestType >> 5) & 0x3) != USB_REQ_TYPE_STD ;
-    @   assigns *((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END)), GHOST_idx_ctx,ctx_list[0..(GHOST_num_ctx-1)] ;
+    @   assigns GHOST_idx_ctx,ctx_list[0..(GHOST_num_ctx-1)] ;
     @   ensures \result == MBED_ERROR_UNKNOWN ;
 
     @ complete behaviors ;
@@ -2137,7 +2193,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                             goto err;
                         }
 #endif
-                /*@ assert \separated(&handler,pkt,ctx_list + (0..(GHOST_num_ctx-1)),((uint32_t *) (USB_BACKEND_MEMORY_BASE .. USB_BACKEND_MEMORY_END))) ; */
+                /*@ assert \separated(&handler,pkt,ctx_list + (0..(GHOST_num_ctx-1))) ; */
                 /*@ assert ctx->cfg[curr_cfg].interfaces[i].rqst_handler ∈ {&class_rqst_handler}; */
                 /*@ calls class_rqst_handler; */
 

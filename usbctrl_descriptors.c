@@ -871,7 +871,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
             errcode = usbctrl_handle_configuration_size(buf, desc_size, ctx, &descriptor_size);
             if (errcode != MBED_ERROR_NONE) {
-                log_printf("[USBCTRL] failure while calculating total desc size\h");
+                log_printf("[USBCTRL] failure while calculating total desc size\n");
                 goto err;
             }
 

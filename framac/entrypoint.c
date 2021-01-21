@@ -210,7 +210,6 @@ void test_fcn_usbctrl(){
     ctx_list[0].ctrl_req_processing = true;  // to reach a state with EVA
     usbctrl_handle_inepevent(dev_id, size, ep);
 
-    //usbotghs_ctx.out_eps[0].state = Frama_C_interval_8(0,9);
 
     // after inepevent, dev_id is 6 or 7, i don't know why... so i declare a new dev_id variable in order to reach ctx_not_found behavior
     uint32_t dev_id_2 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
@@ -409,65 +408,6 @@ usbctrl_handle_requests(NULL, dev_id);
 
 void test_fcn_driver_eva(){
 
-#if 0
-    uint8_t ep_id = Frama_C_interval_8(0,255);
-    uint8_t ep_num = Frama_C_interval_8(0,255);
-    uint8_t dir8 = Frama_C_interval_8(0,255);
-    uint8_t dst = Frama_C_interval_8(0,255);
-    uint32_t size = Frama_C_interval_32(0,4294967295);
-    uint8_t fifo = Frama_C_interval_8(0,255);
-    uint32_t fifo_idx = Frama_C_interval_32(0,4294967295);
-    uint32_t fifo_size = Frama_C_interval_32(0,4294967295);
-    usbotghs_epx_mpsize_t size_ep = Frama_C_interval_8(0,3);
-
-    uint8_t src = 1 ;
-
-    usbotghs_ep_dir_t dir = Frama_C_interval_8(0,1);
-    usbotghs_ep_type_t type = Frama_C_interval_8(0,3);
-    usbotghs_ep_state_t state = Frama_C_interval_8(0,9) ;
-    usbotghs_dev_mode_t mode = Frama_C_interval_8(0,1);
-
-    usbotghs_global_stall() ;
-    usbotghs_endpoint_set_nak(ep_id, dir) ;
-    usbotghs_global_stall_clear();
-    usbotghs_endpoint_stall_clear(ep_id, dir);
-    usbotghs_deconfigure_endpoint(ep_id);
-    usbotghs_activate_endpoint(ep_id,dir);
-    usbotghs_deactivate_endpoint( ep_id,dir);
-    usbotghs_enpoint_nak( ep_id);
-    usbotghs_enpoint_nak_clear( ep_id);
-    usbotghs_endpoint_disable( ep_id,     dir);
-    usbotghs_endpoint_enable( ep_id,     dir);
-    usbotghs_endpoint_clear_nak(ep_id, dir) ;
-    usbotghs_endpoint_stall(ep_id, dir) ;
-    usbotghs_get_ep_state(ep_id, dir) ;
-
-    usbotghs_ctx.in_eps[EP0].mpsize = Frama_C_interval_16(0,65535);
-    uint8_t resp[1024] = { 0 };
-    usbotghs_ctx.in_eps[EP0].fifo_lck = 1 ;
-    usb_backend_drv_send_data((uint8_t *)&resp, size, EP0);
-    usbotghs_ctx.in_eps[EP0].fifo_lck = 0 ;
-    usb_backend_drv_send_data((uint8_t *)&resp, 514, EP0);
-    usbotghs_ctx.in_eps[4].mpsize = Frama_C_interval_16(0,65535);
-    usbotghs_ctx.in_eps[4].id = 4 ;
-    usbotghs_ctx.in_eps[4].fifo_lck = 0 ;
-    usbotghs_ctx.in_eps[4].configured = 1 ;
-    usb_backend_drv_send_data((uint8_t *)&resp, size, 4);
-    usb_backend_drv_send_data((uint8_t *)&resp, size, 8);
-    usbotghs_send_zlp(ep_id);
-    usbotghs_txfifo_flush(ep_id);
-    usb_backend_drv_configure_endpoint(ep_id,type,dir,64,USB_BACKEND_EP_ODDFRAME,&handler_ep);
-    usb_backend_drv_configure_endpoint(ep_id,type,dir,128,USB_BACKEND_EP_ODDFRAME,&handler_ep);
-    usb_backend_drv_configure_endpoint(ep_id,type,dir,512,USB_BACKEND_EP_ODDFRAME,&handler_ep);
-    usb_backend_drv_configure_endpoint(ep_id,type,dir,1024,USB_BACKEND_EP_ODDFRAME,&handler_ep);
-    usbotghs_configure(mode, & usbctrl_handle_inepevent,& usbctrl_handle_outepevent);
-    usbotghs_set_recv_fifo((uint8_t *)&resp, size, 0);
-    usbotghs_set_recv_fifo((uint8_t *)&resp, size, 1);
-
-    /*
-        TODO : send_data analyse is not enough generalised
-    */
-#endif
 
 }
 
