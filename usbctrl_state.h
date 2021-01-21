@@ -39,16 +39,16 @@
  */
 
 typedef enum {
-    USB_DEVICE_STATE_ATTACHED = 0,         /* Attached but not powered. Should never be reached from device side */
-    USB_DEVICE_STATE_POWERED,              /* Attached and powered, first reset not received yet */
-    USB_DEVICE_STATE_SUSPENDED_POWER,      /* Suspended, from the Power state */
-    USB_DEVICE_STATE_SUSPENDED_DEFAULT,    /* Suspended, from the default state */
-    USB_DEVICE_STATE_SUSPENDED_ADDRESS,    /* Suspended, from the address state */
-    USB_DEVICE_STATE_SUSPENDED_CONFIGURED, /* Suspended, from the configured state */
-    USB_DEVICE_STATE_DEFAULT,              /* First reset received, unique address not yet assigned */
-    USB_DEVICE_STATE_ADDRESS,              /* First reset received, address asigned, not yet configured */
-    USB_DEVICE_STATE_CONFIGURED,           /* First reset received, address asigned, configured, functions provided by the device can now be used */
-    USB_DEVICE_STATE_INVALID               /* Not defined in the USB standard. exists as an INVALID case. Should not be reached */
+    USB_DEVICE_STATE_ATTACHED              = 0, /* Attached but not powered. Should never be reached from device side */
+    USB_DEVICE_STATE_POWERED               = 1, /* Attached and powered, first reset not received yet */
+    USB_DEVICE_STATE_SUSPENDED_POWER       = 2, /* Suspended, from the Power state */
+    USB_DEVICE_STATE_SUSPENDED_DEFAULT     = 3, /* Suspended, from the default state */
+    USB_DEVICE_STATE_SUSPENDED_ADDRESS     = 4, /* Suspended, from the address state */
+    USB_DEVICE_STATE_SUSPENDED_CONFIGURED  = 5, /* Suspended, from the configured state */
+    USB_DEVICE_STATE_DEFAULT               = 6, /* First reset received, unique address not yet assigned */
+    USB_DEVICE_STATE_ADDRESS               = 7, /* First reset received, address asigned, not yet configured */
+    USB_DEVICE_STATE_CONFIGURED            = 8, /* First reset received, address asigned, configured, functions provided by the device can now be used */
+    USB_DEVICE_STATE_INVALID               = 9  /* Not defined in the USB standard. exists as an INVALID case. Should not be reached */
 } usb_device_state_t;
 
 #endif/*!__FRAMAC__*/
