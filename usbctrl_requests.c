@@ -509,6 +509,56 @@ static mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t 
                 case USB_REQ_RECIPIENT_ENDPOINT: {
                     /*does requested EP exists ? */
                     uint8_t epnum = pkt->wIndex & 0xf;
+                    if (!epnum != EP0) {
+                        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+                        /*request finish here */
+                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
+                        goto err;
+                    }
+                    /* get back the EP direction from the wIndex value (MSB bit) */
+                    bool dir_in = (pkt->wIndex >> 7) & 0x1;
+                    usb_ep_dir_t epdir = usbctrl_get_endpoint_direction(ctx, epnum);
+                    /* check that such an EP exists in current configuration */
+                    if (dir_in && (epdir == USB_EP_DIR_OUT || USB_EP_DIR_NONE)) {
+                        /* inexistant endpoint. These are not local invalid behavior but
+                         * nominal NAK response to host */
+                        usb_backend_drv_nak(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
+                        goto err;
+                    }
+                    /* FIXME: check EP direction too before returning status */
+                    /* return the recipient status (2 bytes, or wLength if smaller) */
+                    uint8_t resp[2] = { 0 };
+
+                    usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
+                    break;
+                }
+                case USB_REQ_RECIPIENT_DEVICE: {
+                    /* return the recipient status (2 bytes, or wLength if smaller) */
+                    uint8_t resp[2] = { 0 };
+                    /* FIXME: add remoteWakeup and selfPowered field setting to resp */
+
+                    usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
+                    break;
+                }
+
+                default:
+                    usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+                    goto err;
+            }
+
+            break;
+        case USB_DEVICE_STATE_CONFIGURED:
+            /* check that the recipient exists */
+            /* return the recipient status */
+            switch (usbctrl_std_req_get_recipient(pkt)) {
+                case USB_REQ_RECIPIENT_ENDPOINT: {
+                    /*does requested EP exists ? */
+                    uint8_t epnum = pkt->wIndex & 0xf;
                     if (!usbctrl_is_endpoint_exists(ctx, epnum)) {
                         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                         /*request finish here */
@@ -535,15 +585,41 @@ static mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t 
                     /* std req finishes at the oepint rise */
                     break;
                 }
+                case USB_REQ_RECIPIENT_DEVICE: {
+                    /* return the recipient status (2 bytes, or wLength if smaller) */
+                    uint8_t resp[2] = { 0 };
+                    /* FIXME: add remoteWakeup and selfPowered field setting to resp */
+
+                    usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
+                    break;
+                }
+                case USB_REQ_RECIPIENT_INTERFACE: {
+
+                    /*does requested Iface exists ? */
+                    uint8_t ifaceid = pkt->wIndex & 0xf;
+                    if (!usbctrl_is_interface_exists(ctx, ifaceid)) {
+                        usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
+                        /*request finish here */
+                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
+                        goto err;
+                    }
+                    /* return the recipient status (2 bytes, all reserved) */
+                    uint8_t resp[2] = { 0 };
+
+                    usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
+                    usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
+                    /* std req finishes at the oepint rise */
+                    break;
+                }
+
                 default:
                     usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                     goto err;
             }
 
-            break;
-        case USB_DEVICE_STATE_CONFIGURED:
-            /* check that the recipient exists */
-            /* return the recipient status */
+
             break;
         default:
             /* this should never be reached with the is_std_requests_allowed() function */
