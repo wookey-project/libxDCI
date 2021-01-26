@@ -1,4 +1,5 @@
 #include "libc/string.h"
+#include "libc/nostd.h"
 #include "api/libusbctrl.h"
 #include "usbctrl_descriptors.h"
 #include "usbctrl.h"
@@ -77,6 +78,7 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t class_desc_size = 0;
+    uint8_t iad_size = 0;
     uint8_t curr_cfg = ctx->curr_cfg;
     uint8_t iface_num = ctx->cfg[curr_cfg].interface_num;
     uint32_t handler;
@@ -98,16 +100,31 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
         goto err;
     }
 
+    bool composite = false;
+    uint8_t curr_composite = 0;
     /*@
       @ loop invariant 0 <= i <= iface_num ;
       @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num-1)));
       @ loop assigns i, descriptor_size, FLAG, errcode,  class_desc_size ;
       @ loop variant (iface_num -i);
       */
-
     for (uint8_t i = 0; i < iface_num; ++i) {
         uint32_t local_iface_desc_size = 0;
         /* first calculating class descriptor size */
+        if (ctx->cfg[curr_cfg].interfaces[i].composite_function == true) {
+            composite = true;
+            if (curr_composite != ctx->cfg[curr_cfg].interfaces[i].composite_function_id) {
+                /* new composite function */
+                curr_composite = ctx->cfg[curr_cfg].interfaces[i].composite_function_id;
+                iad_size = sizeof(usbctrl_iad_descriptor_t);
+            } else {
+                /* continuing composite */
+                iad_size = 0;
+            }
+        } else {
+            iad_size = 0;
+            composite = false;
+        }
         if (ctx->cfg[curr_cfg].interfaces[i].class_desc_handler != NULL) {
             uint8_t max_buf_size = 255 ; /* max for uint8_t, still smaller than current MAX_BUF_SIZE */
 
@@ -167,6 +184,7 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
 
         local_iface_desc_size += sizeof(usbctrl_interface_descriptor_t) + num_ep * sizeof(usbctrl_endpoint_descriptor_t);
         descriptor_size += local_iface_desc_size;  // CDE : descriptor size without class size
+        descriptor_size += iad_size;
 
     }
 
@@ -277,6 +295,86 @@ err:
 }
 
 /*@
+  @ requires \separated(&SIZE_DESC_FIXED, &FLAG, curr_offset, composite, buf+(..),curr_offset, ctx + (..));
+  @ requires \valid(composite);
+  @ requires \valid(curr_offset);
+  @ requires \valid(buf + (0 .. sizeof(usbctrl_iad_descriptor_t)-1));
+
+  @ assigns *composite;
+  @ assigns buf[0 .. sizeof(usbctrl_iad_descriptor_t)-1 ];
+  @ assigns *curr_offset;
+
+ */
+static mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
+                                                                usbctrl_context_t const * const ctx,
+                                                                bool *composite,
+                                                                uint8_t composite_id,
+                                                                uint8_t iface_id,
+                                                                uint32_t * curr_offset)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    uint8_t curr_cfg = ctx->curr_cfg;
+    /* already composite ? */
+    if (*composite == true && ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == true) {
+        if (composite_id != ctx->cfg[curr_cfg].interfaces[iface_id].composite_function) {
+            /* new function: new IAD */
+            /* composite ifaces start with 0 */
+            usbctrl_iad_descriptor_t *cfg = (usbctrl_iad_descriptor_t*)&(buf[*curr_offset]);
+            cfg->bLength = sizeof(usbctrl_iad_descriptor_t);
+            cfg->bDescriptorType = USB_DESC_IAD;
+            cfg->bFirstInterface = iface_id;
+            /* specify number of interfaces of this composite function */
+            cfg->bInterfaceCount = 0;
+            for (uint8_t i = iface_id; i < ctx->cfg[curr_cfg].interface_num; ++i) {
+                if (ctx->cfg[curr_cfg].interfaces[i].composite_function && ctx->cfg[curr_cfg].interfaces[i].composite_function_id == composite_id) {
+                    cfg->bInterfaceCount++;
+                }
+            }
+            /* composite parent class, subclass and protocol is the one of the master interface of the composite device */
+            cfg->bFunctionClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_class;
+            cfg->bFunctionSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
+            cfg->bFunctionProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
+            cfg->iFunction = 0x04;
+            curr_offset += sizeof(usbctrl_iad_descriptor_t);
+        }
+        /* else nothing */
+    }
+    /* new composite ? */
+    if (*composite == false && ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == true) {
+        log_printf("[USBCTRL] composite function found for iface %d!\n", iface_id);
+        *composite = true;
+        composite_id = ctx->cfg[curr_cfg].interfaces[iface_id].composite_function_id;
+        /* new function: new IAD */
+        // XXX: when handling multi-compsite devices, does each composite IAD iface increment has to start from 0 ?
+        // not clear in the USB 2.0 standard
+        //effective_iface_id = 0
+        usbctrl_iad_descriptor_t *cfg = (usbctrl_iad_descriptor_t*)&(buf[*curr_offset]);
+        cfg->bLength = sizeof(usbctrl_iad_descriptor_t);
+        cfg->bDescriptorType = USB_DESC_IAD;
+        cfg->bFirstInterface = iface_id;
+        /* specify number of interfaces of this composite function */
+        cfg->bInterfaceCount = 0;
+        for (uint8_t i = iface_id; i < ctx->cfg[curr_cfg].interface_num; ++i) {
+            if (ctx->cfg[curr_cfg].interfaces[i].composite_function && ctx->cfg[curr_cfg].interfaces[i].composite_function_id == composite_id) {
+                cfg->bInterfaceCount++;
+            }
+        }
+        /* composite parent class, subclass and protocol is the one of the master interface of the composite device */
+        cfg->bFunctionClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_class;
+        cfg->bFunctionSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
+        cfg->bFunctionProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
+        cfg->iFunction = 0x04;
+        *curr_offset += sizeof(usbctrl_iad_descriptor_t);
+
+    }
+    /* no more composite ? */
+    if (ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == false) {
+        composite = false;
+    }
+    return errcode;
+}
+
+/*@
     @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset, ctx + (..));
 
     @ behavior INVPARAM:
@@ -362,7 +460,7 @@ static mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
     cfg->bInterfaceClass = (uint8_t)ctx->cfg[curr_cfg].interfaces[iface_id].usb_class;
     cfg->bInterfaceSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
     cfg->bInterfaceProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
-    cfg->iInterface = iface_id + 1;
+    cfg->iInterface = iface_id;
     *curr_offset += sizeof(usbctrl_interface_descriptor_t);
 
 err:
@@ -922,10 +1020,20 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1)),buf + (0..255));
             */
 
+            bool composite = false;
+            uint8_t composite_id = 0;
+            // XXX: see iad descriptor function comment
+            // uint8_t effective_iface_id = 0;
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
                 /*
                  * for each interface, we first need to add the interface descriptor
                  */
+                // COMPOSITE IAD header
+                errcode = usbctrl_handle_configuration_write_iad_desc(buf, ctx, &composite, composite_id, iface_id, &curr_offset);
+                if (errcode != MBED_ERROR_NONE) {
+                    /* by now, this should be dead code as the above function should  never fails*/
+                    goto err;
+                }
                 errcode = usbctrl_handle_configuration_write_iface_desc(buf, ctx, iface_id, &curr_offset);
                 if (errcode != MBED_ERROR_NONE) {
                     /* by now, this should be dead code as the above function should  never fails*/

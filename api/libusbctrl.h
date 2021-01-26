@@ -289,6 +289,9 @@ typedef struct {
    uint8_t            usb_ep_number;  /*< the number of EP associated */
    usb_ep_infos_t     eps[MAX_EP_PER_INTERFACE];  /*< for each EP, the associated
                                                       informations */
+   /* for composite functions, requesting Interface Association Descriptor */
+   bool               composite_function; /*< this interface is a part of a composite function */
+   uint8_t            composite_function_id; /*< associated composite function identifier */
 } usbctrl_interface_t;
 
 /*********************************************************************************
@@ -534,5 +537,6 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh);
     @ assigns ctx_list[ctxh];
 */
 mbed_error_t usbctrl_stop_device(uint32_t ctxh);
+
 
 #endif/*!LIBUSBCTRL_H_*/

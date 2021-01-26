@@ -116,7 +116,8 @@ typedef enum {
     USB_DESC_ENDPOINT        = 0x5,
     USB_DESC_DEV_QUALIFIER   = 0x6,
     USB_DESC_OTHER_SPEED_CFG = 0x7,
-    USB_DESC_IFACE_POWER     = 0x8
+    USB_DESC_IFACE_POWER     = 0x8,
+    USB_DESC_IAD             = 0x0B
 } usbctrl_descriptor_type_t;
 
 /*@ predicate is_valid_descriptor_type(usbctrl_descriptor_type_t i) =
@@ -127,7 +128,8 @@ typedef enum {
         i == USB_DESC_ENDPOINT ||
         i == USB_DESC_DEV_QUALIFIER ||
         i == USB_DESC_OTHER_SPEED_CFG ||
-        i == USB_DESC_IFACE_POWER ;
+        i == USB_DESC_IFACE_POWER ||
+        i == USB_DESC_IAD;
 */
 
 /*
