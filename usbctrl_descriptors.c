@@ -71,10 +71,13 @@ typedef struct __packed usb_ctrl_full_configuration_descriptor {
   TODO : be more precise with invparam behavior (but dead code with total_size == null and impossible to reach usbctrl_get_handler(ctx, &handler) != MBED_ERROR_NONE )
 */
 
-static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t                  *buf,
-                                                      __out uint32_t                 *desc_size,
-                                                      __in  usbctrl_context_t        * ctx,
-                                                      __out uint32_t                 *total_size)
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_handle_configuration_size(__out uint8_t                  *buf,
+                                               __out uint32_t                 *desc_size,
+                                               __in  usbctrl_context_t        * ctx,
+                                               __out uint32_t                 *total_size)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t class_desc_size = 0;
@@ -254,10 +257,13 @@ err:
   CDE : not possible to validate assigns clause because of cast : (usbctrl_configuration_descriptor_t *)&(buf[*curr_offset]) (WP memory model)
 */
 
-static mbed_error_t usbctrl_handle_configuration_write_config_desc(uint8_t *buf,
-                                                           uint32_t descriptor_size,
-                                                           uint8_t  iface_num,
-                                                           uint32_t *curr_offset)
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_handle_configuration_write_config_desc(uint8_t *buf,
+                                                            uint32_t descriptor_size,
+                                                            uint8_t  iface_num,
+                                                            uint32_t *curr_offset)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     /* DEFENSIVE POGRAMMING:
@@ -305,18 +311,34 @@ err:
   @ assigns *curr_offset;
 
  */
-static mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
-                                                                usbctrl_context_t const * const ctx,
-                                                                bool *composite,
-                                                                uint8_t composite_id,
-                                                                uint8_t iface_id,
-                                                                uint32_t * curr_offset)
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
+                                                         usbctrl_context_t const * const ctx,
+                                                         bool *composite,
+                                                         uint8_t composite_id,
+                                                         uint8_t iface_id,
+                                                         uint32_t * curr_offset)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t curr_cfg = ctx->curr_cfg;
+
+    if (curr_offset == NULL || buf == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+
     /* already composite ? */
     if (*composite == true && ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == true) {
         if (composite_id != ctx->cfg[curr_cfg].interfaces[iface_id].composite_function) {
+
+            /* overflow check */
+            if (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_iad_descriptor_t))) {
+                errcode = MBED_ERROR_NOSTORAGE;
+                goto err;
+            }
+
             /* new function: new IAD */
             /* composite ifaces start with 0 */
             usbctrl_iad_descriptor_t *cfg = (usbctrl_iad_descriptor_t*)&(buf[*curr_offset]);
@@ -341,6 +363,13 @@ static mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
     }
     /* new composite ? */
     if (*composite == false && ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == true) {
+
+        /* overflow check */
+        if (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_iad_descriptor_t))) {
+            errcode = MBED_ERROR_NOSTORAGE;
+            goto err;
+        }
+
         log_printf("[USBCTRL] composite function found for iface %d!\n", iface_id);
         *composite = true;
         composite_id = ctx->cfg[curr_cfg].interfaces[iface_id].composite_function_id;
@@ -371,6 +400,7 @@ static mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
     if (ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == false) {
         composite = false;
     }
+err:
     return errcode;
 }
 
@@ -410,10 +440,13 @@ static mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
   CDE : not possible to validate assigns clause for behavior OK because of cast : (usbctrl_interface_descriptor_t*)&(buf[*curr_offset]) (WP memory model)
 */
 
-static mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
-                                                                  usbctrl_context_t const * const ctx,
-                                                                  uint8_t iface_id,
-                                                                  uint32_t * curr_offset)
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
+                                                           usbctrl_context_t const * const ctx,
+                                                           uint8_t iface_id,
+                                                           uint32_t * curr_offset)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t num_ep = 0;
@@ -427,9 +460,9 @@ static mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
         errcode = MBED_ERROR_NOSTORAGE;
         goto err;
     }
-    
+
     //if (iface_id == 255) {  // cyril : rte here, if iface_id >= MAX_INTERFACES_PER_DEVICE
-    if (iface_id >= MAX_INTERFACES_PER_DEVICE) {    
+    if (iface_id >= MAX_INTERFACES_PER_DEVICE) {
         /* DEFENSIVE PROGRAMMING:
          * the expected number of interfaces is limited to a small number, thus, to avoid an u8
          * overflow below, we check its value here */
@@ -499,10 +532,13 @@ err:
   TODO : be more precise with OTHER behavior (pb is with get_handler errcode and class_desc_handler errcode : not possible to try errcode != MBED_ERROR_NONE )
 */
 
-static mbed_error_t usbctrl_handle_configuration_write_class_desc(usbctrl_context_t * ctx,
-                                                                  uint8_t  * buf,
-                                                                  uint8_t    iface_id,
-                                                                  uint32_t * curr_offset)
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_handle_configuration_write_class_desc(usbctrl_context_t * ctx,
+                                                           uint8_t  * buf,
+                                                           uint8_t    iface_id,
+                                                           uint32_t * curr_offset)
 {
 
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -591,13 +627,16 @@ err:
   CDE : not possible to validate assigns clause because of cast : (usbctrl_endpoint_descriptor_t*)&(buf[*curr_offset]) (WP memory model)
 */
 
-static mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t const * const ctx,
-                                                               uint8_t  * buf,
-                                                               uint8_t    ep_number,
-                                                               usb_ep_dir_t ep_dir,
-                                                               uint8_t    iface_id,
-                                                               uint8_t    curr_cfg,
-                                                               uint32_t * curr_offset)
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t const * const ctx,
+                                                        uint8_t  * buf,
+                                                        uint8_t    ep_number,
+                                                        usb_ep_dir_t ep_dir,
+                                                        uint8_t    iface_id,
+                                                        uint8_t    curr_cfg,
+                                                        uint32_t * curr_offset)
 {
 
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -608,6 +647,11 @@ static mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
+    if (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) {
+        errcode = MBED_ERROR_NOSTORAGE;
+        goto err;
+    }
+
 
     usbctrl_endpoint_descriptor_t *cfg = (usbctrl_endpoint_descriptor_t*)&(buf[*curr_offset]);
     cfg->bLength = sizeof(usbctrl_endpoint_descriptor_t);
@@ -698,10 +742,12 @@ err:
   CDE : not possible to validate assigns clause because of cast : (usbctrl_device_descriptor_t*)buf (WP memory model)
 */
 
-
-static void usbctrl_handle_device_desc(uint8_t                   *buf,
-                                       uint32_t                  *desc_size,
-                                       usbctrl_context_t const   * const ctx)
+#ifndef __FRAMAC__
+static
+#endif
+void usbctrl_handle_device_desc(uint8_t                   *buf,
+                                uint32_t                  *desc_size,
+                                usbctrl_context_t const   * const ctx)
 {
     log_printf("[USBCTRL] request device desc (num cfg: %d)\n", ctx->num_cfg);
     usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;
@@ -740,9 +786,12 @@ static void usbctrl_handle_device_desc(uint8_t                   *buf,
   not possible to validate assigns clause because of cast : (usbctrl_string_descriptor_t *)&(string_desc[0]) (WP memory model)
 */
 
-static mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
-                                    __out uint32_t              *desc_size,
-                                    __in usbctrl_setup_pkt_t    * const pkt)
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
+                                        __out uint32_t              *desc_size,
+                                        __in usbctrl_setup_pkt_t    * const pkt)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     const char *USB_DEV_MANUFACTURER = CONFIG_USB_DEV_MANUFACTURER;
