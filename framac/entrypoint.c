@@ -127,7 +127,7 @@ void test_fcn_usbctrl(){
     usbctrl_request_code_t request = Frama_C_interval_8(0x0,0xc);
     uint8_t interval = Frama_C_interval_8(0,255);
     uint8_t composite_id = Frama_C_interval_8(0,255);
-    //uint8_t composite_bool = Frama_C_interval_8(0,1);
+    uint8_t composite_bool = Frama_C_interval_8(0,1);
 
 
     uint8_t RequestType = Frama_C_interval_8(0,255);
@@ -142,17 +142,20 @@ void test_fcn_usbctrl(){
 
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
-                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor, 
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function = composite_bool,
                                   .composite_function_id = composite_id};
 
     usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function = composite_bool,
                                   .composite_function_id = composite_id};
 
     usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function = composite_bool,
                                   .composite_function_id = composite_id};
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };

@@ -303,14 +303,72 @@ err:
 /* @
   @ requires \separated(&SIZE_DESC_FIXED, &FLAG, composite, buf+(..),curr_offset, ctx + (..));
   @ requires \valid(composite);
-  @ requires \valid(curr_offset);
+  @ requires iface_id < ctx->cfg[ctx->curr_cfg].num_iface;
   @ requires \valid(buf + (0 .. sizeof(usbctrl_iad_descriptor_t)-1));
 
   @ assigns *composite;
   @ assigns buf[0 .. sizeof(usbctrl_iad_descriptor_t)-1 ];
   @ assigns *curr_offset;
 
- */
+  @ behavior INVPARAM:
+  @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
+  @   assigns \nothing ;
+  @   ensures \result == MBED_ERROR_INVPARAM ;
+
+  @ behavior NOSTORAGE_1:
+  @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+  @   assumes (*composite == \true &&
+               ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true &&
+               composite_id != ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id)
+  @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
+  @   assigns \nothing ;
+  @   ensures \result == MBED_ERROR_NOSTORAGE ;
+
+  @ behavior OK_1:
+  @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+  @   assumes (*composite == \true &&
+               ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true &&
+               composite_id != ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id)
+  @   assumes (*curr_offset <= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
+  @   ensures \result == MBED_ERROR_NONE ;
+
+  @ behavior NOSTORAGE_2:
+  @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+  @   assumes (*composite == \false &&
+               ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true &&
+               composite_id != ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id)
+  @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
+  @   assigns \nothing ;
+  @   ensures \result == MBED_ERROR_NOSTORAGE ;
+
+  @ behavior OK_2:
+  @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+  @   assumes (*composite == \false &&
+               ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true &&
+               composite_id != ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id)
+  @   assumes (*curr_offset <= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
+  @   ensures \result == MBED_ERROR_NONE ;
+
+  @ behavior noneed_1:
+  @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+  @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \false);
+  @   assigns *composite;
+  @   ensures \result == MBED_ERROR_NONE ;
+
+  @ behavior noneed_2:
+  @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+  @   assumes (*composite == \true &&
+               ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true &&
+               composite_id == ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id);
+  @   assigns \nothing;
+  @   ensures \result == MBED_ERROR_NONE ;
+
+
+  @ complete behaviors ;
+  @ disjoint behaviors ;
+*/
+
+
 #ifndef __FRAMAC__
 static
 #endif
@@ -324,14 +382,14 @@ mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t curr_cfg = ctx->curr_cfg;
 
-    if (curr_offset == NULL || buf == NULL) {
+    if (curr_offset == NULL || buf == NULL || ctx == NULL) {
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
 
     /* already composite ? */
     if (*composite == true && ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == true) {
-        if (composite_id != ctx->cfg[curr_cfg].interfaces[iface_id].composite_function) {
+        if (composite_id != ctx->cfg[curr_cfg].interfaces[iface_id].composite_function_id) {
 
             /* overflow check */
             if (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_iad_descriptor_t))) {
@@ -398,7 +456,7 @@ mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
     }
     /* no more composite ? */
     if (ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == false) {
-        composite = false;
+        *composite = false;
     }
 err:
     return errcode;
@@ -614,8 +672,15 @@ err:
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @   assigns \nothing ;
 
+    @ behavior NOSTORAGE:
+    @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+    @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
+    @   ensures \result == MBED_ERROR_NOSTORAGE ;
+    @   assigns \nothing ;
+
     @ behavior OK:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+    @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
     @   ensures \result == MBED_ERROR_NONE ;
     @   ensures *curr_offset == \old(*curr_offset) + sizeof(usbctrl_endpoint_descriptor_t) ;
 
