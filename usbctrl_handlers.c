@@ -85,11 +85,11 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)))
      * received. As a consequence, here we enter the corresponding SUSPENDED state and wait for the resume event.
      * Other events (but reset) are discarded. */
     
-    /*if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_BUS_INACTIVE, ctx)) {
+    if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_BUS_INACTIVE, ctx)) {
         log_printf("[USBCTRL] USUSPEND transition is invalid in current state !\n");
         errcode = MBED_ERROR_INVSTATE;
         goto err;
-    }*/
+    }
 
     printf("[USBCTRL] Suspended!\n");
     switch (state) {
