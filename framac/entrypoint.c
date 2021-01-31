@@ -95,6 +95,16 @@ uint32_t Frama_C_interval_32(uint32_t min, uint32_t max)
   return r;
 }
 
+/*@
+    @ assigns \nothing ;
+    @ ensures is_valid_error(\result);
+*/
+mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
+{
+    mbed_error_t errcode = MBED_ERROR_NONE;
+    return errcode;
+}
+
 /*
  test_fcn_usbctrl : test functions defined in usbctrl.c, generally with correct parameters
 */
@@ -116,6 +126,8 @@ void test_fcn_usbctrl(){
     usb_device_state_t current_state = Frama_C_interval_8(0,9);
     usbctrl_request_code_t request = Frama_C_interval_8(0x0,0xc);
     uint8_t interval = Frama_C_interval_8(0,255);
+    uint8_t composite_id = Frama_C_interval_8(0,255);
+    //uint8_t composite_bool = Frama_C_interval_8(0,1);
 
 
     uint8_t RequestType = Frama_C_interval_8(0,255);
@@ -130,15 +142,18 @@ void test_fcn_usbctrl(){
 
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
-                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor, 
+                                  .composite_function_id = composite_id};
 
     usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
-                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function_id = composite_id};
 
     usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
-                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function_id = composite_id};
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
     usbctrl_context_t *ctx1 = NULL;
@@ -183,7 +198,7 @@ void test_fcn_usbctrl(){
     usbctrl_initialize(ctxh2);
     usbctrl_get_context(7, &ctx2);
     usbctrl_get_handler(ctx2, &handler);
-    usbctrl_declare_interface(ctxh2, &iface_1) ;
+    usbctrl_declare_interface(ctxh2, &iface_1);
     usbctrl_declare_interface(ctxh2, &iface_2);
     //usbctrl_declare_interface(ctxh2, &iface_3);
     usbctrl_get_interface(ctx2, iface);

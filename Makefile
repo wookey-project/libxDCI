@@ -220,6 +220,7 @@ EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
 SESSION     := framac/results/frama-c-rte-eva-wp-ref.session
 EVA_SESSION := framac/results/frama-c-rte-eva.session
 TIMESTAMP   := framac/results/timestamp-calcium_wp-eva.txt
+EVAREPORT    := framac/results/eva_report_red.txt
 JOBS        := $(shell nproc)
 # Does this flag could be overriden by env (i.e. using ?=)
 TIMEOUT     := 15
@@ -267,7 +268,10 @@ FRAMAC_EVA_FLAGS:=\
 		    -eva-use-spec usbotghs_deconfigure_endpoint \
 		    -eva-use-spec usbotghs_activate_endpoint \
 		    -eva-use-spec usbotghs_set_address \
-		    -eva-log a:frama-c-rte-eva.log
+		    -eva-log a:frama-c-rte-eva.log \
+			-eva-report-red-statuses $(EVAREPORT)\
+			-metrics \
+			-metrics-eva-cover *.c
 
 FRAMAC_WP_FLAGS:=\
 	        -wp \
@@ -299,7 +303,8 @@ frama-c:
    		    -then \
 			$(FRAMAC_WP_FLAGS) \
    			-save $(SESSION) \
-   			-time $(TIMESTAMP)
+   			-time $(TIMESTAMP) \
+			-then -report -report-classify
 
 frama-c-instantiate:
 	frama-c framac/entrypoint.c usbctrl.c -c11 -machdep x86_32 \

@@ -196,6 +196,7 @@ static inline bool is_vendor_requests_allowed(usbctrl_context_t const * const ct
 /*@
     @ requires \separated(ctx,&GHOST_opaque_drv_privates);
     @ assigns  *ctx , GHOST_opaque_drv_privates;
+    @ ensures \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_NONE ;
  */
 static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx)
 {
@@ -213,7 +214,7 @@ static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx
         @ loop invariant 0 <= iface <= max_iface ;
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
         @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop assigns iface, errcode, *ctx;
+        @ loop assigns iface, errcode, *ctx, GHOST_opaque_drv_privates;
         @ loop variant (max_iface - iface);
         */
 
@@ -226,7 +227,7 @@ static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
         @ loop invariant \separated(ctx);
-        @ loop assigns i, errcode, *ctx;
+        @ loop assigns i, errcode, *ctx, GHOST_opaque_drv_privates;
         @ loop variant (max_ep - i) ;
     */
 
@@ -254,6 +255,7 @@ err:
     @ assigns *ctx ;
     @ assigns GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
     @ assigns GHOST_out_eps[0 .. USBOTGHS_MAX_OUT_EP-1].state;
+    @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM || \result ≡ MBED_ERROR_NOSTORAGE ;
  */
 /*
  * Active endpoint for current configuration
@@ -274,7 +276,7 @@ static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
         @ loop invariant 0 <= iface <= max_iface ;
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
         @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
-        @ loop assigns iface, errcode, *ctx;
+        @ loop assigns iface, errcode, *ctx, GHOST_in_eps[0 .. 6 - 1].state, GHOST_out_eps[0 .. 6 - 1].state;
         @ loop variant (max_iface - iface);
     */
     for (uint8_t iface = 0; iface < max_iface; ++iface) {
@@ -286,7 +288,7 @@ static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces +(0..(max_iface-1)));
         @ loop invariant \valid(ctx->cfg[curr_cfg].interfaces[iface].eps + (0..(max_ep-1))) ;
         @ loop invariant \separated(ctx);
-        @ loop assigns i, errcode, *ctx;
+        @ loop assigns i, errcode, *ctx, GHOST_in_eps[0 .. 6 - 1].state, GHOST_out_eps[0 .. 6 - 1].state;
         @ loop variant (max_ep - i) ;
     */
 
@@ -408,7 +410,7 @@ err:
 /*@
     @ requires \valid(ctx) && \valid_read(pkt) ;
     @ requires \separated(ctx+(..),pkt,&GHOST_opaque_drv_privates);
-    @ assigns *ctx, GHOST_opaque_drv_privates ;
+    @ assigns *ctx, GHOST_opaque_drv_privates, GHOST_in_eps[0].state ;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -866,8 +868,8 @@ err:
 
 /*@
     @ requires \valid(ctx) ;
-    @ requires \separated(ctx, pkt, ctx_list+(0 .. GHOST_num_ctx-1), &GHOST_opaque_drv_privates, GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1));
-    @   assigns ctx_list[0 .. GHOST_num_ctx-1].ctrl_req_processing, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
+    @ requires \separated(ctx, pkt, &GHOST_opaque_drv_privates, GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1));
+    @ assigns *ctx, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -940,7 +942,8 @@ err:
     @ requires  \valid(ctx);
     @ requires \separated(ctx,pkt,&GHOST_opaque_drv_privates,GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1),GHOST_out_eps+(0 .. USBOTGHS_MAX_OUT_EP-1));
     @ ensures ctx->ctrl_req_processing == \false;
-    @   assigns conf_set, *ctx, GHOST_opaque_drv_privates ;
+    @ assigns conf_set, *ctx, GHOST_opaque_drv_privates ;
+    @ assigns GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state, GHOST_out_eps[0 .. USBOTGHS_MAX_OUT_EP-1].state;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -1885,7 +1888,7 @@ err:
     @ behavior USB_REQ_GET_STATUS:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_STATUS ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
-    @   assigns *ctx ;
+    @   assigns *ctx, GHOST_opaque_drv_privates, GHOST_in_eps[0].state ;
 
     @ behavior USB_REQ_CLEAR_FEATURE:
     @   assumes  pkt->bRequest ==  USB_REQ_CLEAR_FEATURE ;
@@ -1894,12 +1897,12 @@ err:
 
     @ behavior USB_REQ_SET_FEATURE:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_FEATURE ;
-    @   assigns *ctx ;
+    @   assigns *ctx, GHOST_opaque_drv_privates ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_SET_ADDRESS:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_ADDRESS ;
-    @   assigns *ctx ;
+    @   assigns *ctx, GHOST_opaque_drv_privates ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
 
     @ behavior USB_REQ_GET_DESCRIPTOR:
@@ -1908,31 +1911,34 @@ err:
 
     @ behavior USB_REQ_SET_DESCRIPTOR:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_DESCRIPTOR ;
-	@   assigns *pkt, *ctx;
+	@   assigns *pkt, *ctx, GHOST_opaque_drv_privates;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
 
     @ behavior USB_REQ_GET_CONFIGURATION:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_CONFIGURATION ;
+    @   assigns *ctx, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
 
     @ behavior USB_REQ_SET_CONFIGURATION:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_CONFIGURATION ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_NOSTORAGE ;
     @   assigns conf_set, *ctx ;
+    @   assigns GHOST_opaque_drv_privates ;
+    @   assigns GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state, GHOST_out_eps[0 .. USBOTGHS_MAX_OUT_EP-1].state;
 
     @ behavior USB_REQ_GET_INTERFACE:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_INTERFACE ;
-    @ 	assigns *ctx ;
+    @ 	assigns *ctx, GHOST_opaque_drv_privates ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_SET_INTERFACE:
     @   assumes  pkt->bRequest ==  USB_REQ_SET_INTERFACE ;
-    @ 	assigns *ctx ;
+    @ 	assigns *ctx, GHOST_opaque_drv_privates ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_SYNCH_FRAME:
     @   assumes  pkt->bRequest ==  USB_REQ_SYNCH_FRAME ;
-    @ 	assigns *ctx ;
+    @ 	assigns *ctx, GHOST_opaque_drv_privates ;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM ;
 
     @ behavior DEFAULT:
@@ -2064,6 +2070,7 @@ err:
     @ requires \valid(pkt) && \valid(ctx) ;
     @ requires \separated(ctx,pkt);
     @ ensures \result == MBED_ERROR_UNKNOWN ;
+    @ assigns GHOST_opaque_drv_privates ;
 */
 
 
@@ -2088,13 +2095,13 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
 
     @ behavior bad_ctx:
     @   assumes \forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id ;
-    @   assigns GHOST_idx_ctx ;
+    @   assigns GHOST_idx_ctx, GHOST_opaque_drv_privates ;
     @   ensures \result == MBED_ERROR_UNKNOWN ;
 
     @ behavior bad_pkt:
     @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
     @   assumes pkt == \null ;
-    @   assigns GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ;
+    @   assigns GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)], GHOST_opaque_drv_privates ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior USB_REQ_TYPE_STD:
@@ -2115,7 +2122,7 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
     @   assumes !(\forall integer i ; 0 <= i < GHOST_num_ctx ==> ctx_list[i].dev_id != dev_id) ;
     @   assumes ((pkt->bmRequestType >> 5) & 0x3) == USB_REQ_TYPE_CLASS ;
     @   ensures is_valid_error(\result) ;
-    @   assigns GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)] ;
+    @   assigns GHOST_idx_ctx, ctx_list[0..(GHOST_num_ctx-1)], GHOST_opaque_drv_privates ;
 
     @ behavior UNKNOWN:
     @   assumes pkt != \null ;
@@ -2123,7 +2130,7 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
     @   assumes ((pkt->bmRequestType >> 5) & 0x3) != USB_REQ_TYPE_CLASS ;
     @   assumes ((pkt->bmRequestType >> 5) & 0x3) != USB_REQ_TYPE_VENDOR ;
     @   assumes ((pkt->bmRequestType >> 5) & 0x3) != USB_REQ_TYPE_STD ;
-    @   assigns GHOST_idx_ctx,ctx_list[0..(GHOST_num_ctx-1)] ;
+    @   assigns GHOST_idx_ctx,ctx_list[0..(GHOST_num_ctx-1)],GHOST_opaque_drv_privates ;
     @   ensures \result == MBED_ERROR_UNKNOWN ;
 
     @ complete behaviors ;
@@ -2132,7 +2139,6 @@ static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *
 
 
 /*
-
 TODO : update assigns and ensures clauses for USB_REQ_TYPE_STD behavior (need usbctrl_handle_std_requests to me more precise)
         these assigns need usbctrl_get_descriptor so... impossible for now
         be more precise for USB_REQ_TYPE_CLASS behavior (\result errcode)

@@ -105,7 +105,7 @@ static mbed_error_t usbctrl_handle_configuration_size(__out uint8_t             
     /*@
       @ loop invariant 0 <= i <= iface_num ;
       @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num-1)));
-      @ loop assigns i, descriptor_size, FLAG, errcode,  class_desc_size ;
+      @ loop assigns i, descriptor_size, FLAG, errcode,  class_desc_size, composite, curr_composite, iad_size ;
       @ loop variant (iface_num -i);
       */
     for (uint8_t i = 0; i < iface_num; ++i) {
@@ -294,8 +294,8 @@ err:
     return errcode;
 }
 
-/*@
-  @ requires \separated(&SIZE_DESC_FIXED, &FLAG, curr_offset, composite, buf+(..),curr_offset, ctx + (..));
+/* @
+  @ requires \separated(&SIZE_DESC_FIXED, &FLAG, composite, buf+(..),curr_offset, ctx + (..));
   @ requires \valid(composite);
   @ requires \valid(curr_offset);
   @ requires \valid(buf + (0 .. sizeof(usbctrl_iad_descriptor_t)-1));
@@ -391,14 +391,14 @@ static mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
     @ behavior bad_iface:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
     @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
-    @   assumes iface_id == 255 ;
+    @   assumes iface_id >= MAX_INTERFACES_PER_DEVICE ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @   assigns \nothing ;
 
     @ behavior OK:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
     @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
-    @   assumes iface_id != 255 ;
+    @   assumes iface_id < MAX_INTERFACES_PER_DEVICE ;
     @   ensures \result == MBED_ERROR_NONE ;
     @   ensures *curr_offset == \old(*curr_offset) + sizeof(usbctrl_interface_descriptor_t) ;
 
@@ -407,7 +407,7 @@ static mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
 */
 
 /*
-  CDE : not possible to validate assigns clause because of cast : (usbctrl_interface_descriptor_t*)&(buf[*curr_offset]) (WP memory model)
+  CDE : not possible to validate assigns clause for behavior OK because of cast : (usbctrl_interface_descriptor_t*)&(buf[*curr_offset]) (WP memory model)
 */
 
 static mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
@@ -427,7 +427,9 @@ static mbed_error_t usbctrl_handle_configuration_write_iface_desc(uint8_t *buf,
         errcode = MBED_ERROR_NOSTORAGE;
         goto err;
     }
-    if (iface_id == 255) {
+    
+    //if (iface_id == 255) {  // cyril : rte here, if iface_id >= MAX_INTERFACES_PER_DEVICE
+    if (iface_id >= MAX_INTERFACES_PER_DEVICE) {    
         /* DEFENSIVE PROGRAMMING:
          * the expected number of interfaces is limited to a small number, thus, to avoid an u8
          * overflow below, we check its value here */

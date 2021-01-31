@@ -508,6 +508,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     @ assigns GHOST_in_eps[0].state;
     @ assigns GHOST_out_eps[0].state;
     @ assigns ctx_list[ctxh] ;
+    @ assigns GHOST_opaque_drv_privates ;
 
     @ behavior bad_ctxh :
     @   assumes ctxh >= GHOST_num_ctx ;

@@ -59,15 +59,8 @@ mbed_error_t  class_get_descriptor(uint8_t             iface_id,
 mbed_error_t class_rqst_handler(uint32_t usbxdci_handler,
                                        usbctrl_setup_pkt_t *packet);
 
-/*@
-    @ assigns \nothing ;
-    @ ensures is_valid_error(\result);
-*/
-static inline mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id)
-{
-    mbed_error_t errcode = MBED_ERROR_NONE;
-    return errcode;
-}
+
+mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id);
 
 void test_fcn_driver_eva(void) ;
 
