@@ -140,13 +140,13 @@ void test_fcn_usbctrl(){
     interface definition with variable parameters
 */
 
-    usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
+    usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
-                                  .composite_function = composite_bool,
+                                  .composite_function = true,
                                   .composite_function_id = composite_id};
 
-    usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
+    usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
                                   .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
                                   .composite_function = true,
@@ -193,7 +193,6 @@ void test_fcn_usbctrl(){
 
     usbctrl_declare_interface(ctxh1, &iface_1);
     usbctrl_declare_interface(ctxh1, &iface_2);
-    usbctrl_declare_interface(ctxh1, &iface_3);
     //usbctrl_declare_interface(ctxh1, &iface_3);  // this should be decommented only for test in usbctrl_descriptors.c, but very costly to analyse with EVA
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);

@@ -415,7 +415,7 @@ mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
             cfg->bFunctionSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
             cfg->bFunctionProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
             cfg->iFunction = 0x04;
-            curr_offset += sizeof(usbctrl_iad_descriptor_t);
+            *curr_offset += sizeof(usbctrl_iad_descriptor_t);
         }
         /* else nothing */
     }
