@@ -294,20 +294,20 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
     @ requires \separated(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx+(..));
     @ assigns ctx->state;
     @ ensures \result == \true || \result == \false ;
+    @ ensures \result == \true ==> (ctx->state == \at(ctx->state, Pre));
     @ ensures \result == \true <==> (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) && current_state != USB_DEVICE_STATE_INVALID ;
     @ ensures \result == \false <==> (\forall integer i ; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != transition ) && (ctx->state == USB_DEVICE_STATE_INVALID);
     @ ensures \result == \true && transition == USB_DEVICE_TRANS_RESET ==>
-                      (ctx->state == \at(ctx->state, Pre)) && !(current_state == USB_DEVICE_STATE_INVALID
-                                                        || current_state == USB_DEVICE_STATE_SUSPENDED_POWER
-                                                        || current_state == USB_DEVICE_STATE_ATTACHED)   ;
+                       !(current_state == USB_DEVICE_STATE_INVALID
+                         || current_state == USB_DEVICE_STATE_ATTACHED) ;
     @ ensures \result == \false && transition == USB_DEVICE_TRANS_RESET ==>
-        (current_state == USB_DEVICE_STATE_INVALID || current_state == USB_DEVICE_STATE_SUSPENDED_POWER || current_state == USB_DEVICE_STATE_ATTACHED)   ;
+        (current_state == USB_DEVICE_STATE_INVALID || current_state == USB_DEVICE_STATE_ATTACHED) ;
 */
 
 /*
     TO DO : be more precise with ensures for false case
     ensures \result == \false <==> (\forall integer i ; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != transition ) && (ctx->state == USB_DEVICE_STATE_INVALID);
- 
+
 */
 
 bool usbctrl_is_valid_transition(usb_device_state_t current_state,

@@ -312,7 +312,7 @@ err:
 
   @ behavior INVPARAM:
   @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
-  @   assigns \nothing ;
+  @   ensures *composite == \old(*composite);
   @   ensures \result == MBED_ERROR_INVPARAM ;
 
   @ behavior notcomposite:
@@ -320,19 +320,20 @@ err:
   @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \false);
   @   assigns *composite;
   @   ensures \result == MBED_ERROR_NONE ;
+  @   ensures *composite == \false;
 
 
   @ behavior newcomposite_NOSTORAGE:
   @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
-  @   assumes !(ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \false);
+  @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true);
   @   assumes (*composite == \false);
   @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
-  @   assigns \nothing ;
+  @   ensures *composite == \old(*composite);
   @   ensures \result == MBED_ERROR_NOSTORAGE ;
 
   @ behavior newcomposite_OK:
   @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
-  @   assumes !(ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \false);
+  @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true);
   @   assumes (*composite == \false);
   @   assumes (*curr_offset <= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
   @   ensures \result == MBED_ERROR_NONE ;
@@ -341,28 +342,27 @@ err:
 
   @ behavior curcomposite_NOSTORAGE:
   @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
-  @   assumes !(ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \false);
-  @   assumes !(*composite == \false);
+  @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true);
+  @   assumes (*composite == \true);
   @   assumes (composite_id != ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id) ;
   @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
-  @   assigns \nothing ;
+  @   ensures *composite == \old(*composite);
   @   ensures \result == MBED_ERROR_NOSTORAGE ;
 
   @ behavior curcomposite_OK:
   @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
-  @   assumes !(ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \false);
-  @   assumes !(*composite == \false);
+  @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true);
+  @   assumes (*composite == \true);
   @   assumes (composite_id != ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id) ;
   @   assumes (*curr_offset <= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
-  @   assigns \nothing ;
   @   ensures \result == MBED_ERROR_NONE ;
 
   @ behavior alreadycomposite_OK:
   @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
-  @   assumes !(ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \false);
-  @   assumes !(*composite == \false);
+  @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true);
+  @   assumes (*composite == \true);
   @   assumes (composite_id == ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id) ;
-  @   assigns \nothing ;
+  @   ensures *composite == \old(*composite);
   @   ensures \result == MBED_ERROR_NONE ;
 
   @ complete behaviors ;

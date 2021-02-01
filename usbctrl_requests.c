@@ -64,7 +64,10 @@ typedef enum {
     @ ensures \result == ((pkt->bmRequestType >> 5) & 0x3) ;
 */
 
-static inline usbctrl_req_type_t usbctrl_std_req_get_type(usbctrl_setup_pkt_t const * const pkt)
+#ifndef __FRAMAC__
+static inline
+#endif
+usbctrl_req_type_t usbctrl_std_req_get_type(usbctrl_setup_pkt_t const * const pkt)
 {
     /* bits 6..5 */
     return ((pkt->bmRequestType >> 5) & 0x3);
@@ -76,7 +79,10 @@ static inline usbctrl_req_type_t usbctrl_std_req_get_type(usbctrl_setup_pkt_t co
     @ ensures \result == ((pkt->bmRequestType) & 0x1F);
 */
 
-static inline usbctrl_req_recipient_t usbctrl_std_req_get_recipient(usbctrl_setup_pkt_t const * const pkt)
+#ifndef __FRAMAC__
+static inline
+#endif
+usbctrl_req_recipient_t usbctrl_std_req_get_recipient(usbctrl_setup_pkt_t const * const pkt)
 {
     /* bits 4..0 */
     return ((pkt->bmRequestType) & 0x1F);
@@ -101,7 +107,10 @@ typedef enum {
     @ ensures (\result == pkt->wValue >> 8) ;
 */
 
-static inline usbctrl_req_descriptor_type_t usbctrl_std_req_get_descriptor_type(usbctrl_setup_pkt_t const * const pkt)
+#ifndef __FRAMAC__
+static inline
+#endif
+usbctrl_req_descriptor_type_t usbctrl_std_req_get_descriptor_type(usbctrl_setup_pkt_t const * const pkt)
 {
     /* explicit cast of the high byte of wValue */
     usbctrl_req_descriptor_type_t val = (usbctrl_req_descriptor_type_t)(pkt->wValue >> 8);
@@ -138,7 +147,10 @@ static inline usbctrl_req_descriptor_type_t usbctrl_std_req_get_descriptor_type(
 */
 
 
-static inline bool is_std_requests_allowed(usbctrl_context_t const * const ctx)
+#ifndef __FRAMAC__
+static inline
+#endif
+bool is_std_requests_allowed(usbctrl_context_t const * const ctx)
 {
     if (usbctrl_get_state(ctx) == USB_DEVICE_STATE_DEFAULT ||
         usbctrl_get_state(ctx) == USB_DEVICE_STATE_ADDRESS ||
@@ -171,7 +183,10 @@ static inline bool is_std_requests_allowed(usbctrl_context_t const * const ctx)
     @ disjoint behaviors ;
 */
 
-static inline bool is_vendor_requests_allowed(usbctrl_context_t const * const ctx)
+#ifndef __FRAMAC__
+static inline
+#endif
+bool is_vendor_requests_allowed(usbctrl_context_t const * const ctx)
 {
     if (usbctrl_get_state(ctx) == USB_DEVICE_STATE_DEFAULT ||
         usbctrl_get_state(ctx) == USB_DEVICE_STATE_ADDRESS ||
@@ -198,7 +213,10 @@ static inline bool is_vendor_requests_allowed(usbctrl_context_t const * const ct
     @ assigns  *ctx , GHOST_opaque_drv_privates;
     @ ensures \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_NONE ;
  */
-static inline mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx)
+#ifndef __FRAMAC__
+static inline
+#endif
+mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
 
@@ -260,7 +278,10 @@ err:
 /*
  * Active endpoint for current configuration
  */
-static inline mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
+#ifndef __FRAMAC__
+static inline
+#endif
+mbed_error_t usbctrl_set_active_endpoints(usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
 
@@ -388,7 +409,10 @@ err:
 
 */
 
-static mbed_error_t usbctrl_std_req_handle_clear_feature(usbctrl_setup_pkt_t const * const pkt __attribute__((unused)),
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_clear_feature(usbctrl_setup_pkt_t const * const pkt __attribute__((unused)),
                                                          usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -467,7 +491,10 @@ err:
 
 */
 
-static mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t *pkt,
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t *pkt,
                                                       usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -705,7 +732,10 @@ err:
 
 */
 
-static mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t const * const pkt,
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t const * const pkt,
                                                          usbctrl_context_t *ctx)
 {
     /* GET_INTERFACE request is used to request an alternate setting when using
@@ -810,7 +840,10 @@ err:
 */
 
 
-static mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t const * const pkt,
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t const * const pkt,
                                                        usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -896,7 +929,10 @@ err:
 */
 
 
-static mbed_error_t usbctrl_std_req_handle_get_configuration(usbctrl_setup_pkt_t const * const pkt __attribute__((unused)),
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_get_configuration(usbctrl_setup_pkt_t const * const pkt __attribute__((unused)),
                                                              usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -977,7 +1013,10 @@ err:
 */
 
 
-static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t const * const pkt,
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t const * const pkt,
                                                              usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -1233,7 +1272,10 @@ static mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t
 */
 
 
-static mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *pkt,
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *pkt,
                                                           usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -1473,7 +1515,10 @@ err:
 */
 
 
-static mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t * const pkt __attribute__((unused)),
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_set_descriptor(usbctrl_setup_pkt_t * const pkt __attribute__((unused)),
                                                           usbctrl_context_t *ctx)
 {
     /* TODO: this implementation is more complex.
@@ -1561,7 +1606,10 @@ err:
 */
 
 
-static mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t * const pkt,
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_set_feature(usbctrl_setup_pkt_t * const pkt,
                                                        usbctrl_context_t *ctx)
 {
     /* SET_FEATURE is made to activate device/interface and endpoint testing modes.
@@ -1667,7 +1715,10 @@ err:
 
 */
 
-static mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t * const pkt,
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_set_interface(usbctrl_setup_pkt_t * const pkt,
                                                          usbctrl_context_t *ctx)
 {
     /* This request permit to select interfaces of a same configuration which
@@ -1797,7 +1848,10 @@ err:
 
 */
 
-static mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t * const pkt,
+#ifndef __FRAMAC__
+static
+#endif
+mbed_error_t usbctrl_std_req_handle_synch_frame(usbctrl_setup_pkt_t * const pkt,
                                                        usbctrl_context_t *ctx)
 {
     /* Set an endpoint syncrhonization frame
@@ -1959,8 +2013,11 @@ err:
         - assigns clause is impossible to validate (due to usbctrl_get_descriptor)
 */
 
-static inline mbed_error_t usbctrl_handle_std_requests(usbctrl_setup_pkt_t *pkt,
-                                                       usbctrl_context_t   *ctx)
+#ifndef __FRAMAC__
+static inline
+#endif
+mbed_error_t usbctrl_handle_std_requests(usbctrl_setup_pkt_t *pkt,
+                                         usbctrl_context_t   *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
 
@@ -2035,8 +2092,11 @@ static inline mbed_error_t usbctrl_handle_std_requests(usbctrl_setup_pkt_t *pkt,
 
 */
 
-static inline mbed_error_t usbctrl_handle_vendor_requests(usbctrl_setup_pkt_t * const pkt __attribute__((unused)),
-                                                          usbctrl_context_t   *ctx)
+#ifndef __FRAMAC__
+static inline
+#endif
+mbed_error_t usbctrl_handle_vendor_requests(usbctrl_setup_pkt_t * const pkt __attribute__((unused)),
+                                            usbctrl_context_t   *ctx)
 
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
@@ -2074,8 +2134,11 @@ err:
 */
 
 
-static inline mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *const pkt __attribute__((unused)),
-                                                           usbctrl_context_t   *const ctx __attribute__((unused)))
+#ifndef __FRAMAC__
+static inline
+#endif
+mbed_error_t usbctrl_handle_unknown_requests(usbctrl_setup_pkt_t *const pkt __attribute__((unused)),
+                                             usbctrl_context_t   *const ctx __attribute__((unused)))
 {
     log_printf("[USBCTRL] Unknown Request type %d/%x\n", pkt->bmRequestType, pkt->bRequest);
     usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
