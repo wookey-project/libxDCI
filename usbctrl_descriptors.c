@@ -152,9 +152,13 @@ mbed_error_t usbctrl_handle_configuration_size(__out uint8_t                  *b
                 goto err;
             }
             log_printf("[LIBCTRL] found one class level descriptor of size %d\n", max_buf_size);
+            if (max_buf_size > (255 - class_desc_size)) {
+                /* uint8_t overflow check */
+                log_printf("[LIBCTRL] class descriptor len too long!\n");
+                errcode = MBED_ERROR_UNSUPORTED_CMD;
+                goto err;
+            }
             class_desc_size += max_buf_size; // CDE in order to calculate size of all class descriptor
-
-
         } else {
             class_desc_size += 0;
         }
@@ -210,7 +214,7 @@ mbed_error_t usbctrl_handle_configuration_size(__out uint8_t                  *b
      */
 
     //@ split descriptor_size ;
-    if((descriptor_size + class_desc_size) > MAX_DESCRIPTOR_LEN) {
+    if((descriptor_size + class_desc_size) >= MAX_DESCRIPTOR_LEN) {
         log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
         errcode = MBED_ERROR_UNSUPORTED_CMD;
         *desc_size = 0;
@@ -573,7 +577,7 @@ mbed_error_t usbctrl_handle_configuration_write_class_desc(usbctrl_context_t * c
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t curr_cfg = ctx->curr_cfg;
     uint32_t handler;
-    uint32_t max_buf_size;
+    uint32_t max_buf_size = 0;
     uint8_t class_desc_max_size = 0;
 
     if (buf == NULL || curr_offset == NULL || ctx == NULL) {
@@ -921,6 +925,7 @@ err:
 
 /*@
     @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),desc_size+(..),ctx+(..),pkt+(..));
+    @ assigns ctx->curr_cfg;
 
     @ behavior invaparam:
     @   assumes  (buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
@@ -1041,8 +1046,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             /* configuration descriptor is dynamic, depends on current config and its number of endpoints... */
             /* 1) calculating desc size */
             //uint8_t requested_configuration = pkt->wValue; /* TODO to be used */
-            uint8_t curr_cfg = ctx->curr_cfg;
-            uint8_t iface_num = ctx->cfg[curr_cfg].interface_num;
 
             /* is there, at upper layer, an additional class descriptor for
              * current configuration ? if yes, we get back this descriptor
@@ -1053,13 +1056,21 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              * be stored later, when the overall configuration descriptor
              * is forged. */
             uint32_t descriptor_size = 0;
+            /* desriptor index is set in WValue low byte. Its value is between 1 and num_cfg */
+            uint8_t curr_cfg = pkt->wValue & 0xff;
+            if (curr_cfg >= ctx->num_cfg) {
+                log_printf("[USBCTRL] invalid descriptor id received !\n");
+                goto err;
+            }
+            /* setting current_cfg to requested cfg in get_descriptor */
+            ctx->curr_cfg = curr_cfg;
 
             errcode = usbctrl_handle_configuration_size(buf, desc_size, ctx, &descriptor_size);
             if (errcode != MBED_ERROR_NONE) {
                 log_printf("[USBCTRL] failure while calculating total desc size\n");
                 goto err;
             }
-
+            /*@ assert descriptor_size < MAX_DESCRIPTOR_LEN; */
 
             /*
              * From now on, we *know* that the overall descriptor size is smaller than the buffer max supported
@@ -1079,6 +1090,7 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
              * only.
              */
             uint32_t curr_offset = 0;
+            uint8_t iface_num = ctx->cfg[curr_cfg].interface_num;
 
             log_printf("[USBCTRL] create config desc of size %d with %d ifaces\n", descriptor_size, iface_num);
             /*
@@ -1099,13 +1111,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             uint8_t max_ep_number ;  // new variable for variant and invariant proof
 
             /* @
-                @ loop invariant 0 <= iface_id <= iface_num ;
-                @ loop invariant 0 <= curr_offset <=  255 ;
-                @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num -1))) ;
-                @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1))) ;
-                @ loop invariant \valid(buf + (0..255));
-                @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1)),buf + (0..255));
-            */
+               @ loop invariant 0 <= iface_id <= iface_num ;
+               @ loop invariant 0 <= curr_offset <=  255 ;
+               @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces + (0..(iface_num -1))) ;
+               @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1))) ;
+               @ loop invariant \valid(buf + (0..255));
+               @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number -1)),buf + (0..255));
+               */
 
             bool composite = false;
             uint8_t composite_id = 0;
@@ -1145,12 +1157,12 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
                 max_ep_number = ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;  // variable change in loop
 
                 /* @
-                    @ loop invariant \at(max_ep_number,LoopEntry) == \at(max_ep_number,LoopCurrent) ;
-                    @ loop invariant 0 <= ep_number <= max_ep_number ;
-                    @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1))) ;
-                    @ loop invariant \valid(buf + (0..255));
-                    @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1)),buf + (0..255));
-                */
+                   @ loop invariant \at(max_ep_number,LoopEntry) == \at(max_ep_number,LoopCurrent) ;
+                   @ loop invariant 0 <= ep_number <= max_ep_number ;
+                   @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1))) ;
+                   @ loop invariant \valid(buf + (0..255));
+                   @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1)),buf + (0..255));
+                   */
 
                 for (uint8_t ep_number = 0; ep_number < max_ep_number; ++ep_number) {
 
@@ -1190,7 +1202,6 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
                     }
                 }
-
             /* returns the descriptor */
             }
             /* total configuration descriptor has be forged, update the size */

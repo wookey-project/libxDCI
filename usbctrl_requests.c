@@ -1340,22 +1340,22 @@ mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *pkt,
                 set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
-                if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
-                    /*request finish here */
-                    set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
-                    goto err;
-                }
-                usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
-                /*@ assert ctx->state == USB_DEVICE_STATE_CONFIGURED ; */
-                if (maxlength > size) {
-                    errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
-                } else {
-                    errcode = usb_backend_drv_send_data(&(buf[0]), maxlength, 0);
-                    /* should we not inform the host that there is not enough
-                     * space ? Well no, the host, send again a new descriptor
-                     * request with the correct size in it.
-                     * XXX: check USB2.0 standard */
-                }
+            if ((errcode = usbctrl_get_descriptor(USB_DESC_CONFIGURATION, &(buf[0]), &size, ctx, pkt)) != MBED_ERROR_NONE) {
+                /*request finish here */
+                set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
+                goto err;
+            }
+            usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
+            /*@ assert ctx->state == USB_DEVICE_STATE_CONFIGURED ; */
+            if (maxlength > size) {
+                errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
+            } else {
+                errcode = usb_backend_drv_send_data(&(buf[0]), maxlength, 0);
+                /* should we not inform the host that there is not enough
+                 * space ? Well no, the host, send again a new descriptor
+                 * request with the correct size in it.
+                 * XXX: check USB2.0 standard */
+            }
             /* read status .... */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
 
