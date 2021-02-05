@@ -345,6 +345,11 @@ end:
     @   assumes ctx == \null ;
     @   ensures \result == USB_EP_DIR_NONE ;
 
+    @ behavior EP0_found:
+    @   assumes ctx != \null ;
+    @   assumes ep == EP0 ;
+    @   ensures \result == USB_EP_DIR_BOTH ;
+
     @ behavior EP_not_found:
     @   assumes ctx != \null ;
     @   assumes ep != EP0 ;
@@ -352,16 +357,11 @@ end:
                 ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) ;
     @   ensures \result == USB_EP_DIR_NONE;
 
-    @ behavior EP0_found:
-    @   assumes ctx != \null ;
-    @   assumes ep == EP0 ;
-    @   ensures \result == USB_EP_DIR_BOTH ;
-
     @ behavior EPx_found:
     @   assumes ctx != \null ;
     @   assumes ep != EP0 ;
     @   assumes (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
-                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) || ep == EP0 ;
+                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) ;
     @   ensures (\result == USB_EP_DIR_IN || \result == USB_EP_DIR_OUT || \result == USB_EP_DIR_BOTH ) ;
 
     @ complete behaviors;
@@ -373,23 +373,28 @@ usb_ep_dir_t usbctrl_get_endpoint_direction(usbctrl_context_t *ctx, uint8_t ep)
     uint8_t i = 0 ;
     uint8_t j = 0 ;
 
+    usb_ep_dir_t result = USB_EP_DIR_NONE ;
+
 
     /* sanitize */
     if (ctx == NULL) {
-        return USB_EP_DIR_NONE;
+        result = USB_EP_DIR_NONE;
+        goto res;
+        //return USB_EP_DIR_NONE;
     }
 
     if (ep == EP0) {
-        return USB_EP_DIR_BOTH;
+        result = USB_EP_DIR_BOTH;
+        goto res;
+        //return USB_EP_DIR_BOTH;
     }
 
 /*@
         @ loop invariant 0 <= i <= ctx->cfg[ctx->curr_cfg].interface_num ;
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
-        @ loop invariant (\forall integer prei; 0<=prei<i ==>(\forall integer jj;
-            0 <= jj < ctx->cfg[ctx->curr_cfg].interfaces[prei].usb_ep_number ==>  ctx->cfg[ctx->curr_cfg].interfaces[prei].eps[jj].ep_num != ep));
-        @ loop assigns i, j ;
+        @ loop invariant (\forall integer prei; 0<=prei<i ==>(\forall integer jj; 0 <= jj < ctx->cfg[ctx->curr_cfg].interfaces[prei].usb_ep_number ==>  ctx->cfg[ctx->curr_cfg].interfaces[prei].eps[jj].ep_num != ep));
+        @ loop assigns i, j, result ;
         @ loop variant (ctx->cfg[ctx->curr_cfg].interface_num - i);
 */
 
@@ -400,18 +405,26 @@ usb_ep_dir_t usbctrl_get_endpoint_direction(usbctrl_context_t *ctx, uint8_t ep)
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
         @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
         @ loop invariant (\forall integer prej ; 0<=prej<j ==> ctx->cfg[ctx->curr_cfg].interfaces[i].eps[prej].ep_num != ep) ;
-        @ loop assigns j ;
+        @ loop assigns j, result ;
         @ loop variant (ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number - j);
 */
 
         for ( j = 0; j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number; ++j) {
             if (ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) {
-                return ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].dir;
+                /*@ assert (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) && ep != EP0 ; */
+                result = ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].dir;
+                /*@ assert result == USB_EP_DIR_IN || result == USB_EP_DIR_OUT || result == USB_EP_DIR_BOTH ;  */
+                goto res ;
+                //return ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].dir;
             }
         }
     }
 
-    return USB_EP_DIR_NONE;
+    /*@ assert result == USB_EP_DIR_NONE ; */
+    res : 
+        return result;
+    //return USB_EP_DIR_NONE;
 }
 
 
@@ -635,7 +648,8 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     #if defined(__FRAMAC__)
 
         /*
-            TODO FRAMA-c : memcpy with instantiate
+            This substitution of memcpy should be removed as soon as the instantiate plugin is working
+                            with the -nostdlib use case.
         */
 
        ctx->cfg[iface_config].interfaces[iface_num].usb_class = iface->usb_class ;
@@ -645,6 +659,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].dir = iface->eps[0].dir ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].pkt_maxsize = iface->eps[0].pkt_maxsize ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].handler = iface->eps[0].handler ;
+       ctx->cfg[iface_config].interfaces[iface_num].eps[1].handler = iface->eps[1].handler ;
        ctx->cfg[iface_config].interfaces[iface_num].rqst_handler = iface->rqst_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].class_desc_handler = iface->class_desc_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].poll_interval = iface->eps[0].poll_interval ;

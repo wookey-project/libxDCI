@@ -141,31 +141,31 @@ void test_fcn_usbctrl(){
 */
 
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
                                   .composite_function = composite_bool,
                                   .composite_function_id = composite_id};
 
     usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
                                   .composite_function = composite_bool,
                                   .composite_function_id = composite_id};
 
-    usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
+    usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
                                   .composite_function = true,
                                   .composite_function_id = composite_id};
 
     usbctrl_interface_t iface_4 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
                                   .composite_function = false,
                                   .composite_function_id = 0};
 
     usbctrl_interface_t iface_5 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
                                   .composite_function = true,
                                   .composite_function_id = composite_id};
@@ -198,6 +198,8 @@ void test_fcn_usbctrl(){
     usbctrl_get_handler(ctx1, &handler);
     usbctrl_is_interface_exists(ctx1, iface);
     usbctrl_is_endpoint_exists(ctx1, ep);
+    usbctrl_get_endpoint_direction(ctx1, ep) ;  // EP found
+    usbctrl_get_endpoint_direction(ctx1, 6) ;   // EP not found
     usbctrl_start_device(ctxh1) ;
     usbctrl_stop_device(ctxh1) ;
 
@@ -260,6 +262,8 @@ void test_fcn_usbctrl(){
     uint32_t dev_id_4 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
     // after reset, dev_id_3 is 6 or 7, i don't know why... so i declare a new dev_id
     usbctrl_handle_requests(&pkt, dev_id_4) ;
+
+    usbctrl_declare_interface(ctxh1, &iface_3);
 }
 
 /*
@@ -289,10 +293,10 @@ void test_fcn_usbctrl_erreur(){
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
     usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep,
                                    .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
 /*
@@ -339,6 +343,8 @@ void test_fcn_usbctrl_erreur(){
     //@ ghost GHOST_num_ctx = num_ctx ;
     usbctrl_declare_interface(ctxh, &iface_1) ;
 
+    usbctrl_get_endpoint_direction(NULL, 0) ;   // invalid pointer
+
     ctxh = 0 ;
     num_ctx = 1 ;
     //@ ghost GHOST_num_ctx = num_ctx ;
@@ -356,6 +362,7 @@ void test_fcn_usbctrl_erreur(){
         .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor };
     ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE - 1 ;
     usbctrl_declare_interface(ctxh, &iface_4) ;
+
 
 
 
