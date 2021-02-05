@@ -192,7 +192,7 @@ void test_fcn_usbctrl(){
     usbctrl_get_context(6, &ctx1);
 
     usbctrl_declare_interface(ctxh1, &iface_1);
-    usbctrl_declare_interface(ctxh1, &iface_2);
+    //usbctrl_declare_interface(ctxh1, &iface_2);
     //usbctrl_declare_interface(ctxh1, &iface_3);  // this should be decommented only for test in usbctrl_descriptors.c, but very costly to analyse with EVA
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);
@@ -216,7 +216,7 @@ void test_fcn_usbctrl(){
     usbctrl_get_context(7, &ctx2);
     usbctrl_get_handler(ctx2, &handler);
     usbctrl_declare_interface(ctxh2, &iface_1);
-    usbctrl_declare_interface(ctxh2, &iface_2);
+    //usbctrl_declare_interface(ctxh2, &iface_2);
     //usbctrl_declare_interface(ctxh2, &iface_3);
     usbctrl_get_interface(ctx2, iface);
 

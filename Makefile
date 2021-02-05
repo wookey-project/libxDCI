@@ -264,6 +264,7 @@ FRAMAC_EVA_FLAGS:=\
 		    -eva-use-spec usbotghs_endpoint_stall_clear \
 		    -eva-use-spec usbotghs_endpoint_set_nak \
 		    -eva-use-spec usbotghs_endpoint_clear_nak \
+		    -eva-use-spec usbotghs_get_ep_mpsize \
 		    -eva-use-spec usbotghs_configure_endpoint \
 		    -eva-use-spec usbotghs_deconfigure_endpoint \
 		    -eva-use-spec usbotghs_activate_endpoint \
@@ -275,6 +276,7 @@ FRAMAC_EVA_FLAGS:=\
 
 FRAMAC_WP_FLAGS:=\
 	        -wp \
+			-wp-dynamic \
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3 \

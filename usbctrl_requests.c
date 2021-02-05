@@ -271,8 +271,8 @@ err:
 /*@
     @ requires \separated(ctx);
     @ assigns *ctx ;
-    @ assigns GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
-    @ assigns GHOST_out_eps[0 .. USBOTGHS_MAX_OUT_EP-1].state;
+    @ assigns GHOST_in_eps[0 .. USB_BACKEND_DRV_MAX_IN_EP-1].state;
+    @ assigns GHOST_out_eps[0 .. USB_BACKEND_DRV_MAX_OUT_EP-1].state;
     @ ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM || \result ≡ MBED_ERROR_NOSTORAGE ;
  */
 /*
@@ -740,8 +740,7 @@ mbed_error_t usbctrl_std_req_handle_get_interface(usbctrl_setup_pkt_t const * co
 {
     /* GET_INTERFACE request is used to request an alternate setting when using
      * interfaces in a same configuration that use mutually exclusive settings.
-     * This is not our case, as we used differenciated configurations instead.
-     * As a consequence, we return INVALID_REQUEST here.
+     * This is not yet implemented. By now, we stall.
      */
     mbed_error_t errcode = MBED_ERROR_NONE;
     log_printf("[USBCTRL] Std req: get iface\n");
@@ -901,8 +900,8 @@ err:
 
 /*@
     @ requires \valid(ctx) ;
-    @ requires \separated(ctx, pkt, &GHOST_opaque_drv_privates, GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1));
-    @ assigns *ctx, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
+    @ requires \separated(ctx, pkt, &GHOST_opaque_drv_privates, GHOST_in_eps+(0 .. USB_BACKEND_DRV_MAX_IN_EP-1));
+    @ assigns *ctx, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USB_BACKEND_DRV_MAX_IN_EP-1].state;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -976,10 +975,10 @@ err:
 
 /*@
     @ requires  \valid(ctx);
-    @ requires \separated(ctx,pkt,&GHOST_opaque_drv_privates,GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1),GHOST_out_eps+(0 .. USBOTGHS_MAX_OUT_EP-1));
+    @ requires \separated(ctx,pkt,&GHOST_opaque_drv_privates,GHOST_in_eps+(0 .. USB_BACKEND_DRV_MAX_IN_EP-1),GHOST_out_eps+(0 .. USB_BACKEND_DRV_MAX_OUT_EP-1));
     @ ensures ctx->ctrl_req_processing == \false;
     @ assigns conf_set, *ctx, GHOST_opaque_drv_privates ;
-    @ assigns GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state, GHOST_out_eps[0 .. USBOTGHS_MAX_OUT_EP-1].state;
+    @ assigns GHOST_in_eps[0 .. USB_BACKEND_DRV_MAX_IN_EP-1].state, GHOST_out_eps[0 .. USB_BACKEND_DRV_MAX_OUT_EP-1].state;
 
     @ behavior std_requests_not_allowed:
     @   assumes !((ctx->state == USB_DEVICE_STATE_DEFAULT) ||
@@ -1970,7 +1969,7 @@ err:
 
     @ behavior USB_REQ_GET_CONFIGURATION:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_CONFIGURATION ;
-    @   assigns *ctx, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state;
+    @   assigns *ctx, GHOST_opaque_drv_privates, GHOST_in_eps[0 .. USB_BACKEND_DRV_MAX_IN_EP-1].state;
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE ;
 
     @ behavior USB_REQ_SET_CONFIGURATION:
@@ -1978,7 +1977,7 @@ err:
     @   ensures \result == MBED_ERROR_INVSTATE || \result == MBED_ERROR_NONE || \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_NOSTORAGE ;
     @   assigns conf_set, *ctx ;
     @   assigns GHOST_opaque_drv_privates ;
-    @   assigns GHOST_in_eps[0 .. USBOTGHS_MAX_IN_EP-1].state, GHOST_out_eps[0 .. USBOTGHS_MAX_OUT_EP-1].state;
+    @   assigns GHOST_in_eps[0 .. USB_BACKEND_DRV_MAX_IN_EP-1].state, GHOST_out_eps[0 .. USB_BACKEND_DRV_MAX_OUT_EP-1].state;
 
     @ behavior USB_REQ_GET_INTERFACE:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_INTERFACE ;

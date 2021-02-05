@@ -139,7 +139,7 @@ typedef enum {
 
 
 /*
- * USB Endpoint type
+ * USB Endpoint type. Must correspond to the backend driver enumeration value
  */
 typedef enum {
    USB_EP_TYPE_CONTROL      = 0x00,
@@ -149,7 +149,7 @@ typedef enum {
 } usb_ep_type_t;
 
 /*
- * USB Endpoint access mode
+ * USB Endpoint access mode. Must correspond to the backend driver enumeration value
  */
 typedef enum {
     USB_EP_DIR_OUT, /* EP OUT, receiving in device mode */
@@ -159,7 +159,7 @@ typedef enum {
 } usb_ep_dir_t;
 
 /*
- * USB Endpoint attribute
+ * USB Endpoint attribute. Must correspond to the backend driver enumeration value
  */
 typedef enum {
     USB_EP_ATTR_NO_SYNC     = 0x0,
@@ -169,7 +169,7 @@ typedef enum {
 } usb_ep_attr_t;
 
 /*
- * USB Endpoint usage
+ * USB Endpoint usage. Must correspond to the backend driver enumeration value
  */
 typedef enum {
     USB_EP_USAGE_DATA               = 0x0,
@@ -501,7 +501,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
  * is started.
  */
 /*@
-    @ requires \separated(GHOST_in_eps+(0 .. USBOTGHS_MAX_IN_EP-1),GHOST_out_eps+(0 .. USBOTGHS_MAX_OUT_EP-1), ctx_list+(..));
+    @ requires \separated(GHOST_in_eps+(0 .. USB_BACKEND_DRV_MAX_IN_EP-1),GHOST_out_eps+(0 .. USB_BACKEND_DRV_MAX_OUT_EP-1), ctx_list+(..));
     @ requires GHOST_num_ctx == num_ctx ;
     @ ensures GHOST_num_ctx == num_ctx ;
 

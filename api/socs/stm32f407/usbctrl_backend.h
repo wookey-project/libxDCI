@@ -83,9 +83,6 @@
  * prototypes.
  */
 
-#define USB_BACKEND_MEMORY_BASE 0x50000000
-#define USB_BACKEND_MEMORY_END  0x50044000
-
 typedef enum {
     USB_BACKEND_DRV_PORT_LOWSPEED = 0,
     USB_BACKEND_DRV_PORT_FULLSPEED = 1,
@@ -191,7 +188,7 @@ mbed_error_t usb_backend_drv_stall(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 mbed_error_t usb_backend_drv_endpoint_disable(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 mbed_error_t usb_backend_drv_endpoint_enable(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 
-uint16_t usb_backend_get_ep_mpsize(void);
+uint16_t usb_backend_get_ep_mpsize(usb_backend_drv_ep_type_t type);
 
 usb_backend_drv_port_speed_t usb_backend_drv_get_speed(void);
 

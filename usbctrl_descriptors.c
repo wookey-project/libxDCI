@@ -158,7 +158,8 @@ mbed_error_t usbctrl_handle_configuration_size(__out uint8_t                  *b
                 errcode = MBED_ERROR_UNSUPORTED_CMD;
                 goto err;
             }
-            class_desc_size += max_buf_size; // CDE in order to calculate size of all class descriptor
+            /*@ assert max_buf_size <= (255 - class_desc_size); */
+            class_desc_size += (uint8_t)(max_buf_size & 0xff); // CDE in order to calculate size of all class descriptor
         } else {
             class_desc_size += 0;
         }
@@ -177,13 +178,15 @@ mbed_error_t usbctrl_handle_configuration_size(__out uint8_t                  *b
           */
 
         for (uint8_t ep = 0; ep < ctx->cfg[curr_cfg].interfaces[i].usb_ep_number; ++ep) {
-            if (ctx->cfg[curr_cfg].interfaces[i].eps[ep].type != USB_EP_TYPE_CONTROL) {
-                ++num_ep;
+            if (ctx->cfg[curr_cfg].interfaces[i].eps[ep].type == USB_EP_TYPE_CONTROL) {
+                /* Control EP is out of scope */
+                continue;
             }
             /* a full-duplex endpoint consume 2 descriptors */
             if (ctx->cfg[curr_cfg].interfaces[i].eps[ep].dir == USB_EP_DIR_BOTH) {
                 ++num_ep;
             }
+            ++num_ep;
         }
         /* here we should assert that current size (local_iface_desc_size) is smaller than:
          * sizeof(usbctrl_interface_descriptor_t) + 16*(usbctrl_endpoint_descriptor_t)
@@ -218,7 +221,7 @@ mbed_error_t usbctrl_handle_configuration_size(__out uint8_t                  *b
         log_printf("[USBCTRL] not enough space for config descriptor !!!\n");
         errcode = MBED_ERROR_UNSUPORTED_CMD;
         *desc_size = 0;
-        /*@ assert ((class_desc_size + descriptor_size) > MAX_DESCRIPTOR_LEN); */
+        /*@ assert ((class_desc_size + descriptor_size) >= MAX_DESCRIPTOR_LEN); */
         goto err;
     }
     /*@ assert class_desc_size + descriptor_size <= MAX_DESCRIPTOR_LEN; */
@@ -305,11 +308,10 @@ err:
 }
 
 /*@
-  @ requires \separated(&SIZE_DESC_FIXED, &FLAG, composite, buf+(..),curr_offset, ctx + (..));
+  @ requires \separated(&SIZE_DESC_FIXED, &FLAG, composite, buf+(0 .. MAX_DESCRIPTOR_LEN-1),curr_offset, ctx + (..));
   @ requires \valid(composite);
   @ requires iface_id < ctx->cfg[ctx->curr_cfg].interface_num;
-  @ requires \valid(buf + (0 .. sizeof(usbctrl_iad_descriptor_t)-1));
-
+  @ requires \valid(buf + (0 .. MAX_DESCRIPTOR_LEN-1));
   @ assigns *composite;
   @ assigns buf[0 .. MAX_DESCRIPTOR_LEN-1 ];
   @ assigns *curr_offset;
@@ -326,6 +328,12 @@ err:
   @   ensures \result == MBED_ERROR_NONE ;
   @   ensures *composite == \false;
 
+  @ behavior alreadycomposite:
+  @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
+  @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true);
+  @   assumes (*composite == \true);
+  @   assumes (composite_id == ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id) ;
+  @   ensures \result == MBED_ERROR_NONE ;
 
   @ behavior newcomposite_NOSTORAGE:
   @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
@@ -342,15 +350,12 @@ err:
   @   assumes (*curr_offset <= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
   @   ensures \result == MBED_ERROR_NONE ;
 
-
-
   @ behavior curcomposite_NOSTORAGE:
   @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
   @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true);
   @   assumes (*composite == \true);
   @   assumes (composite_id != ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id) ;
   @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
-  @   ensures *composite == \old(*composite);
   @   ensures \result == MBED_ERROR_NOSTORAGE ;
 
   @ behavior curcomposite_OK:
@@ -359,14 +364,6 @@ err:
   @   assumes (*composite == \true);
   @   assumes (composite_id != ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id) ;
   @   assumes (*curr_offset <= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
-  @   ensures \result == MBED_ERROR_NONE ;
-
-  @ behavior alreadycomposite_OK:
-  @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
-  @   assumes (ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function == \true);
-  @   assumes (*composite == \true);
-  @   assumes (composite_id == ctx->cfg[ctx->curr_cfg].interfaces[iface_id].composite_function_id) ;
-  @   ensures *composite == \old(*composite);
   @   ensures \result == MBED_ERROR_NONE ;
 
   @ complete behaviors ;
@@ -391,44 +388,46 @@ mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
-    bool iad_header_requested = false;
 
+    /* current iface is a part of a composite function  */
     if (ctx->cfg[curr_cfg].interfaces[iface_id].composite_function == true) {
-        /* already composite or new composite ? */
-        if (*composite == false) {
-            /* new composite block after non-composite. iad header requested */
-            iad_header_requested = true;
-        } else if (*composite == true && composite_id != ctx->cfg[curr_cfg].interfaces[iface_id].composite_function_id) {
-            /* new composite block, after previous already composite one. iad header requested */
-            iad_header_requested = true;
+        /* the composite function associated to current iface already has its header... */
+        if (*composite == true && composite_id == ctx->cfg[curr_cfg].interfaces[iface_id].composite_function_id) {
+            goto err;
         }
-        if (iad_header_requested == true) {
-            /* overflow check */
-            if (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_iad_descriptor_t))) {
-                errcode = MBED_ERROR_NOSTORAGE;
-                goto err;
-            }
+        /* overflow check */
+        if (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_iad_descriptor_t))) {
+            errcode = MBED_ERROR_NOSTORAGE;
+            goto err;
+        }
 
-            /* new function: new IAD */
-            /* composite ifaces start with 0 */
-            usbctrl_iad_descriptor_t *cfg = (usbctrl_iad_descriptor_t*)&(buf[*curr_offset]);
-            cfg->bLength = sizeof(usbctrl_iad_descriptor_t);
-            cfg->bDescriptorType = USB_DESC_IAD;
-            cfg->bFirstInterface = iface_id;
-            /* specify number of interfaces of this composite function */
-            cfg->bInterfaceCount = 0;
-            for (uint8_t i = iface_id; i < ctx->cfg[curr_cfg].interface_num; ++i) {
-                if (ctx->cfg[curr_cfg].interfaces[i].composite_function && ctx->cfg[curr_cfg].interfaces[i].composite_function_id == composite_id) {
-                    cfg->bInterfaceCount++;
-                }
+        /* new function: new IAD */
+        /* composite ifaces start with 0 */
+        /*@ assert *curr_offset < (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_iad_descriptor_t));*/
+        usbctrl_iad_descriptor_t *cfg = (usbctrl_iad_descriptor_t*)&(buf[*curr_offset]);
+        cfg->bLength = sizeof(usbctrl_iad_descriptor_t);
+        cfg->bDescriptorType = USB_DESC_IAD;
+        cfg->bFirstInterface = iface_id;
+        /* specify number of interfaces of this composite function */
+        cfg->bInterfaceCount = 0;
+        uint8_t count = 0;
+        /*@
+          @ loop invariant iface_id <= i <= ctx->cfg[curr_cfg].interface_num;
+          @ loop assigns i, count;
+          @ loop variant ctx->cfg[curr_cfg].interface_num - i;
+          */
+        for (uint8_t i = iface_id; i < ctx->cfg[curr_cfg].interface_num; ++i) {
+            if (ctx->cfg[curr_cfg].interfaces[i].composite_function && ctx->cfg[curr_cfg].interfaces[i].composite_function_id == composite_id) {
+                count++;
             }
-            /* composite parent class, subclass and protocol is the one of the master interface of the composite device */
-            cfg->bFunctionClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_class;
-            cfg->bFunctionSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
-            cfg->bFunctionProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
-            cfg->iFunction = 0x04;
-            *curr_offset += sizeof(usbctrl_iad_descriptor_t);
         }
+        cfg->bInterfaceCount = count;
+        /* composite parent class, subclass and protocol is the one of the master interface of the composite device */
+        cfg->bFunctionClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_class;
+        cfg->bFunctionSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
+        cfg->bFunctionProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
+        cfg->iFunction = 0x04;
+        *curr_offset += sizeof(usbctrl_iad_descriptor_t);
     } else {
         /* current iface is not composite ? */
         *composite = false;
@@ -924,8 +923,10 @@ err:
  */
 
 /*@
-    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),desc_size+(..),ctx+(..),pkt+(..));
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(0 .. MAX_DESCRIPTOR_LEN-1),desc_size+(..),ctx+(..),pkt+(..));
     @ assigns ctx->curr_cfg;
+    @ assigns buf[0 .. MAX_DESCRIPTOR_LEN-1];
+    @ assigns *desc_size;
 
     @ behavior invaparam:
     @   assumes  (buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;

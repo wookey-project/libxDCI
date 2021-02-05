@@ -84,7 +84,7 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)))
      * plane state must not be lost but the device can enter sleep mode until a RESUME event (handle_wakeup()) is
      * received. As a consequence, here we enter the corresponding SUSPENDED state and wait for the resume event.
      * Other events (but reset) are discarded. */
-    
+
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_BUS_INACTIVE, ctx)) {
         log_printf("[USBCTRL] USUSPEND transition is invalid in current state !\n");
         errcode = MBED_ERROR_INVSTATE;
@@ -450,27 +450,27 @@ err:
 
      @ behavior bad_ep:
      @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-     @   assumes !(ep < USBOTGHS_MAX_OUT_EP) ;
+     @   assumes !(ep < USB_BACKEND_DRV_MAX_OUT_EP) ;
      @   assigns GHOST_idx_ctx;
      @   ensures \result == MBED_ERROR_NONE ;
 
      @ behavior state_USB_BACKEND_DRV_EP_STATE_SETUP_size_inferior_8 :
      @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-     @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+     @   assumes (ep < USB_BACKEND_DRV_MAX_OUT_EP) ;
      @   assumes GHOST_out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP;
      @   assumes size < 8 ;
      @   ensures is_valid_error(\result);
 
      @ behavior state_USB_BACKEND_DRV_EP_STATE_SETUP_size_other :
      @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-     @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+     @   assumes (ep < USB_BACKEND_DRV_MAX_OUT_EP) ;
      @   assumes GHOST_out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_SETUP;
      @   assumes size >= 8 ;
      @   ensures is_valid_error(\result);
 
      @ behavior state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_0:
      @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-     @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+     @   assumes (ep < USB_BACKEND_DRV_MAX_OUT_EP) ;
      @   assumes size == 0 ;
      @   assumes GHOST_out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT;
      @   assigns GHOST_idx_ctx, GHOST_opaque_drv_privates;
@@ -478,7 +478,7 @@ err:
 
      @ behavior state_USB_BACKEND_DRV_EP_STATE_DATA_OUT_size_not_0:
      @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-     @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+     @   assumes (ep < USB_BACKEND_DRV_MAX_OUT_EP) ;
      @   assumes GHOST_out_eps[ep].state == USB_BACKEND_DRV_EP_STATE_DATA_OUT;
      @   assumes size != 0 ;
 	 @   assigns GHOST_idx_ctx, GHOST_opaque_drv_privates;
@@ -486,7 +486,7 @@ err:
 
      @ behavior defaults_in_state:
      @   assumes \exists integer i ; 0 <= i < GHOST_num_ctx && ctx_list[i].dev_id == dev_id ;
-     @   assumes (ep < USBOTGHS_MAX_OUT_EP) ;
+     @   assumes (ep < USB_BACKEND_DRV_MAX_OUT_EP) ;
      @   assumes GHOST_out_eps[ep].state != USB_BACKEND_DRV_EP_STATE_DATA_OUT;
      @   assumes GHOST_out_eps[ep].state != USB_BACKEND_DRV_EP_STATE_SETUP;
      @   assigns GHOST_idx_ctx, GHOST_opaque_drv_privates;
@@ -521,7 +521,7 @@ mbed_error_t usbctrl_handle_outepevent(uint32_t dev_id, uint32_t size, uint8_t e
 
     switch (usb_backend_drv_get_ep_state(ep, USB_BACKEND_DRV_EP_DIR_OUT)) {
         case USB_BACKEND_DRV_EP_STATE_SETUP:
-            /*@ assert (ep < USBOTGHS_MAX_OUT_EP) ; */
+            /*@ assert (ep < USB_BACKEND_DRV_MAX_OUT_EP) ; */
             log_printf("[LIBCTRL] oepint: a setup pkt transfert has been fully received. Handle it !\n");
 
             if (size < 8) {
@@ -660,7 +660,7 @@ mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id __attribute__((unused)))
      * plane state must not be lost but the device can enter sleep mode until a RESUME event (handle_wakeup()) is
      * received. As a consequence, here we enter the corresponding SUSPENDED state and wait for the resume event.
      * Other events (but reset) are discarded. */
-    
+
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_BUS_ACTIVE, ctx)) {
         log_printf("[USBCTRL] WAKEUP transition is invalid in current state !\n");
         errcode = MBED_ERROR_INVSTATE;
