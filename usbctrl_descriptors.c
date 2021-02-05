@@ -689,7 +689,7 @@ mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t const 
 
     mbed_error_t errcode = MBED_ERROR_NONE;
 
-    uint8_t poll ;
+    uint8_t poll = 0;
 
     if (buf == NULL || curr_offset == NULL || ctx == NULL) {
         errcode = MBED_ERROR_INVPARAM;
@@ -753,15 +753,15 @@ mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t const 
             }
             /* binary shift left by 2, to handle (interval-1)*125us from a value in milisecond */
             i+=2;
-            cfg->bInterval = i;
+            poll = i;
         } else {
             /* in Fullspeed, the bInterval field is directly set in ms, between 1 and 255 */
-            cfg->bInterval = poll;
         }
     } else {
         /* for BULK EP, we set bInterval to 0 */
-        cfg->bInterval = 0;
+        poll = 0;
     }
+    cfg->bInterval = poll;
     *curr_offset += sizeof(usbctrl_endpoint_descriptor_t);
     /*@ assert *curr_offset == \at(*curr_offset,Pre) + sizeof(usbctrl_endpoint_descriptor_t) ; */
 
