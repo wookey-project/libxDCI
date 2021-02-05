@@ -819,7 +819,7 @@ mbed_error_t usbctrl_handle_device_desc(uint8_t                   *buf,
     }
     /*@ assert \valid(buf + (0 .. MAX_DESCRIPTOR_LEN-1)); */
     /*@ assert \valid(desc_size); */
-    /*@ assert \valid(ctx); */
+    /*@ assert \valid_read(ctx); */
 
     /*@ assert sizeof(usbctrl_device_descriptor_t) < MAX_DESCRIPTOR_LEN; */
 
