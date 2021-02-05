@@ -438,24 +438,26 @@ err:
 
 /*@
     @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset, ctx + (..));
+    @ assigns buf[0 .. MAX_DESCRIPTOR_LEN-1 ];
+    @ assigns *curr_offset;
 
     @ behavior INVPARAM:
     @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
-    @   assigns \nothing ;
+    @   ensures *curr_offset == \old(*curr_offset);
 
     @ behavior NOSTORAGE:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
     @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
     @   ensures \result == MBED_ERROR_NOSTORAGE ;
-    @   assigns \nothing ;
+    @   ensures *curr_offset == \old(*curr_offset);
 
     @ behavior bad_iface:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
     @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
     @   assumes iface_id >= MAX_INTERFACES_PER_DEVICE ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
-    @   assigns \nothing ;
+    @   ensures *curr_offset == \old(*curr_offset);
 
     @ behavior OK:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
@@ -536,17 +538,21 @@ err:
 
 /*@
     @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset, ctx + (..));
+    @ assigns buf[0 .. MAX_DESCRIPTOR_LEN-1 ];
+    @ assigns *curr_offset, FLAG;
 
     @ behavior INVPARAM:
     @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
-    @   assigns \nothing ;
+    @   ensures *curr_offset == \old(*curr_offset);
+    @   ensures FLAG == \old(FLAG);
 
     @ behavior bad_iface:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
     @   assumes iface_id == 255 ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
-    @   assigns \nothing ;
+    @   ensures *curr_offset == \old(*curr_offset);
+    @   ensures FLAG == \old(FLAG);
 
     @ behavior OTHER:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
@@ -554,7 +560,6 @@ err:
     @   ensures \result == MBED_ERROR_NONE ||
                 (\result == MBED_ERROR_NOBACKEND && (*curr_offset == \old(*curr_offset))) ||
                 (\result == MBED_ERROR_INVPARAM && (*curr_offset == \old(*curr_offset))) ;
-    @   assigns  *curr_offset, FLAG ;
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -639,23 +644,27 @@ err:
 }
 
 /*@
-    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset, ctx + (..));
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(0 .. MAX_DESCRIPTOR_LEN-1),curr_offset, ctx + (..));
+    @ requires iface_id < ctx->cfg[ctx->curr_cfg].interface_num;
+    @ requires \valid(buf + (0 .. MAX_DESCRIPTOR_LEN-1));
 
     @ behavior INVPARAM:
     @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
-    @   assigns \nothing ;
+    @   assigns \nothing;
 
     @ behavior NOSTORAGE:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
-    @   assumes (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
+    @   assumes (*curr_offset >= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
     @   ensures \result == MBED_ERROR_NOSTORAGE ;
-    @   assigns \nothing ;
+    @   assigns \nothing;
 
     @ behavior OK:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
-    @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
+    @   assumes !(*curr_offset >= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
     @   ensures \result == MBED_ERROR_NONE ;
+    @   assigns buf[0 .. MAX_DESCRIPTOR_LEN-1 ];
+    @   assigns *curr_offset;
     @   ensures *curr_offset == \old(*curr_offset) + sizeof(usbctrl_endpoint_descriptor_t) ;
 
     @ complete behaviors ;
@@ -686,7 +695,7 @@ mbed_error_t usbctrl_handle_configuration_write_ep_desc(usbctrl_context_t const 
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
-    if (*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) {
+    if (*curr_offset >= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) {
         errcode = MBED_ERROR_NOSTORAGE;
         goto err;
     }
@@ -773,8 +782,22 @@ err:
  */
 
 /*@
-    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),desc_size+(..),ctx+(..));
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(0 .. MAX_DESCRIPTOR_LEN-1),desc_size,ctx+(..));
     @ ensures *desc_size == sizeof(usbctrl_device_descriptor_t);
+
+    @ behavior INVPARAM:
+    @   assumes (desc_size == \null || buf == \null || ctx == \null) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   assigns \nothing;
+
+    @ behavior ok:
+    @   assumes !(desc_size == \null || buf == \null || ctx == \null) ;
+    @   ensures \result == MBED_ERROR_NONE;
+    @   assigns buf[0 .. sizeof(usbctrl_device_descriptor_t)-1], *desc_size;
+
+    @ disjoint behaviors;
+    @ complete behaviors;
+
 */
 
 /*
@@ -784,12 +807,25 @@ err:
 #ifndef __FRAMAC__
 static
 #endif
-void usbctrl_handle_device_desc(uint8_t                   *buf,
-                                uint32_t                  *desc_size,
-                                usbctrl_context_t const   * const ctx)
+mbed_error_t usbctrl_handle_device_desc(uint8_t                   *buf,
+                                        uint32_t                  *desc_size,
+                                        usbctrl_context_t const   * const ctx)
 {
+    mbed_error_t errcode = MBED_ERROR_NONE;
+
+    if (buf == NULL || desc_size == NULL || ctx == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    /*@ assert \valid(buf + (0 .. MAX_DESCRIPTOR_LEN-1)); */
+    /*@ assert \valid(desc_size); */
+    /*@ assert \valid(ctx); */
+
+    /*@ assert sizeof(usbctrl_device_descriptor_t) < MAX_DESCRIPTOR_LEN; */
+
     log_printf("[USBCTRL] request device desc (num cfg: %d)\n", ctx->num_cfg);
-    usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)buf;
+    /*@ assert MAX_DESCRIPTOR_LEN > sizeof(usbctrl_device_descriptor_t); */
+    usbctrl_device_descriptor_t *desc = (usbctrl_device_descriptor_t*)&(buf[0]);
     desc->bLength = sizeof(usbctrl_device_descriptor_t);
     desc->bDescriptorType = 0x1; /* USB Desc Device */
     desc->bcdUSB = 0x0200; /* USB 2.0 */
@@ -806,6 +842,8 @@ void usbctrl_handle_device_desc(uint8_t                   *buf,
     desc->bNumConfigurations = ctx->num_cfg;
 
     *desc_size = sizeof(usbctrl_device_descriptor_t);
+err:
+    return errcode;
 }
 
 
@@ -814,10 +852,24 @@ void usbctrl_handle_device_desc(uint8_t                   *buf,
  */
 
 /*@
-    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),desc_size+(..),pkt+(..));
-    @ ensures (\result == MBED_ERROR_UNSUPORTED_CMD &&  *desc_size == 0) ||
-         (\result == MBED_ERROR_NONE && (*desc_size == 4 || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER))
-                                    || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME)) || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL) ))) ;
+    @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(0 .. MAX_DESCRIPTOR_LEN-1),desc_size+(..),pkt+(..));
+//    @ ensures (\result == MBED_ERROR_UNSUPORTED_CMD &&  *desc_size == 0) ||
+//         (\result == MBED_ERROR_NONE && (*desc_size == 4 || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER))
+//                                    || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME)) || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL) ))) ;
+
+    @ behavior INVPARAM:
+    @   assumes (desc_size == \null || buf == \null || pkt == \null) ;
+    @   ensures \result == MBED_ERROR_INVPARAM ;
+    @   assigns \nothing;
+
+    @ behavior ok:
+    @   assumes !(desc_size == \null || buf == \null || pkt == \null) ;
+    @   ensures \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_UNSUPORTED_CMD ;
+    @   assigns buf[0 .. sizeof(usbctrl_string_descriptor_t)-1], *desc_size;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
+
 */
 
 /*
@@ -833,22 +885,24 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
                                         __in usbctrl_setup_pkt_t    * const pkt)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    if (buf == NULL || desc_size == NULL || pkt == NULL) {
+        errcode = MBED_ERROR_INVPARAM;
+        goto err;
+    }
+    /*@ assert \valid(buf + (0 .. MAX_DESCRIPTOR_LEN-1)); */
+    /*@ assert \valid(desc_size); */
+    /*@ assert \valid_read(pkt); */
+
+    /*@ assert sizeof(usbctrl_string_descriptor_t) < MAX_DESCRIPTOR_LEN; */
     const char *USB_DEV_MANUFACTURER = CONFIG_USB_DEV_MANUFACTURER;
     const char *USB_DEV_PRODNAME = CONFIG_USB_DEV_PRODNAME;
     const char *USB_DEV_SERIAL = CONFIG_USB_DEV_SERIAL;
-    *desc_size = 0;
-    uint32_t descriptor_size = sizeof(usbctrl_string_descriptor_t);
-    if (descriptor_size > MAX_DESCRIPTOR_LEN) {
-        log_printf("[USBCTRL] not enough space for string descriptor !!!\n");
-        errcode = MBED_ERROR_UNSUPORTED_CMD;
-        *desc_size = 0;
-        goto err;
-    }
-    log_printf("[USBCTRL] create string desc of size %d\n", descriptor_size);
-    uint8_t *string_desc = buf;
-    usbctrl_string_descriptor_t *cfg = (usbctrl_string_descriptor_t *)&(string_desc[0]);
     uint8_t string_type = pkt->wValue & 0xff;
+
+    log_printf("[USBCTRL] create string desc of size %d\n", descriptor_size);
+    usbctrl_string_descriptor_t *cfg = (usbctrl_string_descriptor_t *)&(buf[0]);
     cfg->bDescriptorType = USB_DESC_STRING;
+    uint32_t maxlen = 0;
     /* INFO:  UTF16 double each size */
 
     switch (string_type) {
@@ -860,51 +914,53 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
 
 
         case CONFIG_USB_DEV_MANUFACTURER_INDEX:
-            cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER);
+            maxlen = (sizeof(CONFIG_USB_DEV_MANUFACTURER) > 32 ? 32 : sizeof(CONFIG_USB_DEV_MANUFACTURER));
+            cfg->bLength = 2 + 2 * maxlen;
 
             /*@
-              @ loop invariant \valid(cfg->wString + (0..(sizeof(USB_DEV_MANUFACTURER)-1)));
+              @ loop invariant \valid(cfg->wString + (0..maxlen-1));
               @ loop invariant \valid_read(USB_DEV_MANUFACTURER + (0..(sizeof(CONFIG_USB_DEV_MANUFACTURER)-1)));
-              @ loop invariant 0 <= i <= sizeof(CONFIG_USB_DEV_MANUFACTURER) ;
+              @ loop invariant 0 <= i <= maxlen ;
               @ loop assigns i, *cfg ;
-              @ loop variant sizeof(CONFIG_USB_DEV_MANUFACTURER) - i ;
+              @ loop variant maxlen - i ;
               */
-
-            for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_MANUFACTURER); ++i) {
+            for (uint32_t i = 0; i < maxlen; ++i) {
                 cfg->wString[i] = USB_DEV_MANUFACTURER[i];
             }
-            *desc_size = 2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER);
+            *desc_size = 2 + 2 * maxlen;
             break;
         case CONFIG_USB_DEV_PRODNAME_INDEX:
-            cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME);
+            maxlen = (sizeof(CONFIG_USB_DEV_PRODNAME) > 32 ? 32 : sizeof(CONFIG_USB_DEV_PRODNAME));
+            cfg->bLength = 2 + 2 * maxlen;
 
             /*@
-              @ loop invariant \valid(cfg->wString + (0..(sizeof(CONFIG_USB_DEV_PRODNAME)-1)));
+              @ loop invariant \valid(cfg->wString + (0..maxlen-1));
               @ loop invariant \valid_read(USB_DEV_PRODNAME + (0..(sizeof(CONFIG_USB_DEV_PRODNAME)-1)));
-              @ loop invariant 0 <= i <= sizeof(CONFIG_USB_DEV_PRODNAME) ;
+              @ loop invariant 0 <= i <= maxlen ;
               @ loop assigns i, *cfg ;
-              @ loop variant sizeof(CONFIG_USB_DEV_PRODNAME) - i ;
+              @ loop variant maxlen - i ;
               */
 
-            for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_PRODNAME); ++i) {
+            for (uint32_t i = 0; i < maxlen; ++i) {
                 cfg->wString[i] = USB_DEV_PRODNAME[i];
             }
-            *desc_size = 2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME);
+            *desc_size = 2 + 2 * maxlen;
             break;
         case CONFIG_USB_DEV_SERIAL_INDEX:
-            cfg->bLength = 2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL);
+            maxlen = (sizeof(CONFIG_USB_DEV_SERIAL) > 32 ? 32 : sizeof(CONFIG_USB_DEV_SERIAL));
+            cfg->bLength = 2 + 2 * maxlen;
 
             /*@
-              @ loop invariant \valid(cfg->wString + (0..(sizeof(CONFIG_USB_DEV_SERIAL)-1)));
+              @ loop invariant \valid(cfg->wString + (0..maxlen-1));
               @ loop invariant \valid_read(USB_DEV_SERIAL + (0..(sizeof(CONFIG_USB_DEV_SERIAL)-1)));
-              @ loop invariant 0 <= i <= sizeof(CONFIG_USB_DEV_SERIAL) ;
+              @ loop invariant 0 <= i <= maxlen ;
               @ loop assigns i, *cfg ;
-              @ loop variant sizeof(CONFIG_USB_DEV_SERIAL) - i ;
+              @ loop variant maxlen - i ;
               */
-            for (uint32_t i = 0; i < sizeof(CONFIG_USB_DEV_SERIAL); ++i) {
+            for (uint32_t i = 0; i < maxlen; ++i) {
                 cfg->wString[i] = USB_DEV_SERIAL[i];
             }
-            *desc_size = 2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL);
+            *desc_size = 2 + 2 * maxlen;
             break;
         default:
             log_printf("[USBCTRL] Unsupported string index requested.\n");
@@ -927,6 +983,7 @@ err:
     @ assigns ctx->curr_cfg;
     @ assigns buf[0 .. MAX_DESCRIPTOR_LEN-1];
     @ assigns *desc_size;
+    @ assigns SIZE_DESC_FIXED, FLAG;
 
     @ behavior invaparam:
     @   assumes  (buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
