@@ -783,7 +783,9 @@ err:
 
 /*@
     @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(0 .. MAX_DESCRIPTOR_LEN-1),desc_size,ctx+(..));
-    @ ensures *desc_size == sizeof(usbctrl_device_descriptor_t);
+    @ requires \valid(buf + (0 .. MAX_DESCRIPTOR_LEN-1));
+    @ assigns buf[0 .. MAX_DESCRIPTOR_LEN-1];
+    @ assigns *desc_size;
 
     @ behavior INVPARAM:
     @   assumes (desc_size == \null || buf == \null || ctx == \null) ;
@@ -793,7 +795,6 @@ err:
     @ behavior ok:
     @   assumes !(desc_size == \null || buf == \null || ctx == \null) ;
     @   ensures \result == MBED_ERROR_NONE;
-    @   assigns buf[0 .. sizeof(usbctrl_device_descriptor_t)-1], *desc_size;
 
     @ disjoint behaviors;
     @ complete behaviors;
@@ -832,7 +833,8 @@ mbed_error_t usbctrl_handle_device_desc(uint8_t                   *buf,
     desc->bDeviceClass = 0; /* replaced by default iface */
     desc->bDeviceSubClass = 0;
     desc->bDeviceProtocol = 0;
-    desc->bMaxPacketSize = 64; /* on EP0 */
+    desc->bMaxPacketSize = 64; /* on EP0. TODO: requests MPsize from driver, depends on speed negociation,
+                                  HS & FS supports 64, but FS allows smaller mpsize. */
     desc->idVendor = CONFIG_USR_LIB_USBCTRL_DEV_VENDORID;
     desc->idProduct = CONFIG_USR_LIB_USBCTRL_DEV_PRODUCTID;
     desc->bcdDevice = 0x000;
@@ -862,9 +864,22 @@ err:
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @   assigns \nothing;
 
+    @ behavior INVCMD:
+    @ assumes !(desc_size == \null || buf == \null || pkt == \null) ;
+    @ assumes (((pkt->wValue & 0xff) != (uint16_t)0x0) &&
+               ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_MANUFACTURER_INDEX) &&
+               ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_PRODNAME_INDEX) &&
+               ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_SERIAL_INDEX));
+    @ ensures \result == MBED_ERROR_UNSUPORTED_CMD;
+    @ assigns \nothing;
+
     @ behavior ok:
     @   assumes !(desc_size == \null || buf == \null || pkt == \null) ;
-    @   ensures \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_UNSUPORTED_CMD ;
+    @   assumes !(((pkt->wValue & 0xff) != (uint16_t)0x0) &&
+                ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_MANUFACTURER_INDEX) &&
+                ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_PRODNAME_INDEX) &&
+                ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_SERIAL_INDEX));
+    @   ensures \result == MBED_ERROR_NONE;
     @   assigns buf[0 .. sizeof(usbctrl_string_descriptor_t)-1], *desc_size;
 
     @ complete behaviors;
@@ -882,7 +897,7 @@ static
 #endif
 mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
                                         __out uint32_t              *desc_size,
-                                        __in usbctrl_setup_pkt_t    * const pkt)
+                                        __in  usbctrl_setup_pkt_t  const  * const pkt)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
     if (buf == NULL || desc_size == NULL || pkt == NULL) {
@@ -901,25 +916,23 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
 
     log_printf("[USBCTRL] create string desc of size %d\n", descriptor_size);
     usbctrl_string_descriptor_t *cfg = (usbctrl_string_descriptor_t *)&(buf[0]);
-    cfg->bDescriptorType = USB_DESC_STRING;
     uint32_t maxlen = 0;
     /* INFO:  UTF16 double each size */
 
     switch (string_type) {
         case 0:
+            cfg->bDescriptorType = USB_DESC_STRING;
             cfg->bLength = 4;
             cfg->wString[0] = LANGUAGE_ENGLISH;
             *desc_size = 4;
             break;
 
-
         case CONFIG_USB_DEV_MANUFACTURER_INDEX:
             maxlen = (sizeof(CONFIG_USB_DEV_MANUFACTURER) > 32 ? 32 : sizeof(CONFIG_USB_DEV_MANUFACTURER));
+            cfg->bDescriptorType = USB_DESC_STRING;
             cfg->bLength = 2 + 2 * maxlen;
 
             /*@
-              @ loop invariant \valid(cfg->wString + (0..maxlen-1));
-              @ loop invariant \valid_read(USB_DEV_MANUFACTURER + (0..(sizeof(CONFIG_USB_DEV_MANUFACTURER)-1)));
               @ loop invariant 0 <= i <= maxlen ;
               @ loop assigns i, *cfg ;
               @ loop variant maxlen - i ;
@@ -928,31 +941,32 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
                 cfg->wString[i] = USB_DEV_MANUFACTURER[i];
             }
             *desc_size = 2 + 2 * maxlen;
+            goto err;
             break;
+
         case CONFIG_USB_DEV_PRODNAME_INDEX:
             maxlen = (sizeof(CONFIG_USB_DEV_PRODNAME) > 32 ? 32 : sizeof(CONFIG_USB_DEV_PRODNAME));
+            cfg->bDescriptorType = USB_DESC_STRING;
             cfg->bLength = 2 + 2 * maxlen;
 
             /*@
-              @ loop invariant \valid(cfg->wString + (0..maxlen-1));
-              @ loop invariant \valid_read(USB_DEV_PRODNAME + (0..(sizeof(CONFIG_USB_DEV_PRODNAME)-1)));
               @ loop invariant 0 <= i <= maxlen ;
               @ loop assigns i, *cfg ;
               @ loop variant maxlen - i ;
               */
-
             for (uint32_t i = 0; i < maxlen; ++i) {
                 cfg->wString[i] = USB_DEV_PRODNAME[i];
             }
             *desc_size = 2 + 2 * maxlen;
+            goto err;
             break;
+
         case CONFIG_USB_DEV_SERIAL_INDEX:
             maxlen = (sizeof(CONFIG_USB_DEV_SERIAL) > 32 ? 32 : sizeof(CONFIG_USB_DEV_SERIAL));
+            cfg->bDescriptorType = USB_DESC_STRING;
             cfg->bLength = 2 + 2 * maxlen;
 
             /*@
-              @ loop invariant \valid(cfg->wString + (0..maxlen-1));
-              @ loop invariant \valid_read(USB_DEV_SERIAL + (0..(sizeof(CONFIG_USB_DEV_SERIAL)-1)));
               @ loop invariant 0 <= i <= maxlen ;
               @ loop assigns i, *cfg ;
               @ loop variant maxlen - i ;
@@ -961,7 +975,9 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
                 cfg->wString[i] = USB_DEV_SERIAL[i];
             }
             *desc_size = 2 + 2 * maxlen;
+            goto err;
             break;
+
         default:
             log_printf("[USBCTRL] Unsupported string index requested.\n");
             errcode = MBED_ERROR_UNSUPORTED_CMD;
