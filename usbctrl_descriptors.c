@@ -365,6 +365,53 @@ err:
     return errcode;
 }
 
+
+/*@
+    @ requires \valid(cfg) && \valid_read(buf + (0 .. sizeof(usbctrl_iad_descriptor_t)-1)) ;
+    @ assigns *cfg ;
+ */
+#ifndef __FRAMAC__
+static inline
+#endif
+void usbctrl_iad_desc_from_buff(__out usbctrl_iad_descriptor_t *cfg, __in const uint8_t *buf)
+{
+    cfg->bLength            = buf[0];
+    cfg->bDescriptorType    = buf[1];
+    cfg->bFirstInterface    = buf[2];
+    cfg->bInterfaceCount    = buf[3];
+    cfg->bFunctionClass     = buf[4];
+    cfg->bFunctionSubClass  = buf[5];
+    cfg->bFunctionProtocol  = buf[6];
+    cfg->iFunction          = buf[7];
+
+    return;
+}
+
+
+/*@
+    @ requires \valid_read(cfg) && \valid(buf + (0 .. sizeof(usbctrl_iad_descriptor_t)-1)) ;
+    @ assigns buf[0 .. sizeof(usbctrl_iad_descriptor_t)-1] ;
+ */
+#ifndef __FRAMAC__
+static inline
+#endif
+void usbctrl_iad_desc_to_buff(__in const usbctrl_iad_descriptor_t *cfg, __out uint8_t *buf)
+{
+    buf[0] = cfg->bLength;
+    buf[1] = cfg->bDescriptorType;
+    buf[2] = cfg->bFirstInterface;
+    buf[3] = cfg->bInterfaceCount;
+    buf[4] = cfg->bFunctionClass;
+    buf[5] = cfg->bFunctionSubClass;
+    buf[6] = cfg->bFunctionProtocol;
+    buf[7] = cfg->iFunction;
+
+    return;
+}
+
+
+
+
 /*@
   @ requires \separated(&SIZE_DESC_FIXED, &FLAG, composite, buf+(0 .. MAX_DESCRIPTOR_LEN-1),curr_offset, ctx + (..));
   @ requires \valid(composite);
@@ -462,7 +509,11 @@ mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
         /* new function: new IAD */
         /* composite ifaces start with 0 */
         /*@ assert *curr_offset < (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_iad_descriptor_t));*/
-        usbctrl_iad_descriptor_t *cfg = (usbctrl_iad_descriptor_t*)&(buf[*curr_offset]);
+        //usbctrl_iad_descriptor_t *cfg = (usbctrl_iad_descriptor_t*)&(buf[*curr_offset]);
+        usbctrl_iad_descriptor_t _cfg;
+        usbctrl_iad_descriptor_t *cfg = &_cfg;
+        usbctrl_iad_desc_from_buff(cfg, (uint8_t*)&(buf[*curr_offset]));
+
         cfg->bLength = sizeof(usbctrl_iad_descriptor_t);
         cfg->bDescriptorType = USB_DESC_IAD;
         cfg->bFirstInterface = iface_id;
@@ -485,6 +536,9 @@ mbed_error_t usbctrl_handle_configuration_write_iad_desc(uint8_t *buf,
         cfg->bFunctionSubClass = ctx->cfg[curr_cfg].interfaces[iface_id].usb_subclass;
         cfg->bFunctionProtocol = ctx->cfg[curr_cfg].interfaces[iface_id].usb_protocol;
         cfg->iFunction = 0x04;
+
+        usbctrl_iad_desc_from_buff(cfg, (uint8_t*)&(buf[*curr_offset]));
+
         *curr_offset += sizeof(usbctrl_iad_descriptor_t);
         /*@ assert *curr_offset == \at(*curr_offset,Pre) + sizeof(usbctrl_iad_descriptor_t) ; */
     } else {
