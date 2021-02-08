@@ -1444,7 +1444,8 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             uint8_t composite_id = 0;
             /*@
               @ loop invariant 0 <= iface_id <= iface_num;
-              @ loop assigns max_ep_number, iface_id, errcode, composite, buf[0 .. MAX_DESCRIPTOR_LEN-1 ], curr_offset;
+              @ loop invariant \separated(&SIZE_DESC_FIXED, &FLAG, &composite, buf + (0 .. MAX_DESCRIPTOR_LEN-1), &curr_offset, &max_ep_number, &iface_id, &errcode, ctx_list + (0 .. MAX_USB_CTRL_CTX-1));
+              @ loop assigns max_ep_number, iface_id, errcode, composite, buf[0 .. MAX_DESCRIPTOR_LEN-1 ], curr_offset, FLAG;
               @ loop variant iface_num - iface_id;
              */
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
