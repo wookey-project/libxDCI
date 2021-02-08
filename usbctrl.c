@@ -655,6 +655,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].dir = iface->eps[0].dir ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].pkt_maxsize = iface->eps[0].pkt_maxsize ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].handler = iface->eps[0].handler ;
+       ctx->cfg[iface_config].interfaces[iface_num].eps[1].handler = iface->eps[1].handler ;
        ctx->cfg[iface_config].interfaces[iface_num].rqst_handler = iface->rqst_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].class_desc_handler = iface->class_desc_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].poll_interval = iface->eps[0].poll_interval ;
