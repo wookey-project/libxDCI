@@ -851,24 +851,24 @@ err:
     @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(0 .. MAX_DESCRIPTOR_LEN-1),curr_offset, ctx + (..));
     @ requires iface_id < ctx->cfg[ctx->curr_cfg].interface_num;
     @ requires \valid(buf + (0 .. MAX_DESCRIPTOR_LEN-1));
+    @ assigns buf[0 .. MAX_DESCRIPTOR_LEN-1 ];
+    @ assigns *curr_offset;
 
     @ behavior INVPARAM:
     @   assumes (curr_offset == \null || buf == \null || ctx == \null) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
-    @   assigns \nothing;
+    @   ensures *curr_offset == \old(*curr_offset) ;
 
     @ behavior NOSTORAGE:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
     @   assumes (*curr_offset >= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
     @   ensures \result == MBED_ERROR_NOSTORAGE ;
-    @   assigns \nothing;
+    @   ensures *curr_offset == \old(*curr_offset) ;
 
     @ behavior OK:
     @   assumes !(curr_offset == \null || buf == \null || ctx == \null) ;
     @   assumes !(*curr_offset >= (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_endpoint_descriptor_t))) ;
     @   ensures \result == MBED_ERROR_NONE ;
-    @   assigns buf[0 .. MAX_DESCRIPTOR_LEN-1 ];
-    @   assigns *curr_offset;
     @   ensures *curr_offset == \old(*curr_offset) + sizeof(usbctrl_endpoint_descriptor_t) ;
 
     @ complete behaviors ;
@@ -1247,12 +1247,14 @@ err:
     @ behavior USB_DESC_INTERFACE:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_INTERFACE ;
-    @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;
+    @   ensures  \result == MBED_ERROR_NONE || \result == MBED_ERROR_NOSTORAGE || \result == MBED_ERROR_INVPARAM ;
+    // we may increase precision here for each return value
 
     @ behavior USB_DESC_ENDPOINT:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
     @   assumes type == USB_DESC_ENDPOINT ;
-    @   ensures  \result == MBED_ERROR_NONE && *desc_size == 0 ;
+    @   ensures  \result == MBED_ERROR_NONE || \result == MBED_ERROR_NOSTORAGE || \result == MBED_ERROR_INVPARAM ;
+    // we may increase precision here for each return value
 
     @ behavior USB_DESC_STRING:
     @   assumes !(buf == \null || ctx == \null || desc_size == \null || pkt == \null ) ;
@@ -1311,7 +1313,9 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
-
+    /*@ assert \valid(buf + (0 .. MAX_DESCRIPTOR_LEN-1)); */
+    /*@ assert \valid(desc_size); */
+    /*@ assert \valid_read(ctx); */
 
     switch (type) {
         case USB_DESC_DEVICE: {
@@ -1330,12 +1334,21 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
             uint8_t max_ep_number;  // new variable for variant and invariant proof
             uint8_t target_ep = (pkt->wValue & 0xff);
 
+            /*@
+              @ loop invariant 0 <= iface_id <= iface_num;
+              @ loop assigns max_ep_number, iface_id, errcode, buf[0 .. MAX_DESCRIPTOR_LEN-1 ], *desc_size;
+              @ loop variant iface_num - iface_id;
+             */
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
-
-                /*
-                 * FRAMAC todo
-                 */
                 max_ep_number = ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;  // variable change in loop
+                /*@
+                  @ loop invariant 0 <= ep_number <= max_ep_number;
+                  @ loop invariant 0 <= iface_id <= iface_num;
+                  @ loop invariant iface_num - iface_id;
+                  @ loop invariant max_ep_number == ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;
+                  @ loop assigns ep_number, errcode, buf[0 .. MAX_DESCRIPTOR_LEN-1 ], *desc_size;
+                  @ loop variant max_ep_number - ep_number;
+                  */
                 for (uint8_t ep_number = 0; ep_number < max_ep_number; ++ep_number) {
                     if (ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].ep_num == target_ep) {
                         uint8_t ep_dir = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].dir;
@@ -1429,8 +1442,11 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
             bool composite = false;
             uint8_t composite_id = 0;
-            // XXX: see iad descriptor function comment
-            // uint8_t effective_iface_id = 0;
+            /*@
+              @ loop invariant 0 <= iface_id <= iface_num;
+              @ loop assigns max_ep_number, iface_id, errcode, composite, buf[0 .. MAX_DESCRIPTOR_LEN-1 ], curr_offset;
+              @ loop variant iface_num - iface_id;
+             */
             for (uint8_t iface_id = 0; iface_id < iface_num; ++iface_id) {
                 /*
                  * for each interface, we first need to add the interface descriptor
@@ -1464,14 +1480,13 @@ mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,
 
                 max_ep_number = ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number ;  // variable change in loop
 
-                /* @
-                   @ loop invariant \at(max_ep_number,LoopEntry) == \at(max_ep_number,LoopCurrent) ;
-                   @ loop invariant 0 <= ep_number <= max_ep_number ;
-                   @ loop invariant \valid_read(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1))) ;
-                   @ loop invariant \valid(buf + (0..255));
-                   @ loop invariant \separated(ctx->cfg[curr_cfg].interfaces[iface_id].eps + (0..(ctx->cfg[curr_cfg].interfaces[iface_id].usb_ep_number - 1)),buf + (0..255));
-                   */
-
+                /*@
+                  @ loop invariant 0 <= iface_id <= iface_num;
+                  @ loop invariant 0 <= ep_number <= max_ep_number;
+                  @ loop invariant \separated(buf + (0 .. MAX_DESCRIPTOR_LEN-1), &curr_offset, &ep_number, &errcode, ctx_list + (0 .. MAX_USB_CTRL_CTX-1));
+                  @ loop assigns buf[0 .. MAX_DESCRIPTOR_LEN-1], curr_offset, ep_number, errcode;
+                  @ loop variant max_ep_number - ep_number;
+                  */
                 for (uint8_t ep_number = 0; ep_number < max_ep_number; ++ep_number) {
 
                     usb_ep_dir_t ep_dir = ctx->cfg[curr_cfg].interfaces[iface_id].eps[ep_number].dir;

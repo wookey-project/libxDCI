@@ -407,18 +407,41 @@ void test_fcn_usbctrl_erreur(){
                                          ctx != ctx_list[i] for error_not_found in get_handler
     */
 
-    uint8_t buf[255] = {0} ;
     uint32_t desc_size = 0 ;
     usbctrl_context_t ctx1 = {1} ;
 
-    usbctrl_get_descriptor(9,&buf[0],&desc_size,&ctx1, &pkt);
-    usbctrl_get_descriptor(USB_DESC_DEV_QUALIFIER,&buf[0],&desc_size,&ctx1, &pkt);
-    usbctrl_get_descriptor(USB_DESC_OTHER_SPEED_CFG,&buf[0],&desc_size,&ctx1, &pkt);
-    usbctrl_get_descriptor(USB_DESC_IFACE_POWER,&buf[0],&desc_size,&ctx1, &pkt);
+    /* when emulating get_descriptor() call, input buffer is always filled will 0x0 values, as
+     * nominal call is made with caller setting memset buffer onstack for each call */
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(9,&buf[0],&desc_size,&ctx1, &pkt);
+    }
+
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(USB_DESC_DEV_QUALIFIER,&buf[0],&desc_size,&ctx1, &pkt);
+    }
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(USB_DESC_OTHER_SPEED_CFG,&buf[0],&desc_size,&ctx1, &pkt);
+    }
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(USB_DESC_IFACE_POWER,&buf[0],&desc_size,&ctx1, &pkt);
+    }
     usbctrl_get_descriptor(1,NULL,&desc_size,&ctx1, &pkt);
-    usbctrl_get_descriptor(1,&buf[0],NULL,&ctx1, &pkt);
-    usbctrl_get_descriptor(1,&buf[0],&desc_size,NULL, &pkt);
-    usbctrl_get_descriptor(1,&buf[0],&desc_size,&ctx1, NULL);
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(1,&buf[0],NULL,&ctx1, &pkt);
+    }
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(1,&buf[0],&desc_size,NULL, &pkt);
+    }
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(1,&buf[0],&desc_size,&ctx1, NULL);
+    }
 
 
 
