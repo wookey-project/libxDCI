@@ -418,6 +418,8 @@ void usbctrl_string_desc_to_buff(__in const usbctrl_string_descriptor_t *cfg, __
 
 /*@
     @ requires \separated(&SIZE_DESC_FIXED, &FLAG, buf+(..),curr_offset);
+    @ assigns buf[0 .. MAX_DESCRIPTOR_LEN-1] ;
+    @ assigns *curr_offset ;
 
     @ behavior INVPARAM:
     @   assumes (curr_offset == \null || buf == \null) ;
@@ -435,6 +437,7 @@ void usbctrl_string_desc_to_buff(__in const usbctrl_string_descriptor_t *cfg, __
     @   assumes !(*curr_offset > (MAX_DESCRIPTOR_LEN - sizeof(usbctrl_configuration_descriptor_t))) ;
     @   ensures \result == MBED_ERROR_NONE ;
     @   ensures *curr_offset == \old(*curr_offset) + (uint32_t)sizeof(usbctrl_configuration_descriptor_t) ;
+
 
     @ complete behaviors ;
     @ disjoint behaviors ;
@@ -1078,19 +1081,19 @@ err:
 //         (\result == MBED_ERROR_NONE && (*desc_size == 4 || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_MANUFACTURER))
 //                                    || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME)) || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL) ))) ;
 
+    @  assigns buf[0 .. MAX_DESCRIPTOR_LEN-1], *desc_size;
+    
     @ behavior INVPARAM:
     @   assumes (desc_size == \null || buf == \null || pkt == \null) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
-    @   assigns \nothing;
 
     @ behavior INVCMD:
-    @ assumes !(desc_size == \null || buf == \null || pkt == \null) ;
-    @ assumes (((pkt->wValue & 0xff) != (uint16_t)0x0) &&
+    @   assumes !(desc_size == \null || buf == \null || pkt == \null) ;
+    @   assumes (((pkt->wValue & 0xff) != (uint16_t)0x0) &&
                ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_MANUFACTURER_INDEX) &&
                ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_PRODNAME_INDEX) &&
                ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_SERIAL_INDEX));
-    @ ensures \result == MBED_ERROR_UNSUPORTED_CMD;
-    @ assigns \nothing;
+    @   ensures \result == MBED_ERROR_UNSUPORTED_CMD;
 
     @ behavior ok:
     @   assumes !(desc_size == \null || buf == \null || pkt == \null) ;
@@ -1099,16 +1102,11 @@ err:
                 ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_PRODNAME_INDEX) &&
                 ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_SERIAL_INDEX));
     @   ensures \result == MBED_ERROR_NONE;
-    @   assigns buf[0 .. sizeof(usbctrl_string_descriptor_t)-1], *desc_size;
+    
 
     @ complete behaviors;
     @ disjoint behaviors;
 
-*/
-
-/*
-  TODO : be more precise with (pkt->wValue & 0xff) behavior
-  not possible to validate assigns clause because of cast : (usbctrl_string_descriptor_t *)&(string_desc[0]) (WP memory model)
 */
 
 #ifndef __FRAMAC__
@@ -1292,12 +1290,6 @@ err:
     @ complete behaviors ;
     @ disjoint behaviors ;
 
-*/
-
-/*
-  TODO : be more precise with ensures clause for \result on some behaviors
-  clause assigns is impossible to validate because of some casts (and so, loop assigns and loop variant too cannot be validated)
-  consequence : partial correction for this function
 */
 
 mbed_error_t usbctrl_get_descriptor(__in usbctrl_descriptor_type_t  type,

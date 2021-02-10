@@ -279,7 +279,7 @@ FRAMAC_WP_FLAGS:=\
 			-wp-dynamic \
   			-wp-model "Typed+ref+int" \
   			-wp-literals \
-  			-wp-prover alt-ergo,cvc4,z3 \
+  			-wp-prover alt-ergo,cvc4,z3,script \
    			-wp-timeout $(TIMEOUT) \
 			-wp-smoke-tests \
 			-wp-no-smoke-dead-code \
