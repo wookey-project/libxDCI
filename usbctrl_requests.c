@@ -408,7 +408,12 @@ err:
     @ disjoint behaviors ;
 
 */
-
+/*
+ * Device-wide clear feature handling (not interface or endpoint). Per-interface clear_feature request
+ * are handled by rqst_handler of each interface.
+ * device-wide features are USB test and remote wakeup features.
+ * By now, they are not supported.
+ */
 #ifndef __FRAMAC__
 static
 #endif
@@ -944,25 +949,28 @@ mbed_error_t usbctrl_std_req_handle_get_configuration(usbctrl_setup_pkt_t const 
     }
     switch (usbctrl_get_state(ctx)) {
         case USB_DEVICE_STATE_DEFAULT:
+            /* USB 2.0 says: behavior not specified. Here we just return 0 as bConfigurationValue */
             resp[0] = 0;
             usb_backend_drv_send_data((uint8_t *)&resp, 1, EP0);
             /* usb driver read status... */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
             break;
         case USB_DEVICE_STATE_ADDRESS:
+            /* USB 2.0 says: return 0 as bConfigurationValue */
             resp[0] = 0;
             usb_backend_drv_send_data((uint8_t *)&resp, 1, EP0);
             /* usb driver read status... */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
             break;
         case USB_DEVICE_STATE_CONFIGURED:
-            resp[0] = 1; /* should be bConfigurationValue of the current config */
+            /* USB 2.0 says: non-zero bConfigurationValue of the current config. curr_cfg starts with 0 (table index) */
+            resp[0] = ctx->curr_cfg + 1;
             usb_backend_drv_send_data((uint8_t *)&resp, 1, EP0);
             /* usb driver read status... */
             usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
             break;
         default:
-            /* this should never be reached with the is_std_requests_allowed() function */
+            /* this should never be reached with the is_std_requests_allowed() function. Defensive programing */
             usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
             /*request finish here */
             ctx->ctrl_req_processing = false;
@@ -2219,6 +2227,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_OUT);
         goto err_init;
     }
+    /*@ assert \valid(ctx); */
     /* Sanitation */
     if (pkt == NULL) {
         errcode = MBED_ERROR_INVPARAM;
