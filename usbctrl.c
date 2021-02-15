@@ -706,7 +706,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
            /* check that declared ep mpsize is compatible with backend driver */
 
-           drv_ep_mpsize = usb_backend_get_ep_mpsize(ctx->cfg[iface_config].interfaces[iface_num].eps[i].type);
+           drv_ep_mpsize = usb_backend_drv_get_ep_mpsize(ctx->cfg[iface_config].interfaces[iface_num].eps[i].type);
 
            if (ctx->cfg[iface_config].interfaces[iface_num].eps[i].pkt_maxsize > drv_ep_mpsize) {
                log_printf("truncating EP max packet size to backend driver EP max pktsize\n");
@@ -735,7 +735,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
             * the max number of hardware EP. Thus, the device driver should pretty print
             * that there is no more space to help debugging this behavior. */
 
-           drv_ep_mpsize = usb_backend_get_ep_mpsize((usb_backend_drv_ep_type_t)ep->type);
+           drv_ep_mpsize = usb_backend_drv_get_ep_mpsize((usb_backend_drv_ep_type_t)ep->type);
 
            if (ep->pkt_maxsize > drv_ep_mpsize) {
                log_printf("truncating EP max packet size to backend driver EP max pktsize\n");

@@ -119,7 +119,8 @@ typedef struct usbctrl_context {
 #define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
 #define usb_backend_drv_get_ep_state usbotghs_get_ep_state
 #define usb_backend_drv_configure usbotghs_configure
-#define usb_backend_get_ep_mpsize usbotghs_get_ep_mpsize
+#define usb_backend_drv_get_ep_mpsize usbotghs_get_ep_mpsize
+#define usb_backend_drv_activate_endpoint usbotghs_activate_endpoint
 
 #define MAX_USB_CTRL_CTX CONFIG_USBCTRL_MAX_CTX
 #define MAX_USB_CTRL_CFG CONFIG_USBCTRL_MAX_CFG

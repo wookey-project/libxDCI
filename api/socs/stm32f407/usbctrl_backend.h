@@ -188,7 +188,7 @@ mbed_error_t usb_backend_drv_stall(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 mbed_error_t usb_backend_drv_endpoint_disable(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 mbed_error_t usb_backend_drv_endpoint_enable(uint8_t ep_id, usb_backend_drv_ep_dir_t dir);
 
-uint16_t usb_backend_get_ep_mpsize(usb_backend_drv_ep_type_t type);
+uint16_t usb_backend_drv_get_ep_mpsize(usb_backend_drv_ep_type_t type);
 
 usb_backend_drv_port_speed_t usb_backend_drv_get_speed(void);
 
