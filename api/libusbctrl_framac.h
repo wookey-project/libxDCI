@@ -106,27 +106,6 @@ typedef struct usbctrl_context {
     \forall unsigned short s, m ; 0 <= (s & m) <= 65535 ;
 */
 
-/*@ predicate is_valid_error(mbed_error_t i) =
-    i == MBED_ERROR_NONE ||
-    i == MBED_ERROR_NOMEM ||
-    i == MBED_ERROR_NOSTORAGE ||
-    i == MBED_ERROR_NOBACKEND ||
-    i == MBED_ERROR_INVCREDENCIALS ||
-    i == MBED_ERROR_UNSUPORTED_CMD ||
-    i == MBED_ERROR_INVSTATE ||
-    i == MBED_ERROR_NOTREADY ||
-    i == MBED_ERROR_BUSY ||
-    i == MBED_ERROR_DENIED ||
-    i == MBED_ERROR_UNKNOWN ||
-    i == MBED_ERROR_INVPARAM ||
-    i == MBED_ERROR_WRERROR ||
-    i == MBED_ERROR_RDERROR ||
-    i == MBED_ERROR_INITFAIL ||
-    i == MBED_ERROR_TOOBIG ||
-    i == MBED_ERROR_NOTFOUND  ;
-*/
-
-
 #define usb_backend_drv_declare usbotghs_declare
 #define usb_backend_drv_get_speed usbotghs_get_speed
 #define usb_backend_drv_stall usbotghs_endpoint_stall
