@@ -1936,7 +1936,7 @@ err:
 
 /*@
     @ requires \valid(pkt) && \valid(ctx);
-    @ requires \separated(ctx,pkt);
+    @ requires \separated(pkt, ctx + (..), &conf_set);
 
     @ behavior USB_REQ_GET_STATUS:
     @   assumes  pkt->bRequest ==  USB_REQ_GET_STATUS ;
@@ -2225,7 +2225,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_OUT);
         goto err;
     }
-
+    /*@ assert \valid(pkt) ; */
     usbctrl_req_type_t type = usbctrl_std_req_get_type(pkt);
 
     switch(type){
@@ -2235,6 +2235,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
                 log_printf("[USBCTRL] std request for control (recipient = 0)\n");
                 /* For current request of current context, is the current context is a standard
                 * request ? If yes, handle localy */
+                /*@ assert \separated(pkt, ctx + (..), &conf_set); */
                 errcode = usbctrl_handle_std_requests(pkt, ctx);
             }else{
                 log_printf("[USBCTRL] std request for iface/ep/other: %x\n", usbctrl_std_req_get_recipient(pkt));
@@ -2285,6 +2286,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
             /* ... or, is the current request is a vendor request, then handle locally
             * for vendor */
             set_bool_with_membarrier(&(ctx->ctrl_req_processing), true);
+            /*@ assert \separated(pkt, ctx + (..)); */
             errcode = usbctrl_handle_vendor_requests(pkt, ctx);
             break;
         case USB_REQ_TYPE_CLASS:

@@ -217,13 +217,21 @@ LIBSTD_API_DIR ?= $(PROJ_FILES)/libs/std/api
 # itself and thus by upper layers, including drivers and libraries.
 EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
 
-SESSION     := framac/results/frama-c-rte-eva-wp-ref.session
-EVA_SESSION := framac/results/frama-c-rte-eva.session
-TIMESTAMP   := framac/results/timestamp-calcium_wp-eva.txt
-EVAREPORT    := framac/results/eva_report_red.txt
+FRAMAC_RESULTSDIR := framac/results
+
+SESSION     := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva-wp-ref.session
+LOGFILE     := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva-wp-ref.log
+EVA_SESSION := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva.session
+EVAREPORT	:= $(FRAMAC_RESULTSDIR)/frama-c-rte-eva_report
+EVA_LOGFILE := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva.log
+TIMESTAMP   := $(FRAMAC_RESULTSDIR)/timestamp-calcium_wp-eva.txt
 JOBS        := $(shell nproc)
 # Does this flag could be overriden by env (i.e. using ?=)
 TIMEOUT     := 15
+
+
+$(FRAMAC_RESULTSDIR):
+	$(call cmd,mkdir)
 
 FRAMAC_GEN_FLAGS:=\
 			-absolute-valid-range 0x40040000-0x40044000 \
@@ -278,13 +286,19 @@ FRAMAC_WP_FLAGS:=\
 	        -wp \
 			-wp-dynamic \
   			-wp-model "Typed+ref+int" \
+			-wp-check-memory-model\
   			-wp-literals \
-  			-wp-prover alt-ergo,cvc4,z3,script \
+  			-wp-prover alt-ergo,cvc4,z3,tip \
+			-wp-prop="-@lemma" \
+			-wp-time-margin 25 \
    			-wp-timeout $(TIMEOUT) \
 			-wp-smoke-tests \
 			-wp-no-smoke-dead-code \
-   			-wp-log a:frama-c-rte-eva-wp.log
+   			-wp-log a:$(LOGFILE)
 
+FRAMAC_WP_LEMMAS_FLAGS:=\
+			-wp-prop="@lemma" \
+			-wp-auto="wp:split,wp:bitrange"
 
 frama-c-parsing:
 	frama-c framac/entrypoint.c usbctrl*.c \
@@ -305,7 +319,9 @@ frama-c:
    		    -then \
 			$(FRAMAC_WP_FLAGS) \
    			-save $(SESSION) \
-   			-time $(TIMESTAMP) \
+			-then \
+			$(FRAMAC_WP_LEMMAS_FLAGS) \
+			-time $(TIMESTAMP)  \
 			-then -report -report-classify
 
 frama-c-instantiate:
