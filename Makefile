@@ -282,11 +282,18 @@ FRAMAC_EVA_FLAGS:=\
 			-metrics \
 			-metrics-eva-cover *.c
 
+
+ifeq (22,$(FRAMAC_VERSION))
+FRAMAC_WP_SUPP_FLAGS=-wp-check-memory-model
+else
+FRAMAC_WP_SUPP_FLAGS=
+endif
+
 FRAMAC_WP_FLAGS:=\
 	        -wp \
 			-wp-dynamic \
   			-wp-model "Typed+ref+int" \
-			-wp-check-memory-model\
+			$(FRAMAC_WP_SUPP_FLAGS)\
   			-wp-literals \
   			-wp-prover alt-ergo,cvc4,z3,tip \
 			-wp-prop="-@lemma" \
