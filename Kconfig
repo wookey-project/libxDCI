@@ -9,6 +9,15 @@ if USR_LIB_USBCTRL
 
 menu "libxDCI specific options"
 
+config USR_LIB_USBCTRL_STRICT_USB_CONFORMITY
+  bool "Strict USB 2.0 conformity checks"
+  default y
+  ---help---
+  The USB control stack is highly paranoid on its received content (mostly
+  Setup Packets) and check all fields w. respect for the USB 2.0 standard
+  specifications. This may break compatibility with laxist USB stacks that
+  do not fully respect the standard.
+
 config USR_LIB_USBCTRL_DEV_VENDORID
   hex "USB Vendor Identifier"
   default 0xDEAD
