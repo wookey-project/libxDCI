@@ -11,4 +11,8 @@ jobs:
       - name: send trigger
         shell: bash
         run: |
-          curl -XPOST -u "${{ secrets.FRAMAC_USER}}:${{secrets.FRAMAC_SECRET}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" https://api.github.com/repos/wookey-sdk/workflow/actions/workflows/build.yaml/dispatches --data '{"ref": "incoming"}'
+            curl \
+            -u "${{ secrets.FRAMAC_USER}}:${{secrets.FRAMAC_SECRET}}" -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/wookey-sdk/workflow/actions/workflows/main/dispatches \
+            -d '{"ref":"master"}'
