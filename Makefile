@@ -289,13 +289,15 @@ else
 FRAMAC_WP_SUPP_FLAGS=
 endif
 
+FRAMAC_WP_PROVERS ?= alt-ergo,cvc4,z3
+
 FRAMAC_WP_FLAGS:=\
 	        -wp \
 			-wp-dynamic \
   			-wp-model "Typed+ref+int" \
 			$(FRAMAC_WP_SUPP_FLAGS)\
   			-wp-literals \
-  			-wp-prover alt-ergo,cvc4,z3,tip \
+  			-wp-prover $(FRAMAC_WP_PROVERS),tip \
 			-wp-prop="-@lemma" \
 			-wp-time-margin 25 \
    			-wp-timeout $(TIMEOUT) \
