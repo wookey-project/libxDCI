@@ -6,8 +6,8 @@ on:
 # trigger workflow whenever a commit is pushed on incoming branch
 jobs:
   trigger_workflow:
-  runs-on: ubuntu-latest
-  steps:
-    name: send trigger
-    run: |
-      curl -XPOST -u "${{ secrets.FRAMAC_USER}}:${{secrets.FRAMAC_SECRET}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" https://api.github.com/repos/wookey-sdk/workflow/actions/workflows/build.yaml/dispatches --data '{"ref": "incoming"}'
+    runs-on: ubuntu-latest
+    steps:
+      name: send trigger
+      run: |
+        curl -XPOST -u "${{ secrets.FRAMAC_USER}}:${{secrets.FRAMAC_SECRET}}" -H "Accept: application/vnd.github.everest-preview+json" -H "Content-Type: application/json" https://api.github.com/repos/wookey-sdk/workflow/actions/workflows/build.yaml/dispatches --data '{"ref": "incoming"}'
