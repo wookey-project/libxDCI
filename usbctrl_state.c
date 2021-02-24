@@ -5,6 +5,7 @@
 #include "usbctrl_state.h"
 #include "usbctrl_requests.h"
 
+
 /*
  * all allowed transitions and target states for each current state
  * empty fields are set as 0xff/0xff for request/state couple, which is
@@ -21,6 +22,49 @@
  * multiple next state depending on other informations. In this case,
  * the transition handler has to handle this manually.
  */
+
+#ifdef __FRAMAC__
+#ifdef FRAMAC_WITH_META
+/*
+ * Definition of the functions set that is responsible of
+ * automaton transitions
+ */
+#define TRANSITION_FUNCTIONS ({              \
+    usbctrl_std_req_handle_set_address,      \
+    usbctrl_std_req_handle_set_configuration,\
+    usbctrl_handle_usbsuspend,               \
+    usbctrl_handle_reset,                    \
+    usbctrl_handle_wakeup                    \
+})
+
+/*@
+
+   meta \prop,
+     \name(state_only_changed_in_set_state),
+     \targets(\diff(\ALL, usbctrl_set_state)),
+     \context(\writing),
+     \separated(\written, &ctx_list[0 .. CONFIG_USBCTRL_MAX_CTX-1].state);
+
+	// only usbctrl_set_state() is allowed to update ctx_list[].state
+    // in the Frama-C framework context, there is two control plane contexts (i.e. CONFIG_USBCTRL_MAX_CTX == 2)
+    meta \prop,
+           \name(ctx0_state_controled_update),
+           \targets(\diff(\ALL, \union(usbctrl_set_state, \callers(usbctrl_set_state)))),
+           \context(\postcond),
+           \flags(proof:deduce),
+           \fguard(ctx_list[0].state == \old(ctx_list[0].state));
+    meta \prop,
+           \name(ctx1_state_controled_update),
+           \targets(\diff(\ALL, \union(usbctrl_set_state, \callers(usbctrl_set_state)))),
+           \context(\postcond),
+           \flags(proof:deduce),
+           \fguard(ctx_list[1].state == \old(ctx_list[1].state));
+
+*/
+#endif/*!FRAMAC_WITH_META */
+#endif/*!__FRAMAC__*/
+
+
 
 
 #ifndef __FRAMAC__

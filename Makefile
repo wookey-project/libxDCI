@@ -224,14 +224,23 @@ LOGFILE     := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva-wp-ref.log
 EVA_SESSION := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva.session
 EVAREPORT	:= $(FRAMAC_RESULTSDIR)/frama-c-rte-eva_report
 EVA_LOGFILE := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva.log
+META_LOGFILE := $(FRAMAC_RESULTSDIR)/frama-c-rte-meta.log
 TIMESTAMP   := $(FRAMAC_RESULTSDIR)/timestamp-calcium_wp-eva.txt
 JOBS        := $(shell nproc)
 # Does this flag could be overriden by env (i.e. using ?=)
 TIMEOUT     := 15
 
+ifeq (22,$(FRAMAC_VERSION))
+FRAMAC_WP_SUPP_FLAGS=-wp-check-memory-model
+FRAMAC_CPP_EXTRA=-DFRAMAC_WITH_META
+else
+FRAMAC_WP_SUPP_FLAGS=
+FRAMAC_CPP_EXTRA=
+endif
 
 $(FRAMAC_RESULTSDIR):
 	$(call cmd,mkdir)
+
 
 FRAMAC_GEN_FLAGS:=\
 			-absolute-valid-range 0x40040000-0x40044000 \
@@ -244,11 +253,15 @@ FRAMAC_GEN_FLAGS:=\
 	        -warn-unsigned-overflow \
 	        -warn-invalid-pointer \
 			-kernel-msg-key pp \
-			-cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"  \
-		    -rte \
-		    -instantiate
+			-cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR) $(FRAMAC_CPP_EXTRA)" 
+
+
+FRAMAC_META_FLAGS=-meta \
+				   -meta-log a:$(META_LOGFILE)
 
 FRAMAC_EVA_FLAGS:=\
+		    -rte \
+		    -instantiate\
 		    -eva \
 		    -eva-show-perf \
 		    -eva-slevel 500 \
@@ -283,12 +296,6 @@ FRAMAC_EVA_FLAGS:=\
 			-metrics-eva-cover *.c
 
 
-ifeq (22,$(FRAMAC_VERSION))
-FRAMAC_WP_SUPP_FLAGS=-wp-check-memory-model
-else
-FRAMAC_WP_SUPP_FLAGS=
-endif
-
 FRAMAC_WP_PROVERS ?= alt-ergo,cvc4,z3
 
 FRAMAC_WP_FLAGS:=\
@@ -315,11 +322,21 @@ frama-c-parsing:
 		 -no-frama-c-stdlib \
 		 -cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"
 
+
 frama-c-eva:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
 			-save $(EVA_SESSION)
+
+
+
+ifeq (22,$(FRAMAC_VERSION))
+frama-c-meta:
+	frama-c usbctrl*.c -c11 \
+		    $(FRAMAC_GEN_FLAGS) \
+			$(FRAMAC_META_FLAGS)
+endif
 
 frama-c:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
@@ -332,6 +349,7 @@ frama-c:
 			$(FRAMAC_WP_LEMMAS_FLAGS) \
 			-time $(TIMESTAMP)  \
 			-then -report -report-classify
+
 
 frama-c-instantiate:
 	frama-c framac/entrypoint.c usbctrl.c -c11 -machdep x86_32 \

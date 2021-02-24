@@ -255,5 +255,4 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
                                  usbctrl_context_t *ctx);
 
 
-
 #endif/*!USBCTRL_STATE_H_*/
