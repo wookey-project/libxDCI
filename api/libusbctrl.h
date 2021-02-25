@@ -392,7 +392,6 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
     @ behavior ok:
     @   assumes ctxh < GHOST_num_ctx ;
     @   ensures \result == MBED_ERROR_NONE ;
-    @   ensures ctx_list[ctxh].state == USB_DEVICE_STATE_POWERED ;
 
     @ complete behaviors;
     @ disjoint behaviors;
@@ -518,6 +517,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     @ behavior other :
     @   assumes ctxh < GHOST_num_ctx ;
     @   ensures is_valid_error(\result) ;
+    @   ensures ctx_list[ctxh].state == USB_DEVICE_STATE_POWERED ;
 
     @ complete behaviors ;
     @ disjoint behaviors ;
