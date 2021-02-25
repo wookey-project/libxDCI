@@ -194,9 +194,6 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
 
     /* receive FIFO is not set in the driver. Wait for USB reset */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_NOSTORAGE;
-    /* initialize with POWERED. We wait for the first reset event */
-
-    usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
 
     /* control pipe recv FIFO is ready to be used */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
@@ -779,14 +776,15 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
 #endif
 
 
+    /* initialize with POWERED. We wait for the first reset event */
+    usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
+
     log_printf("[USBCTRL] configuring backend driver\n");
 
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
-        usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
         goto end;
     }
-
 
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
     if ((errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {

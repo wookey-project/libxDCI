@@ -26,16 +26,18 @@
 #ifdef __FRAMAC__
 #ifdef FRAMAC_WITH_META
 /*
- * Definition of the functions set that is responsible of
- * automaton transitions
+ * This is the USB control plane state automaton conformity proof against USB 2.0
+ * specifications.
+ * The proofs are based on MetaCSL high level specifications that guarantee that
+ * automaton states and transitions are valid and comply with the specifications.
+ *
+ * Thanks to Virgile Prevosto case study on the Wookey bootloader on which the current
+ * automaton metacsl content is based.
  */
-#define TRANSITION_FUNCTIONS ({              \
-    usbctrl_std_req_handle_set_address,      \
-    usbctrl_std_req_handle_set_configuration,\
-    usbctrl_handle_usbsuspend,               \
-    usbctrl_handle_reset,                    \
-    usbctrl_handle_wakeup                    \
-})
+/* ==> The automaton state is only writeable by usbctrl_set_state() */
+
+#define VALID_STATE(i) (ctx_list[i].state >= USB_DEVICE_STATE_ATTACHED && ctx_list[i].state < USB_DEVICE_STATE_INVALID)
+#define STATE_UNTOUCHED(i) (ctx_list[i].state == \old(ctx_list[i].state))
 
 /*@
 
@@ -52,15 +54,87 @@
            \targets(\diff(\ALL, \union(usbctrl_set_state, \callers(usbctrl_set_state)))),
            \context(\postcond),
            \flags(proof:deduce),
-           \fguard(ctx_list[0].state == \old(ctx_list[0].state));
+           \fguard(STATE_UNTOUCHED(0));
     meta \prop,
            \name(ctx1_state_controled_update),
            \targets(\diff(\ALL, \union(usbctrl_set_state, \callers(usbctrl_set_state)))),
            \context(\postcond),
            \flags(proof:deduce),
-           \fguard(ctx_list[1].state == \old(ctx_list[1].state));
+           \fguard(STATE_UNTOUCHED(1));
 
 */
+
+/* ==> The automaton state is always valid */
+
+
+/*@ meta \prop,
+        \name(state_always_valid_small),
+        \targets(usbctrl_set_state),
+        \context(\strong_invariant),
+        \flags(proof:axiom, translate:no),
+        (VALID_STATE(0) && VALID_STATE(1));
+*/
+
+/*@ meta \prop,
+        \name(state_always_valid_callees),
+        \targets(\callees(usbctrl_set_state)),
+        \context(\strong_invariant),
+        \flags(proof:deduce, translate:no),
+        (VALID_STATE(0) && VALID_STATE(1));
+*/
+
+/*@ meta \prop,
+        \name(state_always_valid),
+        \targets(\ALL),
+        \context(\weak_invariant),
+        \flags(proof:deduce, translate:yes),
+        (VALID_STATE(0) && VALID_STATE(1));
+*/
+
+/* ==> Restrict transition to transition functions only */
+
+/*
+ * Definition of the functions set that is responsible of
+ * automaton transitions
+ * usbctrl_start_device activate the HW IP and thus set the state automaton
+ * from 'ATTACHED' (default) to 'POWERED'. Other are USB events.
+ */
+#define TRANSITION_FUNCTIONS ({              \
+    usbctrl_start_device,                    \
+    usbctrl_std_req_handle_set_address,      \
+    usbctrl_std_req_handle_set_configuration,\
+    usbctrl_handle_usbsuspend,               \
+    usbctrl_handle_reset,                    \
+    usbctrl_handle_wakeup                    \
+})
+
+
+/* this proof is to be translated to ACSL for provers, not deduced */
+/*@ meta \prop,
+        \name(state_wrapper_only_called_in_transitions),
+        \targets(\diff(\ALL,
+                    TRANSITION_FUNCTIONS)),
+        \context(\calling),
+        \tguard(\called != usbctrl_set_state);
+*/
+
+/*@
+    meta \prop,
+        \name(set_address_can_only_set_allowed_states),
+        \targets(usbctrl_std_req_handle_set_address),
+        \context(\calling),
+        \tguard(\called == usbctrl_set_state ==> \fguard(\called_arg(newstate) == USB_DEVICE_STATE_DEFAULT || \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS));
+*/
+
+/*@
+    meta \prop,
+        \name(set_configuration_can_only_set_allowed_states),
+        \targets(usbctrl_std_req_handle_set_configuration),
+        \context(\calling),
+        \tguard(\called == usbctrl_set_state ==> \fguard(\called_arg(newstate) == USB_DEVICE_STATE_CONFIGURED || \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS));
+*/
+
+
 #endif/*!FRAMAC_WITH_META */
 #endif/*!__FRAMAC__*/
 

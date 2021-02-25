@@ -253,15 +253,15 @@ FRAMAC_GEN_FLAGS:=\
 	        -warn-unsigned-overflow \
 	        -warn-invalid-pointer \
 			-kernel-msg-key pp \
+		    -rte \
+		    -instantiate\
 			-cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR) $(FRAMAC_CPP_EXTRA)" 
 
 
 FRAMAC_META_FLAGS=-meta \
-				   -meta-log a:$(META_LOGFILE)
+				  -meta-log a:$(META_LOGFILE)
 
 FRAMAC_EVA_FLAGS:=\
-		    -rte \
-		    -instantiate\
 		    -eva \
 		    -eva-show-perf \
 		    -eva-slevel 500 \
@@ -324,7 +324,7 @@ frama-c-parsing:
 
 
 frama-c-eva:
-	frama-c framac/entrypoint.c usbctrl*.c -c11 \
+	frama-c framac/entrypoint.c usbctrl*.c \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
 			-save $(EVA_SESSION)
@@ -332,10 +332,28 @@ frama-c-eva:
 
 
 ifeq (22,$(FRAMAC_VERSION))
-frama-c-meta:
-	frama-c usbctrl*.c -c11 \
+# generate file with ACSL annotation from meta-properties
+frama-c-meta-gen:
+	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
-			$(FRAMAC_META_FLAGS)
+			$(FRAMAC_META_FLAGS)\
+   		    -then-last \
+			-ocode framac/gen.c \
+			-print
+
+# and prove the whole
+frama-c-meta-prove:
+	frama-c framac/gen.c -c11 \
+		    $(FRAMAC_GEN_FLAGS) \
+			$(FRAMAC_EVA_FLAGS) \
+   		    -then \
+			$(FRAMAC_WP_FLAGS) \
+   			-save $(SESSION) \
+			-then \
+			$(FRAMAC_WP_LEMMAS_FLAGS) \
+			-time $(TIMESTAMP)  \
+			-then -report -report-classify
+
 endif
 
 frama-c:

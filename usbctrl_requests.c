@@ -1701,7 +1701,6 @@ mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *pkt,
                 set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
-            usbctrl_set_state(ctx, USB_DEVICE_STATE_CONFIGURED);
             /*@ assert ctx->state == USB_DEVICE_STATE_CONFIGURED ; */
             if (maxlength > size) {
                 errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);

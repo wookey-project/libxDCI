@@ -204,6 +204,12 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
                                  usbctrl_context_t **ctx);
 
 
+mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t const * const pkt,
+                                                       usbctrl_context_t *ctx);
+
+mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t const * const pkt,
+                                                             usbctrl_context_t *ctx);
+
 #endif/*!__FRAMAC__*/
 
 #endif/*!LIBUSBCTRL_FRAMAC_H_*/
