@@ -232,7 +232,11 @@ TIMEOUT     := 15
 
 ifeq (22,$(FRAMAC_VERSION))
 FRAMAC_WP_SUPP_FLAGS=-wp-check-memory-model
+ifeq (y,$(USE_META))
 FRAMAC_CPP_EXTRA=-DFRAMAC_WITH_META
+else
+FRAMAC_CPP_EXTRA=
+endif
 else
 FRAMAC_WP_SUPP_FLAGS=
 FRAMAC_CPP_EXTRA=
@@ -253,9 +257,9 @@ FRAMAC_GEN_FLAGS:=\
 	        -warn-unsigned-overflow \
 	        -warn-invalid-pointer \
 			-kernel-msg-key pp \
+			-cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR) $(FRAMAC_CPP_EXTRA)"\
 		    -rte \
-		    -instantiate\
-			-cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR) $(FRAMAC_CPP_EXTRA)" 
+		    -instantiate
 
 
 FRAMAC_META_FLAGS=-meta \
@@ -324,7 +328,7 @@ frama-c-parsing:
 
 
 frama-c-eva:
-	frama-c framac/entrypoint.c usbctrl*.c \
+	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
 			-save $(EVA_SESSION)
