@@ -204,11 +204,21 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
                                  usbctrl_context_t **ctx);
 
 
+/*
+ * These prototypes are transition functions prototypes.
+ * They are required by state automaton MetaCSL specifications in usbctrl_state.c file.
+ */
 mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t const * const pkt,
                                                        usbctrl_context_t *ctx);
 
 mbed_error_t usbctrl_std_req_handle_set_configuration(usbctrl_setup_pkt_t const * const pkt,
                                                              usbctrl_context_t *ctx);
+
+mbed_error_t usbctrl_handle_reset(uint32_t dev_id);
+
+mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)));
+
+mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id __attribute__((unused)));
 
 #endif/*!__FRAMAC__*/
 

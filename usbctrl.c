@@ -155,7 +155,7 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
     #endif/*!__FRAMAC__*/
 
 
-    printf("[USBCTRL] initializing automaton\n");
+    log_printf("[USBCTRL] initializing automaton\n");
 
         /*@
             @ loop invariant 0 <= i <= MAX_INTERFACES_PER_DEVICE ;
@@ -689,15 +689,15 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
         ctx->cfg[iface_config].interfaces[iface_num].eps[i].configured = false ;
 
        if (ctx->cfg[iface_config].interfaces[iface_num].eps[i].type == USB_EP_TYPE_CONTROL) {
-           printf("declare EP (control) id 0\n");
+           log_printf("declare EP (control) id 0\n");
            ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num = 0;
            iface->eps[i].ep_num = 0;
        } else {
         ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num = ctx->cfg[iface_config].first_free_epid;
            iface->eps[i].ep_num = ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num;
-           printf("[USBCTRL] declare EP (not control) id %d\n", ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num);
+           log_printf("[USBCTRL] declare EP (not control) id %d\n", ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num);
            if (iface->eps[i].dir == USB_EP_DIR_BOTH) {
-               printf("[USBCTRL] EP set as full duplex\n");
+               log_printf("[USBCTRL] EP set as full duplex\n");
            }
            ctx->cfg[iface_config].first_free_epid++;
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
@@ -716,15 +716,15 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
         ep->configured = false;
 
        if (ep->type == USB_EP_TYPE_CONTROL) {
-           printf("declare EP (control) id 0\n");
+           log_printf("declare EP (control) id 0\n");
            ep->ep_num = 0;
            iface->eps[i].ep_num = 0;
        } else {
            ep->ep_num = ctx->cfg[iface_config].first_free_epid;
            iface->eps[i].ep_num = ep->ep_num;
-           printf("declare EP (not control) id %d\n", ep->ep_num);
+           log_printf("declare EP (not control) id %d\n", ep->ep_num);
            if (iface->eps[i].dir == USB_EP_DIR_BOTH) {
-               printf("[USBCTRL] EP set as full duplex\n");
+               log_printf("[USBCTRL] EP set as full duplex\n");
            }
            ctx->cfg[iface_config].first_free_epid++;
            /* max supported EP by device driver is handled at set_configuration time, as the
@@ -788,7 +788,7 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
 
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
     if ((errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
-        printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
+        log_printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
         goto end;
     }
 

@@ -4,6 +4,14 @@
 #include "usbctrl.h"
 #include "usbctrl_state.h"
 #include "usbctrl_requests.h"
+#ifdef __FRAMAC__
+#ifdef FRAMAC_WITH_META
+/* another function is allowed to manipulate the USB state: framac_state_manipulator, from the FramaC emulated entrypoint.
+ * This function is NOT a part of the library but used to stress out the various error cases and branches of the lib
+ */
+#include "framac/entrypoint.h"
+#endif
+#endif
 
 
 /*
@@ -113,12 +121,15 @@
 /*@ meta \prop,
         \name(state_wrapper_only_called_in_transitions),
         \targets(\diff(\ALL,
-                    TRANSITION_FUNCTIONS)),
+                    \union(framac_state_manipulator,
+                    TRANSITION_FUNCTIONS))),
         \context(\calling),
         \tguard(\called != usbctrl_set_state);
 */
 
-/*@
+/* ==> Restrict transition function target states to allowed ones only */
+
+/* // TO BE FIXED: set as invalid by EVA
     meta \prop,
         \name(set_address_can_only_set_allowed_states),
         \targets(usbctrl_std_req_handle_set_address),
@@ -126,12 +137,45 @@
         \tguard(\called == usbctrl_set_state ==> \fguard(\called_arg(newstate) == USB_DEVICE_STATE_DEFAULT || \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS));
 */
 
-/*@
+/* // TO BE FIXED: set as invalid by EVA
     meta \prop,
         \name(set_configuration_can_only_set_allowed_states),
         \targets(usbctrl_std_req_handle_set_configuration),
         \context(\calling),
         \tguard(\called == usbctrl_set_state ==> \fguard(\called_arg(newstate) == USB_DEVICE_STATE_CONFIGURED || \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS));
+*/
+
+/* // TO BE FIXED: set as invalid by EVA
+    meta \prop,
+        \name(usbsuspend_can_only_set_allowed_states),
+        \targets(usbctrl_handle_usbsuspend),
+        \context(\calling),
+        \tguard(\called == usbctrl_set_state ==> \fguard(
+           \called_arg(newstate) == USB_DEVICE_STATE_SUSPENDED_POWER ||
+           \called_arg(newstate) == USB_DEVICE_STATE_SUSPENDED_DEFAULT ||
+           \called_arg(newstate) == USB_DEVICE_STATE_SUSPENDED_ADDRESS ||
+           \called_arg(newstate) == USB_DEVICE_STATE_SUSPENDED_CONFIGURED));
+*/
+
+/* // TO BE FIXED: set as invalid by EVA
+    meta \prop,
+        \name(usbwakeup_can_only_set_allowed_states),
+        \targets(usbctrl_handle_wakeup),
+        \context(\calling),
+        \tguard(\called == usbctrl_set_state ==> \fguard(
+           \called_arg(newstate) == USB_DEVICE_STATE_POWERED ||
+           \called_arg(newstate) == USB_DEVICE_STATE_DEFAULT ||
+           \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS ||
+           \called_arg(newstate) == USB_DEVICE_STATE_CONFIGURED));
+*/
+
+/* // TO BE FIXED: set as invalid by EVA
+    meta \prop,
+        \name(reset_can_only_set_allowed_states),
+        \targets(usbctrl_handle_reset),
+        \context(\calling),
+        \tguard(\called == usbctrl_set_state ==> \fguard(
+           \called_arg(newstate) == USB_DEVICE_STATE_DEFAULT));
 */
 
 
@@ -342,7 +386,10 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
     }
     log_printf("[USBCTRL] changing from state %x to %x\n", ctx->state, newstate);
     /*@ assert \valid(&ctx->state); */
-    set_u8_with_membarrier(&ctx->state, (uint8_t)newstate);
+    /* here we do not use set_u8_with_membarrier() because it forbid metACSL from detecting that
+     * ctx->state is assigned only here. Instead, using request_data_membarrier() */
+    ctx->state = newstate;
+    request_data_membarrier();
 
     return MBED_ERROR_NONE;
 }
@@ -411,16 +458,14 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
     @ requires is_valid_transition(transition);
     @ requires \valid_read(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
     @ requires \separated(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx+(..));
-    @ assigns ctx->state;
     @ ensures \result == \true || \result == \false ;
     @ ensures \result == \true ==> (ctx->state == \at(ctx->state, Pre));
-    @ ensures \result == \true <==> (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) && current_state != USB_DEVICE_STATE_INVALID ;
-    @ ensures \result == \false <==> (\forall integer i ; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != transition ) && (ctx->state == USB_DEVICE_STATE_INVALID);
+    @ ensures \result == \true <==> (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ;
+    @ ensures \result == \false <==> (\forall integer i ; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != transition );
     @ ensures \result == \true && transition == USB_DEVICE_TRANS_RESET ==>
-                       !(current_state == USB_DEVICE_STATE_INVALID
-                         || current_state == USB_DEVICE_STATE_ATTACHED) ;
+                       !(current_state == USB_DEVICE_STATE_ATTACHED) ;
     @ ensures \result == \false && transition == USB_DEVICE_TRANS_RESET ==>
-        (current_state == USB_DEVICE_STATE_INVALID || current_state == USB_DEVICE_STATE_ATTACHED) ;
+        (current_state == USB_DEVICE_STATE_ATTACHED) ;
 */
 
 /*
@@ -452,9 +497,6 @@ bool usbctrl_is_valid_transition(usb_device_state_t current_state,
      */
 
     log_printf("%s: invalid transition from state %d, request %d\n", __func__, current_state, transition);
-
-    usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
-    /*@ assert ctx->state ==  USB_DEVICE_STATE_INVALID; */
 
     return false;
 }

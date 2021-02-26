@@ -1701,7 +1701,6 @@ mbed_error_t usbctrl_std_req_handle_get_descriptor(usbctrl_setup_pkt_t *pkt,
                 set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                 goto err;
             }
-            /*@ assert ctx->state == USB_DEVICE_STATE_CONFIGURED ; */
             if (maxlength > size) {
                 errcode = usb_backend_drv_send_data(&(buf[0]), size, 0);
             } else {
@@ -2681,7 +2680,7 @@ mbed_error_t usbctrl_handle_requests(usbctrl_setup_pkt_t *pkt,
 
                 /* fallback if no upper stack class request handler was able to handle the received CLASS request */
                 if (upper_stack_err != MBED_ERROR_NONE) {
-                    printf("[USBCTRL] error during iface class rqust handler exec: %d\n", upper_stack_err);
+                    log_printf("[USBCTRL] error during iface class rqust handler exec: %d\n", upper_stack_err);
                     usb_backend_drv_stall(0, USB_BACKEND_DRV_EP_DIR_OUT);
                 }
                 /* upgrade local errcode with upper stack errcode received */

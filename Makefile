@@ -295,10 +295,7 @@ FRAMAC_EVA_FLAGS:=\
 		    -eva-use-spec usbotghs_activate_endpoint \
 		    -eva-use-spec usbotghs_set_address \
 		    -eva-log a:frama-c-rte-eva.log \
-			-eva-report-red-statuses $(EVAREPORT)\
-			-metrics \
-			-metrics-eva-cover *.c
-
+			-eva-report-red-statuses $(EVAREPORT)
 
 FRAMAC_WP_PROVERS ?= alt-ergo,cvc4,z3
 
@@ -331,25 +328,21 @@ frama-c-eva:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
+			-metrics \
+			-metrics-eva-cover *.c\
 			-save $(EVA_SESSION)
 
 
 
 ifeq (22,$(FRAMAC_VERSION))
-# generate file with ACSL annotation from meta-properties
-frama-c-meta-gen:
+# full chain: metACSL->RTE->EVA->WP
+frama-c-full:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_META_FLAGS)\
-   		    -then-last \
-			-ocode framac/gen.c \
-			-print
-
-# and prove the whole
-frama-c-meta-prove:
-	frama-c framac/gen.c -c11 \
-		    $(FRAMAC_GEN_FLAGS) \
+			-then-last\
 			$(FRAMAC_EVA_FLAGS) \
+			-set-project-as-default\
    		    -then \
 			$(FRAMAC_WP_FLAGS) \
    			-save $(SESSION) \
@@ -357,13 +350,16 @@ frama-c-meta-prove:
 			$(FRAMAC_WP_LEMMAS_FLAGS) \
 			-time $(TIMESTAMP)  \
 			-then -report -report-classify
-
 endif
+
+
 
 frama-c:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
+			-metrics \
+			-metrics-eva-cover *.c\
    		    -then \
 			$(FRAMAC_WP_FLAGS) \
    			-save $(SESSION) \
@@ -381,68 +377,5 @@ frama-c-instantiate:
 frama-c-gui:
 	frama-c-gui -load $(SESSION)
 
-
-
-#
-#   			-wp-smoke-tests \
-#   			-wp-no-smoke-dead-code \
-
-
-#    			-then \
-#    			-wp-prop=@lemma \
-#    			-wp-auto="wp:split,wp:bitrange" \
-#  			-wp-auto="wp:bitshift" \
-
-#			-wp-steps 100000 \
-
-#-eva-bitwise-domain
-#-eva-slevel-function usbctrl_declare_interface:300000 \
-#-eva-equality-through-calls all \
-# -from-verify-assigns \
-#-eva-use-spec usbotghs_configure \
-
-#   			-wp-smoke-tests \
-#   			-wp-smoke-dead-code \
-#   			-wp-smoke-dead-call \
-#   			-wp-smoke-dead-loop \
-
-
-# -wp-dynamic         Handle dynamic calls with specific annotations. (set by
-#                     default, opposite option is -wp-no-dynamic) (calls = pointeur de fonction, wp a du mal avec cette notion,
-#						contrairement à 	eva)
-
-# -wp-init-const      Use initializers for global const variables. (set by
-#                     default, opposite option is -wp-no-init-const)
-
-# -wp-split           Split conjunctions into sub-goals. (opposite option is
-#                     -wp-no-split)
-# -wp-split-depth <p>  Set depth of exploration for splitting conjunctions into
-#                     sub-goals.
-#                     Value `-1` means an unlimited depth.
-
-# -wp-steps <n>       Set number of steps for provers.
-
-# -wp-let             Use variable elimination. (set by default, opposite
-#                     option is -wp-no-let)
-
-# -wp-simpl           Enable Qed Simplifications. (set by default, opposite
-#                     option is -wp-no-simpl)
-
-# -wp-par <p>         Number of parallel proof process (default: 4)
-
-# -wp-model <model+...>  Memory model selection. Available selectors:
-#                     * 'Hoare' logic variables only
-#                     * 'Typed' typed pointers only
-#                     * '+nocast' no pointer cast
-#                     * '+cast' unsafe pointer casts
-#                     * '+raw' no logic variable
-#                     * '+ref' by-reference-style pointers detection
-#                     * '+nat/+int' natural / machine-integers arithmetics
-#                     * '+real/+float' real / IEEE floating point arithmetics
-
-# -wp-literals        Export content of string literals. (opposite option is
-#                     -wp-no-literals)
-
-# -eva-bitwise-domain \
 
 endif

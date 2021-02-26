@@ -24,7 +24,11 @@ void usbctrl_reset_received(void){
     reset_requested = true;
 }
 
-
+/*@ assigns ctx->state; */
+void framac_state_manipulator(usbctrl_context_t *ctx) {
+    uint8_t state = Frama_C_interval_8(USB_DEVICE_STATE_ATTACHED,USB_DEVICE_STATE_CONFIGURED);
+    usbctrl_set_state(ctx, state);
+}
 
 //@ assigns Frama_C_entropy_source_8 \from Frama_C_entropy_source_8;
 void Frama_C_update_entropy_8(void) {
@@ -204,8 +208,8 @@ void test_fcn_usbctrl(){
     usbctrl_stop_device(ctxh1) ;
 
     if(ctx1 != NULL){
-        ctx1->state = Frama_C_interval_8(0,9);
-            usbctrl_is_valid_transition(ctx1->state,transition,ctx1);
+        framac_state_manipulator(ctx1);
+        usbctrl_is_valid_transition(ctx1->state,transition,ctx1);
     }
 
 
@@ -232,10 +236,12 @@ void test_fcn_usbctrl(){
 
     usbctrl_stop_device(ctxh2) ;
 
+#ifndef FRAMAC_WITH_META
     if(ctx2 != NULL){
         ctx2->state = Frama_C_interval_8(0,9);
         usbctrl_is_valid_transition(ctx2->state,transition,ctx2);
     }
+#endif
 
     ////////////////////////////////////////////////
     //        functions that use both contexts
@@ -450,12 +456,13 @@ void test_fcn_usbctrl_erreur(){
 */
 
     usbctrl_get_state(NULL) ;
+#ifndef FRAMAC_WITH_META
     usbctrl_set_state(&ctx1,10);
     usbctrl_set_state(NULL,10);
-
+#endif
 
 usbctrl_context_t ctx2 = ctx_list[0] ;
-ctx2.state = Frama_C_interval_8(0,9);
+framac_state_manipulator(&ctx_list[0]);
 
 usbctrl_handle_requests(NULL, dev_id);
 

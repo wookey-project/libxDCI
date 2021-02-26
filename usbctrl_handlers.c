@@ -91,7 +91,7 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)))
         goto err;
     }
 
-    printf("[USBCTRL] Suspended!\n");
+    log_printf("[USBCTRL] Suspended!\n");
     switch (state) {
         case USB_DEVICE_STATE_POWERED:
             usbctrl_set_state(ctx, USB_DEVICE_STATE_SUSPENDED_POWER);
@@ -106,10 +106,8 @@ mbed_error_t usbctrl_handle_usbsuspend(uint32_t dev_id __attribute__((unused)))
             usbctrl_set_state(ctx, USB_DEVICE_STATE_SUSPENDED_CONFIGURED);
             break;
         default:
-            printf("[USBCTRL] suspend from state %d!\n", state);
+            log_printf("[USBCTRL] suspend from state %d!\n", state);
             /* this should *not* happend ! this is not standard. */
-            usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
-            /*@ assert ctx->state == USB_DEVICE_STATE_INVALID ; */
             errcode = MBED_ERROR_INVSTATE;
             goto err;
             break;
@@ -132,12 +130,12 @@ err:
 //    ==>  !(\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list, Pre)[i].dev_id == dev_id)
 //    || ((usbotghs_ctx.out_eps[0].configured == \false) || (usbotghs_ctx.out_eps[0].mpsize == 0)) ;
 
-//    @ ensures \result == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state == USB_DEVICE_STATE_INVALID
+//    @ ensures \result == MBED_ERROR_INVSTATE
 //    ==>  (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list, Pre)[i].dev_id == dev_id
 //     && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
 //     && (0 <= GHOST_idx_ctx < GHOST_num_ctx) ;
 
-//    @ ensures \result == MBED_ERROR_NONE && ctx_list[GHOST_idx_ctx].state != USB_DEVICE_STATE_INVALID
+//    @ ensures \result == MBED_ERROR_NONE
 //    ==>(\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list, Pre)[i].dev_id == dev_id
 //    && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET))
 //    && !((usbotghs_ctx.out_eps[0].configured == \false) || (usbotghs_ctx.out_eps[0].mpsize == 0))
@@ -185,13 +183,12 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     if (!usbctrl_is_valid_transition(state, USB_DEVICE_TRANS_RESET, ctx)) {
         log_printf("[USBCTRL] RESET transition is invalid in current state !\n");
 
-    /*@ assert  ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID ; */
     /*@ assert !(\exists integer i; 0 <= i < GHOST_num_ctx && i!= GHOST_idx_ctx && \at(ctx_list,Pre)[i].state != ctx_list[i].state) ; */
     /*@ assert !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list, Pre)[GHOST_idx_ctx].state].req_trans[j].request == USB_DEVICE_TRANS_RESET) ; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ; */
         errcode = MBED_ERROR_INVSTATE;
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==> (errcode == MBED_ERROR_INVSTATE) ; */
-    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==> (errcode == MBED_ERROR_INVSTATE && ctx_list[GHOST_idx_ctx].state  == USB_DEVICE_STATE_INVALID) ; */
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && !(\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==> (errcode == MBED_ERROR_INVSTATE) ; */
     /*@ assert 0 <= GHOST_idx_ctx < GHOST_num_ctx; */
         goto err;
     }
@@ -301,7 +298,6 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
             break;
         default:
             /* this should *not* happend ! this is not standard. */
-            usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
             errcode = MBED_ERROR_INVSTATE;
             goto err;
             break;
@@ -317,10 +313,9 @@ mbed_error_t usbctrl_handle_reset(uint32_t dev_id)
     usbctrl_set_state(ctx, usbctrl_next_state(state, USB_DEVICE_TRANS_RESET));
     /*@ assert ctx ≡ &ctx_list[GHOST_idx_ctx]; */ ;
     /*@ assert !(\exists integer i; 0 <= i < GHOST_num_ctx && i!= GHOST_idx_ctx && \at(ctx_list,Pre)[i].state != ctx_list[i].state) ; */
-    /*@ assert ctx_list[GHOST_idx_ctx].state!= USB_DEVICE_STATE_INVALID; */
     /*@ assert errcode == MBED_ERROR_NONE; */
     /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)); */
-    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id  && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==>  ( errcode == MBED_ERROR_NONE  &&  ctx_list[GHOST_idx_ctx].state!= USB_DEVICE_STATE_INVALID ) ; */
+    /*@ assert (\exists integer i ; 0 <= i < GHOST_num_ctx && \at(ctx_list,Pre)[i].dev_id == dev_id  && (\exists integer j ; 0 <= j < MAX_TRANSITION_STATE && usb_automaton[\at(ctx_list,Pre)[i].state ].req_trans[j].request == USB_DEVICE_TRANS_RESET)) ==>  ( errcode == MBED_ERROR_NONE ) ; */
 err:
         /*@ assert !(\exists integer i; 0 <= i < GHOST_num_ctx && i!= GHOST_idx_ctx && \at(ctx_list,Pre)[i].state != ctx_list[i].state) ; */
     return errcode;
@@ -667,7 +662,7 @@ mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id __attribute__((unused)))
         goto err;
     }
 
-    printf("[USBCTRL] Wokeup!\n");
+    log_printf("[USBCTRL] Wokeup!\n");
     switch (state) {
         case USB_DEVICE_STATE_SUSPENDED_POWER:
             usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
@@ -683,7 +678,6 @@ mbed_error_t usbctrl_handle_wakeup(uint32_t dev_id __attribute__((unused)))
             break;
         default:
             /* this should *not* happend ! this is not standard. */
-            usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
             errcode = MBED_ERROR_INVSTATE;
             goto err;
             break;
