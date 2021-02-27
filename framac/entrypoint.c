@@ -236,12 +236,10 @@ void test_fcn_usbctrl(){
 
     usbctrl_stop_device(ctxh2) ;
 
-#ifndef FRAMAC_WITH_META
     if(ctx2 != NULL){
-        ctx2->state = Frama_C_interval_8(USB_DEVICE_STATE_ATTACHED,USB_DEVICE_STATE_CONFIGURED);
+        framac_state_manipulator(ctx2);
         usbctrl_is_valid_transition(ctx2->state,transition,ctx2);
     }
-#endif
 
     ////////////////////////////////////////////////
     //        functions that use both contexts
@@ -456,9 +454,9 @@ void test_fcn_usbctrl_erreur(){
 */
 
     usbctrl_get_state(NULL) ;
+    framac_state_manipulator(NULL);
 #ifndef FRAMAC_WITH_META
     usbctrl_set_state(&ctx1,10);
-    usbctrl_set_state(NULL,10);
 #endif
 
 usbctrl_context_t ctx2 = ctx_list[0] ;

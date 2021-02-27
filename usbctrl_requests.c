@@ -1045,6 +1045,7 @@ mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t const * cons
                                                        usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    uint8_t newstate;
     log_printf("[USBCTRL] Std req: set address\n");
 #ifdef CONFIG_USR_LIB_USBCTRL_STRICT_USB_CONFORMITY
     /* USB 2.0 conformity: chap. 9.4.6 */
@@ -1081,7 +1082,8 @@ mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t const * cons
     switch (usbctrl_get_state(ctx)) {
         case USB_DEVICE_STATE_DEFAULT:
             if (address != 0) {
-                usbctrl_set_state(ctx, USB_DEVICE_STATE_ADDRESS);
+                newstate = USB_DEVICE_STATE_ADDRESS;
+                usbctrl_set_state(ctx, newstate);
                 /*@ assert ctx->state == USB_DEVICE_STATE_ADDRESS ; */
                 ctx->address = address;
                 usb_backend_drv_set_address(ctx->address);
@@ -1097,7 +1099,8 @@ mbed_error_t usbctrl_std_req_handle_set_address(usbctrl_setup_pkt_t const * cons
                 usb_backend_drv_set_address(ctx->address);
             } else {
                 /* going back to default state */
-                usbctrl_set_state(ctx, USB_DEVICE_STATE_DEFAULT);
+                newstate = USB_DEVICE_STATE_DEFAULT;
+                usbctrl_set_state(ctx, newstate);
                 /*@ assert ctx->state == USB_DEVICE_STATE_DEFAULT ; */
             }
             usb_backend_drv_send_zlp(0);

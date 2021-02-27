@@ -231,12 +231,14 @@ JOBS        := $(shell nproc)
 TIMEOUT     := 15
 
 ifeq (22,$(FRAMAC_VERSION))
-FRAMAC_WP_SUPP_FLAGS=-wp-check-memory-model
-ifeq (y,$(USE_META))
+ ifeq (y,$(USE_META))
+# metACSL & WP typed-ref memory model checking seems not to be compatible
+FRAMAC_WP_SUPP_FLAGS=
 FRAMAC_CPP_EXTRA=-DFRAMAC_WITH_META
-else
+ else
+FRAMAC_WP_SUPP_FLAGS=-wp-check-memory-model
 FRAMAC_CPP_EXTRA=
-endif
+ endif
 else
 FRAMAC_WP_SUPP_FLAGS=
 FRAMAC_CPP_EXTRA=
@@ -336,6 +338,7 @@ frama-c-eva:
 
 ifeq (22,$(FRAMAC_VERSION))
 # full chain: metACSL->RTE->EVA->WP
+# seems that metACSL & wp memory model checking are not compatible
 frama-c-full:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
@@ -351,8 +354,6 @@ frama-c-full:
 			-time $(TIMESTAMP)  \
 			-then -report -report-classify
 endif
-
-
 
 frama-c:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
