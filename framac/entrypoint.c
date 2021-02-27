@@ -24,7 +24,7 @@ void usbctrl_reset_received(void){
     reset_requested = true;
 }
 
-/*@ assigns ctx->state; */
+/*@ assigns ctx->state, Frama_C_entropy_source_8; */
 void framac_state_manipulator(usbctrl_context_t *ctx) {
     uint8_t state = Frama_C_interval_8(USB_DEVICE_STATE_ATTACHED,USB_DEVICE_STATE_CONFIGURED);
     usbctrl_set_state(ctx, state);
@@ -127,7 +127,7 @@ void test_fcn_usbctrl(){
     uint8_t USB_class = Frama_C_interval_8(0,17);
     uint32_t USBdci_handler = Frama_C_interval_32(0,4294967295) ;
     usb_device_trans_t transition = Frama_C_interval_8(0,MAX_TRANSITION_STATE-1) ;
-    usb_device_state_t current_state = Frama_C_interval_8(0,9);
+    usb_device_state_t current_state = Frama_C_interval_8(USB_DEVICE_STATE_ATTACHED,USB_DEVICE_STATE_CONFIGURED);
     usbctrl_request_code_t request = Frama_C_interval_8(0x0,0xc);
     uint8_t interval = Frama_C_interval_8(0,255);
     uint8_t composite_id = Frama_C_interval_8(0,255);
@@ -238,7 +238,7 @@ void test_fcn_usbctrl(){
 
 #ifndef FRAMAC_WITH_META
     if(ctx2 != NULL){
-        ctx2->state = Frama_C_interval_8(0,9);
+        ctx2->state = Frama_C_interval_8(USB_DEVICE_STATE_ATTACHED,USB_DEVICE_STATE_CONFIGURED);
         usbctrl_is_valid_transition(ctx2->state,transition,ctx2);
     }
 #endif

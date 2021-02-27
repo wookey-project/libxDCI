@@ -324,7 +324,7 @@ static const struct {
                   {0xff, 0xff},
                   },
      },
-    {USB_DEVICE_STATE_INVALID, {
+    {USB_DEVICE_STATE_INVALID, { // should never be set
                   {0xff, 0xff},
                   {0xff, 0xff},
                   {0xff, 0xff},
@@ -369,8 +369,19 @@ usb_device_state_t usbctrl_get_state(const usbctrl_context_t *ctx)
 
 /*@
   @ assigns ctx->state ;
-  @ ensures (newstate > USB_DEVICE_STATE_INVALID || ctx == \null) <==> \result == MBED_ERROR_INVPARAM ;
-  @ ensures (ctx != \null && is_valid_state(ctx->state) && newstate <= USB_DEVICE_STATE_INVALID)  <==> (\result == MBED_ERROR_NONE && ctx->state == newstate) ;
+
+  @ behavior invparam:
+  @   assumes (newstate >= USB_DEVICE_STATE_INVALID || ctx == \null);
+  @   ensures ctx->state == \old(ctx->state);
+  @   ensures \result == MBED_ERROR_INVPARAM ;
+
+  @ behavior ok:
+  @   assumes !(newstate >= USB_DEVICE_STATE_INVALID || ctx == \null);
+  @   ensures ctx->state == newstate;
+  @   ensures \result == MBED_ERROR_NONE;
+
+  @ disjoint behaviors;
+  @ complete behaviors;
 */
 
 mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
@@ -380,7 +391,7 @@ mbed_error_t usbctrl_set_state(__out usbctrl_context_t *ctx,
    if (ctx == NULL) {
        return MBED_ERROR_INVPARAM;
    }
-    if (newstate > USB_DEVICE_STATE_INVALID) {
+    if (newstate >= USB_DEVICE_STATE_INVALID) {
         log_printf("[USBCTRL] invalid state transition !\n");
         return MBED_ERROR_INVPARAM;
     }
@@ -458,6 +469,7 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
     @ requires is_valid_transition(transition);
     @ requires \valid_read(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
     @ requires \separated(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx+(..));
+    @ assigns \nothing;
     @ ensures \result == \true || \result == \false ;
     @ ensures \result == \true ==> (ctx->state == \at(ctx->state, Pre));
     @ ensures \result == \true <==> (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ;

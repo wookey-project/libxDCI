@@ -159,8 +159,7 @@ typedef enum {
         i == USB_DEVICE_STATE_SUSPENDED_CONFIGURED ||
         i == USB_DEVICE_STATE_DEFAULT ||
         i == USB_DEVICE_STATE_ADDRESS ||
-        i == USB_DEVICE_STATE_CONFIGURED ||
-        i == USB_DEVICE_STATE_INVALID ;
+        i == USB_DEVICE_STATE_CONFIGURED ;
 */
 
 /*****************************************************************
