@@ -29,6 +29,18 @@
 #include "libusbotghs.h"
 #include "generated/devlist.h"
 
+/*@
+  logic boolean devid_is_valid(uint32_t devid) =
+    (devid == USB_OTG_HS_ID || devid == USB_OTG_FS_ID);
+*/
+
+/*
+ * This ghost variable is set each time one of the libusbdci private globals is set by one of the exported API.
+ * In the API public function contracts, this variable is set as assigned, and private assigns are specified in private contracts.
+ * The goal is to simplify and help composed proofs between various library.
+ */
+/*@ ghost uint32_t GHOST_opaque_libusbdci_privates = 0; */
+
 /*
  * Here, we handle the case of differenciated FW/DFU mode.
  * Is set (and only if set) we redefine unified macro value from the currently being

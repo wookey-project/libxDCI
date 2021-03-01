@@ -213,9 +213,6 @@ bool is_vendor_requests_allowed(usbctrl_context_t const * const ctx)
     @ assigns  *ctx , GHOST_opaque_drv_privates;
     @ ensures \result == MBED_ERROR_INVPARAM || \result == MBED_ERROR_NONE ;
  */
-#ifndef __FRAMAC__
-static inline
-#endif
 mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;

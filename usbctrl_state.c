@@ -109,6 +109,7 @@
  */
 #define TRANSITION_FUNCTIONS ({              \
     usbctrl_start_device,                    \
+    usbctrl_stop_device,                     \
     usbctrl_std_req_handle_set_address,      \
     usbctrl_std_req_handle_set_configuration,\
     usbctrl_handle_usbsuspend,               \
@@ -177,6 +178,25 @@
         \tguard(\called == usbctrl_set_state ==> \fguard(
            \called_arg(newstate) == USB_DEVICE_STATE_DEFAULT));
 */
+
+/* // TO BE FIXED: set as invalid by EVA
+    meta \prop,
+        \name(start_device_can_only_set_allowed_states),
+        \targets(usbctrl_start_device),
+        \context(\calling),
+        \tguard(\called == usbctrl_set_state ==> \fguard(
+           \called_arg(newstate) == USB_DEVICE_STATE_POWERED));
+*/
+
+/* // TO BE FIXED: set as invalid by EVA
+    meta \prop,
+        \name(stop_device_can_only_set_allowed_states),
+        \targets(usbctrl_stop_device),
+        \context(\calling),
+        \tguard(\called == usbctrl_set_state ==> \fguard(
+           \called_arg(newstate) == USB_DEVICE_STATE_ATTACHED));
+*/
+
 
 
 #endif/*!FRAMAC_WITH_META */
