@@ -320,7 +320,7 @@ typedef struct {
 /*@
     @ requires \separated(ctxh+(..),&GHOST_opaque_libusbdci_privates);
 
-    @ assigns *ctxh, GHOST_opaque_libusbdci_privates;
+    @ assigns *ctxh, GHOST_opaque_libusbdci_privates, GHOST_num_ctx;
 
     @ behavior bad_ctxh:
     @   assumes ctxh == \null;
@@ -346,6 +346,7 @@ typedef struct {
     @   assumes devid_is_valid(dev_id);
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
     @   ensures *ctxh < MAX_USB_CTRL_CTX;
+    @   ensures GHOST_num_ctx == \old(GHOST_num_ctx)+1;
 
     @ complete behaviors;
     @ disjoint behaviors;
@@ -416,7 +417,7 @@ mbed_error_t usbctrl_release(uint32_t ctxh);
     @ assigns *iface, GHOST_opaque_libusbdci_privates;
 
     @ behavior bad_ctxh :
-    @   assumes ctxh >= num_ctx ;
+    @   assumes ctxh >= GHOST_num_ctx ;
     @   ensures *iface == \old(*iface) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
