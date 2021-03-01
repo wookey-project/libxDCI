@@ -209,7 +209,7 @@ void test_fcn_usbctrl(){
 
     if(ctx1 != NULL){
         framac_state_manipulator(ctx1);
-        usbctrl_is_valid_transition(ctx1->state,transition,ctx1);
+        usbctrl_is_valid_transition(ctx1->state,transition);
     }
 
 
@@ -238,7 +238,7 @@ void test_fcn_usbctrl(){
 
     if(ctx2 != NULL){
         framac_state_manipulator(ctx2);
-        usbctrl_is_valid_transition(ctx2->state,transition,ctx2);
+        usbctrl_is_valid_transition(ctx2->state,transition);
     }
 
     ////////////////////////////////////////////////

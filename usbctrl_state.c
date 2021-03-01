@@ -464,14 +464,12 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
  */
 
 /*@
-    @ requires \valid(ctx);
     @ requires is_valid_state(current_state) ;
     @ requires is_valid_transition(transition);
     @ requires \valid_read(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
-    @ requires \separated(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)),ctx+(..));
+    @ requires \separated(usb_automaton[current_state].req_trans + (0..(MAX_TRANSITION_STATE -1)));
     @ assigns \nothing;
     @ ensures \result == \true || \result == \false ;
-    @ ensures \result == \true ==> (ctx->state == \at(ctx->state, Pre));
     @ ensures \result == \true <==> (\exists integer i ; 0 <= i < MAX_TRANSITION_STATE && usb_automaton[current_state].req_trans[i].request == transition) ;
     @ ensures \result == \false <==> (\forall integer i ; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != transition );
     @ ensures \result == \true && transition == USB_DEVICE_TRANS_RESET ==>
@@ -480,15 +478,8 @@ uint8_t usbctrl_next_state(usb_device_state_t current_state,
         (current_state == USB_DEVICE_STATE_ATTACHED) ;
 */
 
-/*
-    TO DO : be more precise with ensures for false case
-    ensures \result == \false <==> (\forall integer i ; 0 <= i < MAX_TRANSITION_STATE ==> usb_automaton[current_state].req_trans[i].request != transition ) && (ctx->state == USB_DEVICE_STATE_INVALID);
-
-*/
-
 bool usbctrl_is_valid_transition(usb_device_state_t current_state,
-                                 usb_device_trans_t transition,
-                                 usbctrl_context_t *ctx)
+                                 usb_device_trans_t transition)
 {
   /*@
       @ loop invariant 0 <= i <= MAX_TRANSITION_STATE ;
