@@ -328,20 +328,20 @@ typedef struct {
     @   ensures \result == MBED_ERROR_INVPARAM ;
     @
     @ behavior bad_num_ctx:
-    @   assumes num_ctx >= MAX_USB_CTRL_CTX ;
+    @   assumes GHOST_num_ctx >= MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null  ;
     @   ensures *ctxh == \old(*ctxh) ;
     @   ensures \result == MBED_ERROR_NOMEM ;
     @
     @ behavior bad_dev_id:
-    @   assumes num_ctx < MAX_USB_CTRL_CTX ;
+    @   assumes GHOST_num_ctx < MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null  ;
     @   assumes !devid_is_valid(dev_id);
     @   ensures *ctxh == \old(*ctxh) ;
     @   ensures \result == MBED_ERROR_NOBACKEND ;
     @
     @ behavior ok:
-    @   assumes num_ctx < MAX_USB_CTRL_CTX ;
+    @   assumes GHOST_num_ctx < MAX_USB_CTRL_CTX ;
     @   assumes ctxh != \null ;
     @   assumes devid_is_valid(dev_id);
     @   ensures \result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN ;
@@ -423,13 +423,13 @@ mbed_error_t usbctrl_release(uint32_t ctxh);
 
     @ behavior invalid_iface :
     @   assumes iface == \null ;
-    @   assumes ctxh < num_ctx ;
+    @   assumes ctxh < GHOST_num_ctx ;
     @   ensures *iface == \old(*iface) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
 
     @ behavior valid_input :
     @   assumes iface != \null ;
-    @   assumes ctxh < num_ctx ;
+    @   assumes ctxh < GHOST_num_ctx ;
     @   ensures \result == MBED_ERROR_NOMEM ||
                 \result == MBED_ERROR_NONE ;
 
@@ -478,7 +478,6 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh);
  * check is needed here. This feature may be interesting in some cases.
  */
 /*@
-  @ requires GHOST_num_ctx == num_ctx ;
 
   // libusbdci privates
   @ assigns GHOST_opaque_libusbdci_privates, GHOST_opaque_drv_privates;
