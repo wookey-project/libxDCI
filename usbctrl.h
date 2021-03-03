@@ -28,9 +28,9 @@
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"
 
-#ifndef __FRAMAC__
 #include "libc/sanhandlers.h"
 
+#ifndef __FRAMAC__
 /*
  * Here, we handle the case of differenciated FW/DFU mode.
  * Is set (and only if set) we redefine unified macro value from the currently being
@@ -75,7 +75,6 @@
  * about libctrl context
  ***********************************************/
 
-#ifndef __FRAMAC__
 
 #define MAX_INTERFACES_PER_DEVICE 4
 
@@ -111,10 +110,11 @@ typedef struct usbctrl_context {
 } usbctrl_context_t;
 
 
-#endif
 
 
 #if defined(__FRAMAC__)
+/* library-private globals and symbols */
+# include "usbctrl_framac.h"
 /* all-level exported callbacks & prototypes */
 # include "framac/entrypoint.h"
 #endif

@@ -2,6 +2,8 @@
 #define ENTRY_H_
 
 #include "libc/types.h"
+#include "usbctrl_framac.h"
+#include "usbctrl.h"
 
 bool reset_requested = false;
 
