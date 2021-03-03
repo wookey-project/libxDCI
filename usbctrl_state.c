@@ -34,14 +34,15 @@
 #ifdef __FRAMAC__
 #ifdef FRAMAC_WITH_META
 /*
- * This is the USB control plane state automaton conformity proof against USB 2.0
+ * This is the USB control plane state automaton conformity proof set against USB 2.0
  * specifications.
  * The proofs are based on MetaCSL high level specifications that guarantee that
  * automaton states and transitions are valid and comply with the specifications.
  *
- * Thanks to Virgile Prevosto case study on the Wookey bootloader on which the current
- * automaton metacsl content is based.
+ * We wish to thank to Virgile Prevosto case study on the Wookey bootloader on
+ * which the current automaton metACSL content is based.
  */
+
 /* ==> The automaton state is only writeable by usbctrl_set_state() */
 
 #define VALID_STATE(i) (ctx_list[i].state >= USB_DEVICE_STATE_ATTACHED && ctx_list[i].state < USB_DEVICE_STATE_INVALID)
@@ -119,6 +120,9 @@
 
 
 /* this proof is to be translated to ACSL for provers, not deduced */
+
+/* ==> only transiion functions (and framac manipulator, out of the library) is allowed to call usbctrl_set_state */
+
 /*@ meta \prop,
         \name(state_wrapper_only_called_in_transitions),
         \targets(\diff(\ALL,
@@ -128,25 +132,139 @@
         \tguard(\called != usbctrl_set_state);
 */
 
-/* ==> Restrict transition function target states to allowed ones only */
+/* ==> for each target state, specify from which state the automaton allows a transition
+ *
+ * These successive meta properties specify, for each target state, allowed source states
+ * the USB 2.0 standard allows in the USB state automaton specifications.
+ *
+ * These meta-properties **does not** specify which transition function is responsible of
+ * the transition, only the origin and the destination of the transition itself.
+ */
 
-/* // TO BE FIXED: set as invalid by EVA
+/*@ meta \prop,
+        \name(transition_allowed_toward_attached),
+        \targets(usbctrl_set_state),
+        \context(\precond),
+        \tguard(newstate == USB_DEVICE_STATE_ATTACHED ==>
+         (
+           \at(ctx->state,Before) == USB_DEVICE_STATE_POWERED ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_DEFAULT ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_ADDRESS ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_CONFIGURED ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_SUSPENDED_DEFAULT ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_SUSPENDED_ADDRESS ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_SUSPENDED_CONFIGURED
+         ));
+*/
+/*@ meta \prop,
+        \name(transition_allowed_toward_suspended_powered),
+        \targets(usbctrl_set_state),
+        \context(\precond),
+        \tguard(newstate == USB_DEVICE_STATE_POWERED ==>
+         (
+           \at(ctx->state,Before) == USB_DEVICE_STATE_ATTACHED
+         ));
+*/
+/*@ meta \prop,
+        \name(transition_allowed_toward_default),
+        \targets(usbctrl_set_state),
+        \context(\precond),
+        \tguard(newstate == USB_DEVICE_STATE_DEFAULT ==>
+         (
+           \at(ctx->state,Before) == USB_DEVICE_STATE_POWERED ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_DEFAULT ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_ADDRESS ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_CONFIGURED ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_SUSPENDED_DEFAULT ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_SUSPENDED_ADDRESS ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_SUSPENDED_CONFIGURED
+         ));
+*/
+/*@ meta \prop,
+        \name(transition_allowed_toward_address),
+        \targets(usbctrl_set_state),
+        \context(\precond),
+        \tguard(newstate == USB_DEVICE_STATE_ADDRESS ==>
+           (
+           \at(ctx->state,Before) == USB_DEVICE_STATE_DEFAULT ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_CONFIGURED ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_SUSPENDED_ADDRESS
+           ));
+*/
+/*@ meta \prop,
+        \name(transition_allowed_toward_configured),
+        \targets(usbctrl_set_state),
+        \context(\precond),
+        \tguard(newstate == USB_DEVICE_STATE_CONFIGURED ==>
+           (
+           \at(ctx->state,Before) == USB_DEVICE_STATE_ADDRESS ||
+           \at(ctx->state,Before) == USB_DEVICE_STATE_SUSPENDED_CONFIGURED
+           ));
+*/
+/*@ meta \prop,
+        \name(transition_allowed_toward_suspended_default),
+        \targets(usbctrl_set_state),
+        \context(\precond),
+        \tguard(newstate == USB_DEVICE_STATE_SUSPENDED_DEFAULT ==>
+         (
+           \at(ctx->state,Before) == USB_DEVICE_STATE_DEFAULT
+         ));
+*/
+/*@ meta \prop,
+        \name(transition_allowed_toward_suspended_address),
+        \targets(usbctrl_set_state),
+        \context(\precond),
+        \tguard(newstate == USB_DEVICE_STATE_SUSPENDED_ADDRESS ==>
+         (
+           \at(ctx->state,Before) == USB_DEVICE_STATE_ADDRESS
+         ));
+*/
+/*@ meta \prop,
+        \name(transition_allowed_toward_suspended_configured),
+        \targets(usbctrl_set_state),
+        \context(\precond),
+        \tguard(newstate == USB_DEVICE_STATE_SUSPENDED_CONFIGURED ==>
+         (
+           \at(ctx->state,Before) == USB_DEVICE_STATE_CONFIGURED
+         ));
+*/
+
+
+/* ==> Restrict transition functions target states to allowed ones only
+ *
+ * Here we associate each transition to dedicated transition function.
+ * Only thr target state is specified, but with previous meta-properties,
+ * each target state is associated to a list of allowed source states.
+ */
+
+/*
+ * INFO: the following metaproperties require metACSL v0.1.2 or higher.
+ * They are not activated by default.
+ *
+ */
+#ifdef WITH_META_CALLARG_SUPPORT
+
+/*@
     meta \prop,
         \name(set_address_can_only_set_allowed_states),
         \targets(usbctrl_std_req_handle_set_address),
         \context(\calling),
-        \tguard(\called == usbctrl_set_state ==> \fguard(\called_arg(newstate) == USB_DEVICE_STATE_DEFAULT || \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS));
+        \tguard(\called == usbctrl_set_state ==> \fguard(
+            \called_arg(newstate) == USB_DEVICE_STATE_DEFAULT ||
+            \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS));
 */
 
-/* // TO BE FIXED: set as invalid by EVA
+/*@
     meta \prop,
         \name(set_configuration_can_only_set_allowed_states),
         \targets(usbctrl_std_req_handle_set_configuration),
         \context(\calling),
-        \tguard(\called == usbctrl_set_state ==> \fguard(\called_arg(newstate) == USB_DEVICE_STATE_CONFIGURED || \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS));
+        \tguard(\called == usbctrl_set_state ==> \fguard(
+            \called_arg(newstate) == USB_DEVICE_STATE_CONFIGURED ||
+            \called_arg(newstate) == USB_DEVICE_STATE_ADDRESS));
 */
 
-/* // TO BE FIXED: set as invalid by EVA
+/*@
     meta \prop,
         \name(usbsuspend_can_only_set_allowed_states),
         \targets(usbctrl_handle_usbsuspend),
@@ -158,7 +276,7 @@
            \called_arg(newstate) == USB_DEVICE_STATE_SUSPENDED_CONFIGURED));
 */
 
-/* // TO BE FIXED: set as invalid by EVA
+/*@
     meta \prop,
         \name(usbwakeup_can_only_set_allowed_states),
         \targets(usbctrl_handle_wakeup),
@@ -170,7 +288,7 @@
            \called_arg(newstate) == USB_DEVICE_STATE_CONFIGURED));
 */
 
-/* // TO BE FIXED: set as invalid by EVA
+/*@
     meta \prop,
         \name(reset_can_only_set_allowed_states),
         \targets(usbctrl_handle_reset),
@@ -179,7 +297,7 @@
            \called_arg(newstate) == USB_DEVICE_STATE_DEFAULT));
 */
 
-/* // TO BE FIXED: set as invalid by EVA
+/*@
     meta \prop,
         \name(start_device_can_only_set_allowed_states),
         \targets(usbctrl_start_device),
@@ -188,7 +306,7 @@
            \called_arg(newstate) == USB_DEVICE_STATE_POWERED));
 */
 
-/* // TO BE FIXED: set as invalid by EVA
+/*@
     meta \prop,
         \name(stop_device_can_only_set_allowed_states),
         \targets(usbctrl_stop_device),
@@ -196,13 +314,11 @@
         \tguard(\called == usbctrl_set_state ==> \fguard(
            \called_arg(newstate) == USB_DEVICE_STATE_ATTACHED));
 */
-
+#endif/*WITH_META_CALLARG_SUPPORT */
 
 
 #endif/*!FRAMAC_WITH_META */
 #endif/*!__FRAMAC__*/
-
-
 
 
 #ifndef __FRAMAC__
