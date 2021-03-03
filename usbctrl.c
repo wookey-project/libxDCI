@@ -466,6 +466,81 @@ err:
     return dir;
 }
 
+/*@
+    @ requires 0 <= ep <= 255 ;
+    @ assigns \nothing ;
+
+    @ behavior bad_ctx:
+    @   assumes ctx == \null ;
+    @   ensures \result == \false ;
+
+    @ behavior EP_not_found:
+    @   assumes ctx != \null ;
+    @   assumes ep != EP0 ;
+    @   assumes !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep &&  ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].configured == \true) ;
+    @   ensures \result == \true;
+
+    @ behavior EP_found:
+    @   assumes ctx != \null ;
+    @   assumes (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep && ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].configured == \true) || ep == EP0 ;
+    @   ensures \result == \false;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
+*/
+
+bool usbctrl_is_endpoint_halted(usbctrl_context_t *ctx, uint8_t ep)
+{
+    uint8_t i = 0 ;
+    uint8_t j = 0 ;
+
+
+    /* sanitize */
+    if (ctx == NULL) {
+        return false;
+    }
+
+    if (ep == EP0) {
+        return false;
+    }
+
+/*@
+        @ loop invariant 0 <= i <= ctx->cfg[ctx->curr_cfg].interface_num ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
+        @ loop invariant (\forall integer prei; 0<=prei<i ==>(\forall integer jj;
+            0 <= jj < ctx->cfg[ctx->curr_cfg].interfaces[prei].usb_ep_number ==>  ctx->cfg[ctx->curr_cfg].interfaces[prei].eps[jj].ep_num != ep));
+        @ loop assigns i, j ;
+        @ loop variant (ctx->cfg[ctx->curr_cfg].interface_num - i);
+*/
+
+    for (i = 0; i < ctx->cfg[ctx->curr_cfg].interface_num; ++i) {
+
+/*@
+        @ loop invariant 0 <= j <= ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
+        @ loop invariant (\forall integer prej ; 0<=prej<j ==> ctx->cfg[ctx->curr_cfg].interfaces[i].eps[prej].ep_num != ep) ;
+        @ loop assigns j ;
+        @ loop variant (ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number - j);
+*/
+
+        for ( j = 0; j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number; ++j) {
+            if (ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) {
+                if (ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].configured == true) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
 
 
 /*@

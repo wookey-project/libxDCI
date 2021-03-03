@@ -669,25 +669,14 @@ mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t *pkt,
                 case USB_REQ_RECIPIENT_ENDPOINT: {
                     /*does requested EP exists ? */
                     uint8_t epnum = pkt->wIndex & 0xf;
-                    if (!epnum != EP0) {
+                    if (epnum != EP0) {
                         errcode = MBED_ERROR_INVSTATE;
                         usb_backend_drv_stall(EP0, USB_BACKEND_DRV_EP_DIR_IN);
                         /*request finish here */
                         set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                         goto err;
                     }
-                    /* get back the EP direction from the wIndex value (MSB bit) */
-                    bool dir_in = (pkt->wIndex >> 7) & 0x1;
-                    usb_ep_dir_t epdir = usbctrl_get_endpoint_direction(ctx, epnum);
-                    /* check that such an EP exists in current configuration */
-                    if (dir_in && (epdir == USB_EP_DIR_OUT || USB_EP_DIR_NONE)) {
-                        /* inexistant endpoint. These are not local invalid behavior but
-                         * nominal NAK response to host */
-                        usb_backend_drv_nak(0, USB_BACKEND_DRV_EP_DIR_OUT);
-                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
-                        goto err;
-                    }
-                    /* return the recipient status (2 bytes, or wLength if smaller) */
+                    /* return the recipient (EP0) status (2 bytes, or wLength if smaller) */
                     uint8_t resp[2] = { 0 };
 
                     usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
@@ -705,7 +694,12 @@ mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t *pkt,
                     }
                     /* return the recipient status (2 bytes, or wLength if smaller) */
                     uint8_t resp[2] = { 0 };
-                    /* FIXME: add remoteWakeup and selfPowered field setting to resp */
+#if CONFIG_USR_LIB_USBCTRL_DEV_SELFPOWERED
+                    /* INFO: self-power mode does not support dynamicity and can't be cleared by host through
+                     * SetFeature() or ClearFeature() (allowed by USB standard, see chap. 9.4.5) */
+                    resp[0] |= 1;
+#endif
+                    /* FIXME: add remoteWakeup field setting to resp */
 
                     usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
                     usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
@@ -733,20 +727,13 @@ mbed_error_t usbctrl_std_req_handle_get_status(const usbctrl_setup_pkt_t *pkt,
                         set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
                         goto err;
                     }
-                    /* get back the EP direction from the wIndex value (MSB bit) */
-                    bool dir_in = (pkt->wIndex >> 7) & 0x1;
-                    usb_ep_dir_t epdir = usbctrl_get_endpoint_direction(ctx, epnum);
-                    /* check that such an EP exists in current configuration */
-                    if (dir_in && (epdir == USB_EP_DIR_OUT || USB_EP_DIR_NONE)) {
-                        /* inexistant endpoint. These are not local invalid behavior but
-                         * nominal NAK response to host */
-                        usb_backend_drv_nak(0, USB_BACKEND_DRV_EP_DIR_OUT);
-                        set_bool_with_membarrier(&(ctx->ctrl_req_processing), false);
-                        goto err;
-                    }
                     /* return the recipient status (2 bytes, or wLength if smaller) */
                     uint8_t resp[2] = { 0 };
-
+                    /* setting the halt bit */
+                    if (usbctrl_is_endpoint_halted(ctx, epnum)) {
+                        /* EP halted */
+                        resp[0] |= 1;
+                    }
                     usb_backend_drv_send_data((uint8_t *)&resp, (pkt->wLength >=  2 ? 2 : pkt->wLength), EP0);
                     usb_backend_drv_ack(0, USB_BACKEND_DRV_EP_DIR_OUT);
                     /* std req finishes at the oepint rise */

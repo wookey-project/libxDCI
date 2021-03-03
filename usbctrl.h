@@ -127,6 +127,8 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
 
 bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep);
 
+bool usbctrl_is_endpoint_halted(usbctrl_context_t *ctx, uint8_t ep);
+
 usb_ep_dir_t usbctrl_get_endpoint_direction(usbctrl_context_t *ctx, uint8_t ep);
 
 bool usbctrl_is_interface_exists(usbctrl_context_t *ctx, uint8_t iface);

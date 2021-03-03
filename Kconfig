@@ -24,6 +24,12 @@ config USR_LIB_USBCTRL_DEV_VENDORID
   ---help---
   Device vendor identifier (VID value of [VID:PID] pair)
 
+config USR_LIB_USBCTRL_DEV_SELFPOWERED
+  bool "USB device is self-powered"
+  default n
+  ---help---
+  The USB device is self powered and doesn't requires the host to enpower it
+  to work properly.
 
 if !USR_LIB_USBCTRL_DIFFERENCIATE_DFU_FW_BUILD
 
