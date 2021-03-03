@@ -381,24 +381,6 @@ mbed_error_t usbctrl_declare(uint32_t dev_id,
 mbed_error_t usbctrl_initialize(uint32_t ctxh);
 
 /*
- * Bind the device to the task, if not mapped
- * (ask the driver to map)
- */
-mbed_error_t usbctrl_bind(uint32_t ctxh);
-
-/*
- * Unmap the device, if mapped
- * (ask the driver to unmap)
- */
-mbed_error_t usbctrl_unbind(uint32_t ctxh);
-
-/*
- * definitivery release the device
- * (ask the driver to release)
- */
-mbed_error_t usbctrl_release(uint32_t ctxh);
-
-/*
  * declare a new USB interface. Endpoints are created, EP refs are set in
  * the interface context. interface is associated to the context.
  *
@@ -474,8 +456,10 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
 mbed_error_t usbctrl_start_device(uint32_t ctxh);
 
 /*
- * FIXME: Stop the device ? unmap and then ? Sending something to the host ? USB std
- * check is needed here. This feature may be interesting in some cases.
+ * Release the current USB configuration and set the automaton to USB_DEVICE_STATE_ATTACHED.
+ * Endpoint others than control EP are deconfigured.
+ *
+ * The device is neither unmapped nor disconnected (the calling task is responsible for this).
  */
 /*@
 
