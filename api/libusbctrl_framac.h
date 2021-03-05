@@ -29,6 +29,24 @@
 #include "libusbotghs.h"
 #include "generated/devlist.h"
 
+#define usb_backend_drv_declare usbotghs_declare
+#define usb_backend_drv_get_speed usbotghs_get_speed
+#define usb_backend_drv_stall usbotghs_endpoint_stall
+#define usb_backend_drv_send_data usbotghs_send_data
+#define usb_backend_drv_ack usbotghs_endpoint_clear_nak
+#define usb_backend_drv_nak usbotghs_endpoint_set_nak
+#define usb_backend_drv_set_address usbotghs_set_address
+#define usb_backend_drv_send_zlp usbotghs_send_zlp
+#define usb_backend_drv_configure_endpoint usbotghs_configure_endpoint
+#define usb_backend_drv_deconfigure_endpoint usbotghs_deconfigure_endpoint
+#define usb_backend_drv_set_recv_fifo usbotghs_set_recv_fifo
+#define usb_backend_drv_get_ep_state usbotghs_get_ep_state
+#define usb_backend_drv_configure usbotghs_configure
+#define usb_backend_drv_get_ep_mpsize usbotghs_get_ep_mpsize
+#define usb_backend_drv_activate_endpoint usbotghs_activate_endpoint
+
+
+
 /*
  * Here, we handle the case of differenciated FW/DFU mode.
  * Is set (and only if set) we redefine unified macro value from the currently being

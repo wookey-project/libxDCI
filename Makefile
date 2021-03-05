@@ -355,6 +355,14 @@ frama-c-full:
 			-then -report -report-classify
 endif
 
+frama-c-callgraph:
+	frama-c usbctrl*.c \
+		 -c11 \
+		 -no-frama-c-stdlib \
+		 -cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)" \
+         -cg framac/results/cg.dot
+	dot -Tsvg framac/results/cg.dot -o framac/results/cg.svg
+
 frama-c:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
