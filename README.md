@@ -1,5 +1,5 @@
-Device Controle plane for USB devices
--------------------------------------
+Device Control plane for USB devices
+------------------------------------
 
 Any USB 2.0 compliant device must implement a USB 2.0 control stack. THis control
 stack interacts with the xHCI USB stack of the host, in order to negociate the
