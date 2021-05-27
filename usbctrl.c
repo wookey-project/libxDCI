@@ -52,13 +52,46 @@ usbctrl_context_t ctx_list[MAX_USB_CTRL_CTX] = { 0 };
 
 #endif/*!__FRAMAC__*/
 
+/*@
+    @ requires \separated(&num_ctx,&GHOST_num_ctx,ctxh+(..), ctx_list+ (..),&GHOST_opaque_libusbdci_privates);
+    @ assigns num_ctx,  GHOST_num_ctx, ctx_list[\old(num_ctx)], GHOST_opaque_drv_privates;
+    @ ensures GHOST_num_ctx == num_ctx ;
 
+    // private part postconditions
+    // complete the public contract behaviors
+    @ ensures ( ctxh == \null ) ==>
+        (num_ctx == \old(num_ctx) &&
+         GHOST_num_ctx == num_ctx &&
+         ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) &&
+         \result == MBED_ERROR_INVPARAM);
+
+//    @ ensures ( num_ctx >= MAX_USB_CTRL_CTX && ctxh != \null ) ==>
+//        (num_ctx == \old(num_ctx) &&
+//         GHOST_num_ctx == num_ctx &&
+//         ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) &&
+//         \result == MBED_ERROR_NOMEM);
+
+    @ ensures ( num_ctx < MAX_USB_CTRL_CTX && ctxh != \null && !devid_is_valid(dev_id) ) ==>
+        (num_ctx == \old(num_ctx) &&
+         GHOST_num_ctx == num_ctx  &&
+         ctx_list[\old(num_ctx)] == \old(ctx_list[\old(num_ctx)]) &&
+         \result == MBED_ERROR_NOBACKEND);
+
+//    @ ensures (num_ctx < MAX_USB_CTRL_CTX && ctxh != \null && devid_is_valid(dev_id)) ==>
+//        (*ctxh == \old(GHOST_num_ctx) && num_ctx == \old(num_ctx)+1 &&
+//         GHOST_num_ctx == num_ctx &&
+//         ctx_list[\old(num_ctx)].dev_id == dev_id &&
+//         ctx_list[GHOST_num_ctx-1] == ctx_list[num_ctx-1] &&
+//         (\result == MBED_ERROR_NONE || \result == MBED_ERROR_UNKNOWN));
+
+*/
 mbed_error_t usbctrl_declare(uint32_t dev_id, uint32_t *ctxh)
 {
     log_printf("[USBCTRL] declaring USB backend\n");
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint8_t i = 0;
    //@ ghost GHOST_num_ctx = num_ctx ;
+   //@ ghost GHOST_opaque_libusbdci_privates = 1;
 
     /* sanitiation */
     if (ctxh == NULL) {
@@ -138,10 +171,22 @@ err:
  * basics for now
  */
 
+/*@
+  @ requires GHOST_num_ctx == num_ctx ;
+  @ requires \valid(ctx_list + (0..(GHOST_num_ctx-1))) ;
 
+  @ assigns ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)];
+  @ assigns ctx_list[ctxh];
+
+  @ ensures ( ctxh >= GHOST_num_ctx ) ==>
+       (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)] == \old(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interfaces[0..(MAX_INTERFACES_PER_DEVICE-1)]) &&
+    @   ctx_list[ctxh] == \old(ctx_list[ctxh])) ;
+
+ */
 mbed_error_t usbctrl_initialize(uint32_t ctxh)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+   //@ ghost GHOST_opaque_libusbdci_privates = 1;
     /* sanitize */
     if (ctxh >= num_ctx) {
         errcode = MBED_ERROR_INVPARAM;
@@ -155,7 +200,7 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
     #endif/*!__FRAMAC__*/
 
 
-    printf("[USBCTRL] initializing automaton\n");
+    log_printf("[USBCTRL] initializing automaton\n");
 
         /*@
             @ loop invariant 0 <= i <= MAX_INTERFACES_PER_DEVICE ;
@@ -194,9 +239,6 @@ mbed_error_t usbctrl_initialize(uint32_t ctxh)
 
     /* receive FIFO is not set in the driver. Wait for USB reset */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_NOSTORAGE;
-    /* initialize with POWERED. We wait for the first reset event */
-
-    usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
 
     /* control pipe recv FIFO is ready to be used */
     ctx->ctrl_fifo_state = USB_CTRL_RCV_FIFO_SATE_FREE;
@@ -361,8 +403,8 @@ end:
     @   assumes ctx != \null ;
     @   assumes ep != EP0 ;
     @   assumes (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
-                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) || ep == EP0 ;
-    @   ensures (\result == USB_EP_DIR_IN || \result == USB_EP_DIR_OUT || \result == USB_EP_DIR_BOTH ) ;
+                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) ;
+    @   ensures (\result == USB_EP_DIR_IN || \result == USB_EP_DIR_OUT || \result == USB_EP_DIR_BOTH || \result == USB_EP_DIR_NONE ) ;
 
     @ complete behaviors;
     @ disjoint behaviors;
@@ -372,15 +414,19 @@ usb_ep_dir_t usbctrl_get_endpoint_direction(usbctrl_context_t *ctx, uint8_t ep)
 {
     uint8_t i = 0 ;
     uint8_t j = 0 ;
+    usb_ep_dir_t dir = USB_EP_DIR_NONE;
 
 
     /* sanitize */
     if (ctx == NULL) {
-        return USB_EP_DIR_NONE;
+        /*@ assert dir == USB_EP_DIR_NONE; */
+        goto err;
     }
 
     if (ep == EP0) {
-        return USB_EP_DIR_BOTH;
+        dir = USB_EP_DIR_BOTH;
+        /*@ assert dir == USB_EP_DIR_BOTH; */
+        goto err;
     }
 
 /*@
@@ -406,12 +452,93 @@ usb_ep_dir_t usbctrl_get_endpoint_direction(usbctrl_context_t *ctx, uint8_t ep)
 
         for ( j = 0; j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number; ++j) {
             if (ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) {
-                return ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].dir;
+                dir = ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].dir;
+                if (dir != USB_EP_DIR_IN && dir != USB_EP_DIR_OUT && dir != USB_EP_DIR_BOTH) {
+                    /* this should not happen, this means that the EP is not correctly defined */
+                    dir = USB_EP_DIR_NONE;
+                }
+                goto err;
             }
         }
     }
 
-    return USB_EP_DIR_NONE;
+err:
+    return dir;
+}
+
+/*@
+    @ requires 0 <= ep <= 255 ;
+    @ assigns \nothing ;
+
+    @ behavior bad_ctx:
+    @   assumes ctx == \null ;
+    @   ensures \result == \false ;
+
+    @ behavior EP_not_found:
+    @   assumes ctx != \null ;
+    @   assumes ep != EP0 ;
+    @   assumes !(\exists integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep &&  ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].configured == \true) ;
+    @   ensures \result == \true;
+
+    @ behavior EP_found:
+    @   assumes ctx != \null ;
+    @   assumes (\exists  integer i,j ; 0 <= i < ctx->cfg[ctx->curr_cfg].interface_num && 0 <= j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number &&
+                     ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep && ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].configured == \true) || ep == EP0 ;
+    @   ensures \result == \false;
+
+    @ complete behaviors;
+    @ disjoint behaviors;
+*/
+
+bool usbctrl_is_endpoint_halted(usbctrl_context_t *ctx, uint8_t ep)
+{
+    uint8_t i = 0 ;
+    uint8_t j = 0 ;
+
+
+    /* sanitize */
+    if (ctx == NULL) {
+        return false;
+    }
+
+    if (ep == EP0) {
+        return false;
+    }
+
+/*@
+        @ loop invariant 0 <= i <= ctx->cfg[ctx->curr_cfg].interface_num ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
+        @ loop invariant (\forall integer prei; 0<=prei<i ==>(\forall integer jj;
+            0 <= jj < ctx->cfg[ctx->curr_cfg].interfaces[prei].usb_ep_number ==>  ctx->cfg[ctx->curr_cfg].interfaces[prei].eps[jj].ep_num != ep));
+        @ loop assigns i, j ;
+        @ loop variant (ctx->cfg[ctx->curr_cfg].interface_num - i);
+*/
+
+    for (i = 0; i < ctx->cfg[ctx->curr_cfg].interface_num; ++i) {
+
+/*@
+        @ loop invariant 0 <= j <= ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces + (0..(ctx->cfg[ctx->curr_cfg].interface_num-1))) ;
+        @ loop invariant \valid_read(ctx->cfg[ctx->curr_cfg].interfaces[i].eps + (0..(ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number-1))) ;
+        @ loop invariant (\forall integer prej ; 0<=prej<j ==> ctx->cfg[ctx->curr_cfg].interfaces[i].eps[prej].ep_num != ep) ;
+        @ loop assigns j ;
+        @ loop variant (ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number - j);
+*/
+
+        for ( j = 0; j < ctx->cfg[ctx->curr_cfg].interfaces[i].usb_ep_number; ++j) {
+            if (ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].ep_num == ep) {
+                if (ctx->cfg[ctx->curr_cfg].interfaces[i].eps[j].configured == true) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 
@@ -568,6 +695,51 @@ usbctrl_interface_t* usbctrl_get_interface(usbctrl_context_t *ctx, uint8_t iface
     TODO : test spec with greater value for CONFIG_USBCTRL_MAX_CFG & MAX_USB_CTRL_CFG : dead code with value == 2
 */
 
+/*@
+  @ requires GHOST_num_ctx == num_ctx ;
+  @ requires \separated(iface+(..), ctx_list+(..));
+  @ assigns ctx_list[ctxh] ;
+  @ ensures GHOST_num_ctx == num_ctx ;
+
+  @ ensures ( ctxh >= num_ctx ) ==>
+    ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
+
+  @ ensures ( iface == \null && ctxh < num_ctx ) ==>
+    ctx_list[ctxh] == \old(ctx_list[ctxh]) ;
+
+//    @ ensures (ctxh < num_ctx && iface != \null && ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE ) ==>
+//       (*iface == \old(*iface) &&
+//        ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == \old(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num) &&
+//        \result == MBED_ERROR_NOMEM);
+
+  @ ensures (ctxh < num_ctx && iface != \null &&
+     !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) &&
+     (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) && (ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1)) ==>
+      \result == MBED_ERROR_NOMEM ;
+
+  @ ensures (ctxh < num_ctx && iface != \null &&
+      !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) &&
+      (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) &&
+      !((ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1)) && ((ctx_list[ctxh].num_cfg +1) >= MAX_USB_CTRL_CFG )) ==>
+         (*iface == \old(*iface) && \result == MBED_ERROR_NOMEM );
+
+  @ ensures (ctxh < num_ctx && iface != \null &&
+      !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) &&
+      ( (iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 ) ) &&
+      ctx_list[ctxh].curr_cfg >= MAX_USB_CTRL_CFG ) ==>
+         (*iface == \old(*iface) && \result == MBED_ERROR_NOMEM );
+
+  @ ensures(ctxh < num_ctx && iface != \null && !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) &&
+     (iface->dedicated  == true) && (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num != 0 ) &&
+     !((ctx_list[ctxh].num_cfg +1 ) > (CONFIG_USBCTRL_MAX_CFG-1)) && ((ctx_list[ctxh].num_cfg +1) < MAX_USB_CTRL_CFG )) ==>
+      \result == MBED_ERROR_NONE ;
+
+  @ ensures(ctxh < num_ctx && iface != \null && !(ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) &&
+    ((iface->dedicated  != true) || (ctx_list[ctxh].cfg[ctx_list[ctxh].curr_cfg].interface_num == 0 )) &&
+      ctx_list[ctxh].curr_cfg < MAX_USB_CTRL_CFG) ==>
+      \result == MBED_ERROR_NONE ;
+
+ */
 mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
                                        __out    usbctrl_interface_t  *iface)
 {
@@ -575,6 +747,8 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
     uint8_t i = 0 ;
     mbed_error_t errcode = MBED_ERROR_NONE;
     uint16_t drv_ep_mpsize ;
+
+    // ghost GHOST_opaque_libusbdci_privates = 1;
 
 //  assert GHOST_num_ctx == num_ctx ;
 
@@ -588,11 +762,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
         goto err;
     }
 
-    #if defined(__FRAMAC__)
-        usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    #else
-        usbctrl_context_t *ctx = &(ctx_list[ctxh]);
-    #endif/*!__FRAMAC__*/
+    usbctrl_context_t *ctx = &(ctx_list[ctxh]);
 
     /* check space */
     if (ctx->cfg[ctx->curr_cfg].interface_num >= MAX_INTERFACES_PER_DEVICE) {
@@ -645,6 +815,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].dir = iface->eps[0].dir ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].pkt_maxsize = iface->eps[0].pkt_maxsize ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].handler = iface->eps[0].handler ;
+       ctx->cfg[iface_config].interfaces[iface_num].eps[1].handler = iface->eps[1].handler ;
        ctx->cfg[iface_config].interfaces[iface_num].rqst_handler = iface->rqst_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].class_desc_handler = iface->class_desc_handler ;
        ctx->cfg[iface_config].interfaces[iface_num].eps[0].poll_interval = iface->eps[0].poll_interval ;
@@ -681,21 +852,21 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
         ctx->cfg[iface_config].interfaces[iface_num].eps[i].configured = false ;
 
        if (ctx->cfg[iface_config].interfaces[iface_num].eps[i].type == USB_EP_TYPE_CONTROL) {
-           printf("declare EP (control) id 0\n");
+           log_printf("declare EP (control) id 0\n");
            ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num = 0;
            iface->eps[i].ep_num = 0;
        } else {
         ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num = ctx->cfg[iface_config].first_free_epid;
            iface->eps[i].ep_num = ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num;
-           printf("[USBCTRL] declare EP (not control) id %d\n", ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num);
+           log_printf("[USBCTRL] declare EP (not control) id %d\n", ctx->cfg[iface_config].interfaces[iface_num].eps[i].ep_num);
            if (iface->eps[i].dir == USB_EP_DIR_BOTH) {
-               printf("[USBCTRL] EP set as full duplex\n");
+               log_printf("[USBCTRL] EP set as full duplex\n");
            }
            ctx->cfg[iface_config].first_free_epid++;
            /* FIXME: max EP num must be compared to the MAX supported EP num at driver level */
            /* check that declared ep mpsize is compatible with backend driver */
 
-           drv_ep_mpsize = usb_backend_get_ep_mpsize();
+           drv_ep_mpsize = usb_backend_drv_get_ep_mpsize(ctx->cfg[iface_config].interfaces[iface_num].eps[i].type);
 
            if (ctx->cfg[iface_config].interfaces[iface_num].eps[i].pkt_maxsize > drv_ep_mpsize) {
                log_printf("truncating EP max packet size to backend driver EP max pktsize\n");
@@ -708,15 +879,15 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
         ep->configured = false;
 
        if (ep->type == USB_EP_TYPE_CONTROL) {
-           printf("declare EP (control) id 0\n");
+           log_printf("declare EP (control) id 0\n");
            ep->ep_num = 0;
            iface->eps[i].ep_num = 0;
        } else {
            ep->ep_num = ctx->cfg[iface_config].first_free_epid;
            iface->eps[i].ep_num = ep->ep_num;
-           printf("declare EP (not control) id %d\n", ep->ep_num);
+           log_printf("declare EP (not control) id %d\n", ep->ep_num);
            if (iface->eps[i].dir == USB_EP_DIR_BOTH) {
-               printf("[USBCTRL] EP set as full duplex\n");
+               log_printf("[USBCTRL] EP set as full duplex\n");
            }
            ctx->cfg[iface_config].first_free_epid++;
            /* max supported EP by device driver is handled at set_configuration time, as the
@@ -724,7 +895,7 @@ mbed_error_t usbctrl_declare_interface(__in     uint32_t ctxh,
             * the max number of hardware EP. Thus, the device driver should pretty print
             * that there is no more space to help debugging this behavior. */
 
-           drv_ep_mpsize = usb_backend_get_ep_mpsize();
+           drv_ep_mpsize = usb_backend_drv_get_ep_mpsize((usb_backend_drv_ep_type_t)ep->type);
 
            if (ep->pkt_maxsize > drv_ep_mpsize) {
                log_printf("truncating EP max packet size to backend driver EP max pktsize\n");
@@ -747,13 +918,24 @@ err:
  * Libctrl is a device-side control plane, the device is configured in device mode
  */
 
-/*
-    TODO : be more precise with configure and set_recv_fifo behavior
-*/
+/*@
+    @ requires \separated(&GHOST_opaque_libusbdci_privates, GHOST_in_eps+(0 .. USB_BACKEND_DRV_MAX_IN_EP-1),GHOST_out_eps+(0 .. USB_BACKEND_DRV_MAX_OUT_EP-1), ctx_list+(..));
+    @ requires GHOST_num_ctx == num_ctx ;
+    @ ensures GHOST_num_ctx == num_ctx ;
 
+    @ assigns ctx_list[ctxh] ;
+
+    @ ensures ( ctxh >= GHOST_num_ctx ) ==>
+    @   ( ctx_list[ctxh] == \old(ctx_list[ctxh]) && \result == MBED_ERROR_INVPARAM );
+
+    @ ensures ( ctxh < GHOST_num_ctx ) ==>
+        ( is_valid_error(\result) && ctx_list[ctxh].state == USB_DEVICE_STATE_POWERED );
+
+*/
 mbed_error_t usbctrl_start_device(uint32_t ctxh)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    //@ ghost GHOST_opaque_libusbdci_privates = 1;
     /* sanitize */
     if (ctxh >= num_ctx) {
         errcode = MBED_ERROR_INVPARAM;
@@ -768,18 +950,19 @@ mbed_error_t usbctrl_start_device(uint32_t ctxh)
 #endif
 
 
+    /* initialize with POWERED. We wait for the first reset event */
+    usbctrl_set_state(ctx, USB_DEVICE_STATE_POWERED);
+
     log_printf("[USBCTRL] configuring backend driver\n");
 
     if ((errcode = usb_backend_drv_configure(USB_BACKEND_DRV_MODE_DEVICE, usbctrl_handle_inepevent, usbctrl_handle_outepevent)) != MBED_ERROR_NONE) {
         log_printf("[USBCTRL] failed while initializing backend: err=%d\n", errcode);
-        usbctrl_set_state(ctx, USB_DEVICE_STATE_INVALID);
         goto end;
     }
 
-
     /* Initialize EP0 with first FIFO. Should be reconfigued at Reset time */
     if ((errcode = usb_backend_drv_set_recv_fifo(&(ctx->ctrl_fifo[0]), CONFIG_USBCTRL_EP0_FIFO_SIZE, 0)) != MBED_ERROR_NONE) {
-        printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
+        log_printf("[USBCTRL] failed to initialize EP0 FIFO!\n");
         goto end;
     }
 
@@ -787,14 +970,29 @@ end:
     return errcode;
 }
 
+/*@
+    @ requires GHOST_num_ctx == num_ctx ;
+    @ ensures GHOST_num_ctx == num_ctx ;
+    @ assigns ctx_list[ctxh];
+*/
 mbed_error_t usbctrl_stop_device(uint32_t ctxh)
 {
     mbed_error_t errcode = MBED_ERROR_NONE;
+    usbctrl_context_t *ctx = NULL;
+    //@ ghost GHOST_opaque_libusbdci_privates = 1;
     /* sanitize */
     if (ctxh >= num_ctx) {
         errcode = MBED_ERROR_INVPARAM;
         goto err;
     }
+    ctx = &ctx_list[ctxh];
+    /* deconfigure */
+    if ((errcode = usbctrl_unset_active_endpoints(ctx)) != MBED_ERROR_NONE) {
+        log_printf("[USBCTRL] fail to stop usbctrl stack: %d\n", errcode);
+        goto err;
+    }
+    /* go back to USB_DEVICE_STATE_ATTACHED */
+    errcode = usbctrl_set_state(ctx, USB_DEVICE_STATE_ATTACHED);
 err:
     return errcode;
 }

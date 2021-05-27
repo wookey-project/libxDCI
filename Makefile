@@ -217,13 +217,36 @@ LIBSTD_API_DIR ?= $(PROJ_FILES)/libs/std/api
 # itself and thus by upper layers, including drivers and libraries.
 EWOK_API_DIR ?= $(PROJ_FILES)/kernel/src/C/exported
 
-SESSION     := framac/results/frama-c-rte-eva-wp-ref.session
-EVA_SESSION := framac/results/frama-c-rte-eva.session
-TIMESTAMP   := framac/results/timestamp-calcium_wp-eva.txt
-EVAREPORT    := framac/results/eva_report_red.txt
+FRAMAC_RESULTSDIR := framac/results
+
+SESSION     := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva-wp-ref.session
+LOGFILE     := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva-wp-ref.log
+EVA_SESSION := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva.session
+EVAREPORT	:= $(FRAMAC_RESULTSDIR)/frama-c-rte-eva_report
+EVA_LOGFILE := $(FRAMAC_RESULTSDIR)/frama-c-rte-eva.log
+META_LOGFILE := $(FRAMAC_RESULTSDIR)/frama-c-rte-meta.log
+TIMESTAMP   := $(FRAMAC_RESULTSDIR)/timestamp-calcium_wp-eva.txt
 JOBS        := $(shell nproc)
 # Does this flag could be overriden by env (i.e. using ?=)
 TIMEOUT     := 15
+
+ifeq (22,$(FRAMAC_VERSION))
+ ifeq (y,$(USE_META))
+# metACSL & WP typed-ref memory model checking seems not to be compatible
+FRAMAC_WP_SUPP_FLAGS=
+FRAMAC_CPP_EXTRA=-DFRAMAC_WITH_META
+ else
+FRAMAC_WP_SUPP_FLAGS=-wp-check-memory-model
+FRAMAC_CPP_EXTRA=
+ endif
+else
+FRAMAC_WP_SUPP_FLAGS=
+FRAMAC_CPP_EXTRA=
+endif
+
+$(FRAMAC_RESULTSDIR):
+	$(call cmd,mkdir)
+
 
 FRAMAC_GEN_FLAGS:=\
 			-absolute-valid-range 0x40040000-0x40044000 \
@@ -236,9 +259,13 @@ FRAMAC_GEN_FLAGS:=\
 	        -warn-unsigned-overflow \
 	        -warn-invalid-pointer \
 			-kernel-msg-key pp \
-			-cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"  \
+			-cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR) $(FRAMAC_CPP_EXTRA)"\
 		    -rte \
 		    -instantiate
+
+
+FRAMAC_META_FLAGS=-meta \
+				  -meta-log a:$(META_LOGFILE)
 
 FRAMAC_EVA_FLAGS:=\
 		    -eva \
@@ -264,25 +291,33 @@ FRAMAC_EVA_FLAGS:=\
 		    -eva-use-spec usbotghs_endpoint_stall_clear \
 		    -eva-use-spec usbotghs_endpoint_set_nak \
 		    -eva-use-spec usbotghs_endpoint_clear_nak \
+		    -eva-use-spec usbotghs_get_ep_mpsize \
 		    -eva-use-spec usbotghs_configure_endpoint \
 		    -eva-use-spec usbotghs_deconfigure_endpoint \
 		    -eva-use-spec usbotghs_activate_endpoint \
 		    -eva-use-spec usbotghs_set_address \
 		    -eva-log a:frama-c-rte-eva.log \
-			-eva-report-red-statuses $(EVAREPORT)\
-			-metrics \
-			-metrics-eva-cover *.c
+			-eva-report-red-statuses $(EVAREPORT)
+
+FRAMAC_WP_PROVERS ?= alt-ergo,cvc4,z3
 
 FRAMAC_WP_FLAGS:=\
 	        -wp \
+			-wp-dynamic \
   			-wp-model "Typed+ref+int" \
+			$(FRAMAC_WP_SUPP_FLAGS)\
   			-wp-literals \
-  			-wp-prover alt-ergo,cvc4,z3 \
+  			-wp-prover $(FRAMAC_WP_PROVERS),tip \
+			-wp-prop="-@lemma" \
+			-wp-time-margin 25 \
    			-wp-timeout $(TIMEOUT) \
 			-wp-smoke-tests \
 			-wp-no-smoke-dead-code \
-   			-wp-log a:frama-c-rte-eva-wp.log
+   			-wp-log a:$(LOGFILE)
 
+FRAMAC_WP_LEMMAS_FLAGS:=\
+			-wp-prop="@lemma" \
+			-wp-auto="wp:split,wp:bitrange"
 
 frama-c-parsing:
 	frama-c framac/entrypoint.c usbctrl*.c \
@@ -290,21 +325,58 @@ frama-c-parsing:
 		 -no-frama-c-stdlib \
 		 -cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)"
 
+
 frama-c-eva:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
+			-metrics \
+			-metrics-eva-cover *.c\
 			-save $(EVA_SESSION)
+
+
+
+ifeq (22,$(FRAMAC_VERSION))
+# full chain: metACSL->RTE->EVA->WP
+# seems that metACSL & wp memory model checking are not compatible
+frama-c-full:
+	frama-c framac/entrypoint.c usbctrl*.c -c11 \
+		    $(FRAMAC_GEN_FLAGS) \
+			$(FRAMAC_META_FLAGS)\
+			-then-last\
+			$(FRAMAC_EVA_FLAGS) \
+			-set-project-as-default\
+   		    -then \
+			$(FRAMAC_WP_FLAGS) \
+   			-save $(SESSION) \
+			-then \
+			$(FRAMAC_WP_LEMMAS_FLAGS) \
+			-time $(TIMESTAMP)  \
+			-then -report -report-classify
+endif
+
+frama-c-callgraph:
+	frama-c usbctrl*.c \
+		 -c11 \
+		 -no-frama-c-stdlib \
+		 -cpp-extra-args="-nostdinc -I framac/include -I api -I $(LIBSTD_API_DIR) -I $(USBOTGHS_API_DIR) -I $(USBOTGHS_DEVHEADER_PATH) -I $(EWOK_API_DIR)" \
+         -cg framac/results/cg.dot
+	dot -Tsvg framac/results/cg.dot -o framac/results/cg.svg
 
 frama-c:
 	frama-c framac/entrypoint.c usbctrl*.c -c11 \
 		    $(FRAMAC_GEN_FLAGS) \
 			$(FRAMAC_EVA_FLAGS) \
+			-metrics \
+			-metrics-eva-cover *.c\
    		    -then \
 			$(FRAMAC_WP_FLAGS) \
    			-save $(SESSION) \
-   			-time $(TIMESTAMP) \
+			-then \
+			$(FRAMAC_WP_LEMMAS_FLAGS) \
+			-time $(TIMESTAMP)  \
 			-then -report -report-classify
+
 
 frama-c-instantiate:
 	frama-c framac/entrypoint.c usbctrl.c -c11 -machdep x86_32 \
@@ -314,68 +386,5 @@ frama-c-instantiate:
 frama-c-gui:
 	frama-c-gui -load $(SESSION)
 
-
-
-#
-#   			-wp-smoke-tests \
-#   			-wp-no-smoke-dead-code \
-
-
-#    			-then \
-#    			-wp-prop=@lemma \
-#    			-wp-auto="wp:split,wp:bitrange" \
-#  			-wp-auto="wp:bitshift" \
-
-#			-wp-steps 100000 \
-
-#-eva-bitwise-domain
-#-eva-slevel-function usbctrl_declare_interface:300000 \
-#-eva-equality-through-calls all \
-# -from-verify-assigns \
-#-eva-use-spec usbotghs_configure \
-
-#   			-wp-smoke-tests \
-#   			-wp-smoke-dead-code \
-#   			-wp-smoke-dead-call \
-#   			-wp-smoke-dead-loop \
-
-
-# -wp-dynamic         Handle dynamic calls with specific annotations. (set by
-#                     default, opposite option is -wp-no-dynamic) (calls = pointeur de fonction, wp a du mal avec cette notion,
-#						contrairement à 	eva)
-
-# -wp-init-const      Use initializers for global const variables. (set by
-#                     default, opposite option is -wp-no-init-const)
-
-# -wp-split           Split conjunctions into sub-goals. (opposite option is
-#                     -wp-no-split)
-# -wp-split-depth <p>  Set depth of exploration for splitting conjunctions into
-#                     sub-goals.
-#                     Value `-1` means an unlimited depth.
-
-# -wp-steps <n>       Set number of steps for provers.
-
-# -wp-let             Use variable elimination. (set by default, opposite
-#                     option is -wp-no-let)
-
-# -wp-simpl           Enable Qed Simplifications. (set by default, opposite
-#                     option is -wp-no-simpl)
-
-# -wp-par <p>         Number of parallel proof process (default: 4)
-
-# -wp-model <model+...>  Memory model selection. Available selectors:
-#                     * 'Hoare' logic variables only
-#                     * 'Typed' typed pointers only
-#                     * '+nocast' no pointer cast
-#                     * '+cast' unsafe pointer casts
-#                     * '+raw' no logic variable
-#                     * '+ref' by-reference-style pointers detection
-#                     * '+nat/+int' natural / machine-integers arithmetics
-#                     * '+real/+float' real / IEEE floating point arithmetics
-
-# -wp-literals        Export content of string literals. (opposite option is
-#                     -wp-no-literals)
-
-# -eva-bitwise-domain \
 
 endif

@@ -28,9 +28,9 @@
 #include "libc/stdio.h"
 #include "api/libusbctrl.h"
 
-#ifndef __FRAMAC__
 #include "libc/sanhandlers.h"
 
+#ifndef __FRAMAC__
 /*
  * Here, we handle the case of differenciated FW/DFU mode.
  * Is set (and only if set) we redefine unified macro value from the currently being
@@ -75,7 +75,6 @@
  * about libctrl context
  ***********************************************/
 
-#ifndef __FRAMAC__
 
 #define MAX_INTERFACES_PER_DEVICE 4
 
@@ -111,10 +110,11 @@ typedef struct usbctrl_context {
 } usbctrl_context_t;
 
 
-#endif
 
 
 #if defined(__FRAMAC__)
+/* library-private globals and symbols */
+# include "usbctrl_framac.h"
 /* all-level exported callbacks & prototypes */
 # include "framac/entrypoint.h"
 #endif
@@ -126,6 +126,8 @@ mbed_error_t usbctrl_get_context(uint32_t device_id,
                                  usbctrl_context_t **ctx);
 
 bool usbctrl_is_endpoint_exists(usbctrl_context_t *ctx, uint8_t ep);
+
+bool usbctrl_is_endpoint_halted(usbctrl_context_t *ctx, uint8_t ep);
 
 usb_ep_dir_t usbctrl_get_endpoint_direction(usbctrl_context_t *ctx, uint8_t ep);
 

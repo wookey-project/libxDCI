@@ -181,4 +181,6 @@ mbed_error_t usbctrl_handle_class_requests(usbctrl_setup_pkt_t *pkt,
 
 #endif/*__FRAMAC__*/
 
+mbed_error_t usbctrl_unset_active_endpoints(usbctrl_context_t *ctx);
+
 #endif/*USBCTRL_STD_REQUESTS_H_*/

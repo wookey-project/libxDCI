@@ -2,6 +2,8 @@
 #define ENTRY_H_
 
 #include "libc/types.h"
+#include "usbctrl_framac.h"
+#include "usbctrl.h"
 
 bool reset_requested = false;
 
@@ -64,6 +66,7 @@ mbed_error_t handler_ep(uint32_t dev_id, uint32_t size, uint8_t ep_id);
 
 void test_fcn_driver_eva(void) ;
 
+void framac_state_manipulator(usbctrl_context_t *ctx);
 
 
 #endif/*!ENTRY_H_*/

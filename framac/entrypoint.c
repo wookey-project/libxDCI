@@ -24,7 +24,11 @@ void usbctrl_reset_received(void){
     reset_requested = true;
 }
 
-
+/*@ assigns ctx->state, Frama_C_entropy_source_8; */
+void framac_state_manipulator(usbctrl_context_t *ctx) {
+    uint8_t state = Frama_C_interval_8(USB_DEVICE_STATE_ATTACHED,USB_DEVICE_STATE_CONFIGURED);
+    usbctrl_set_state(ctx, state);
+}
 
 //@ assigns Frama_C_entropy_source_8 \from Frama_C_entropy_source_8;
 void Frama_C_update_entropy_8(void) {
@@ -123,11 +127,11 @@ void test_fcn_usbctrl(){
     uint8_t USB_class = Frama_C_interval_8(0,17);
     uint32_t USBdci_handler = Frama_C_interval_32(0,4294967295) ;
     usb_device_trans_t transition = Frama_C_interval_8(0,MAX_TRANSITION_STATE-1) ;
-    usb_device_state_t current_state = Frama_C_interval_8(0,9);
+    usb_device_state_t current_state = Frama_C_interval_8(USB_DEVICE_STATE_ATTACHED,USB_DEVICE_STATE_CONFIGURED);
     usbctrl_request_code_t request = Frama_C_interval_8(0x0,0xc);
     uint8_t interval = Frama_C_interval_8(0,255);
     uint8_t composite_id = Frama_C_interval_8(0,255);
-    //uint8_t composite_bool = Frama_C_interval_8(0,1);
+    uint8_t composite_bool = Frama_C_interval_8(0,1);
 
 
     uint8_t RequestType = Frama_C_interval_8(0,255);
@@ -140,20 +144,37 @@ void test_fcn_usbctrl(){
     interface definition with variable parameters
 */
 
-    usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
-                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor, 
+    usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function = composite_bool,
                                   .composite_function_id = composite_id};
 
-    usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
+    usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function = composite_bool,
                                   .composite_function_id = composite_id};
 
-    usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[0].poll_interval = interval ,
+    usbctrl_interface_t iface_3 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function = true,
                                   .composite_function_id = composite_id};
+
+    usbctrl_interface_t iface_4 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function = false,
+                                  .composite_function_id = 0};
+
+    usbctrl_interface_t iface_5 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = false,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].poll_interval = interval ,
+                                  .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor,
+                                  .composite_function = true,
+                                  .composite_function_id = composite_id};
+
+
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
     usbctrl_context_t *ctx1 = NULL;
@@ -175,18 +196,20 @@ void test_fcn_usbctrl(){
     usbctrl_get_context(6, &ctx1);
 
     usbctrl_declare_interface(ctxh1, &iface_1);
-    usbctrl_declare_interface(ctxh1, &iface_2);
+    //usbctrl_declare_interface(ctxh1, &iface_2);
     //usbctrl_declare_interface(ctxh1, &iface_3);  // this should be decommented only for test in usbctrl_descriptors.c, but very costly to analyse with EVA
     usbctrl_get_interface(ctx1, iface);
     usbctrl_get_handler(ctx1, &handler);
     usbctrl_is_interface_exists(ctx1, iface);
     usbctrl_is_endpoint_exists(ctx1, ep);
+    usbctrl_get_endpoint_direction(ctx1, ep) ;  // EP found
+    usbctrl_get_endpoint_direction(ctx1, 6) ;   // EP not found
     usbctrl_start_device(ctxh1) ;
     usbctrl_stop_device(ctxh1) ;
 
     if(ctx1 != NULL){
-        ctx1->state = Frama_C_interval_8(0,9);
-            usbctrl_is_valid_transition(ctx1->state,transition,ctx1);
+        framac_state_manipulator(ctx1);
+        usbctrl_is_valid_transition(ctx1->state,transition);
     }
 
 
@@ -199,7 +222,7 @@ void test_fcn_usbctrl(){
     usbctrl_get_context(7, &ctx2);
     usbctrl_get_handler(ctx2, &handler);
     usbctrl_declare_interface(ctxh2, &iface_1);
-    usbctrl_declare_interface(ctxh2, &iface_2);
+    //usbctrl_declare_interface(ctxh2, &iface_2);
     //usbctrl_declare_interface(ctxh2, &iface_3);
     usbctrl_get_interface(ctx2, iface);
 
@@ -214,8 +237,8 @@ void test_fcn_usbctrl(){
     usbctrl_stop_device(ctxh2) ;
 
     if(ctx2 != NULL){
-        ctx2->state = Frama_C_interval_8(0,9);
-        usbctrl_is_valid_transition(ctx2->state,transition,ctx2);
+        framac_state_manipulator(ctx2);
+        usbctrl_is_valid_transition(ctx2->state,transition);
     }
 
     ////////////////////////////////////////////////
@@ -243,6 +266,8 @@ void test_fcn_usbctrl(){
     uint32_t dev_id_4 = (uint32_t)Frama_C_interval_32(0,4294967295) ;
     // after reset, dev_id_3 is 6 or 7, i don't know why... so i declare a new dev_id
     usbctrl_handle_requests(&pkt, dev_id_4) ;
+
+    usbctrl_declare_interface(ctxh1, &iface_3);
 }
 
 /*
@@ -272,10 +297,10 @@ void test_fcn_usbctrl_erreur(){
 
     usbctrl_setup_pkt_t pkt = { .bmRequestType = RequestType, .bRequest = Request, .wValue = Value, .wIndex = Index, .wLength = Length };
     usbctrl_interface_t iface_1 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep,
                                   .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
     usbctrl_interface_t iface_2 = { .usb_class = USB_class, .usb_ep_number = ep_number, .dedicated = true,
-                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep,
+                                  .eps[0].type = EP_type, .eps[0].dir = EP_dir, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep,
                                    .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor};
 
 /*
@@ -322,6 +347,8 @@ void test_fcn_usbctrl_erreur(){
     //@ ghost GHOST_num_ctx = num_ctx ;
     usbctrl_declare_interface(ctxh, &iface_1) ;
 
+    usbctrl_get_endpoint_direction(NULL, 0) ;   // invalid pointer
+
     ctxh = 0 ;
     num_ctx = 1 ;
     //@ ghost GHOST_num_ctx = num_ctx ;
@@ -329,16 +356,17 @@ void test_fcn_usbctrl_erreur(){
     usbctrl_declare_interface(ctxh, iface_null) ;
 
     usbctrl_interface_t iface_3 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = true,
-        .eps[0].type = 3, .eps[0].handler = handler_ep,  .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
+        .eps[0].type = 3, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep,  .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
         .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor };
     ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE ;
     usbctrl_declare_interface(ctxh, &iface_3) ;
 
     usbctrl_interface_t iface_4 = {.usb_class = 0, .usb_ep_number = 2, .dedicated = false,
-        .eps[0].type = 3, .eps[0].handler = handler_ep, .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
+        .eps[0].type = 3, .eps[0].handler = handler_ep, .eps[1].handler = handler_ep, .eps[0].pkt_maxsize = MAX_EPx_PKT_SIZE + 1,
         .rqst_handler = class_rqst_handler, .class_desc_handler = class_get_descriptor };
     ctx_list[ctxh].cfg[0].interface_num = MAX_INTERFACES_PER_DEVICE - 1 ;
     usbctrl_declare_interface(ctxh, &iface_4) ;
+
 
 
 
@@ -383,18 +411,41 @@ void test_fcn_usbctrl_erreur(){
                                          ctx != ctx_list[i] for error_not_found in get_handler
     */
 
-    uint8_t buf[255] = {0} ;
     uint32_t desc_size = 0 ;
     usbctrl_context_t ctx1 = {1} ;
 
-    usbctrl_get_descriptor(9,&buf[0],&desc_size,&ctx1, &pkt);
-    usbctrl_get_descriptor(USB_DESC_DEV_QUALIFIER,&buf[0],&desc_size,&ctx1, &pkt);
-    usbctrl_get_descriptor(USB_DESC_OTHER_SPEED_CFG,&buf[0],&desc_size,&ctx1, &pkt);
-    usbctrl_get_descriptor(USB_DESC_IFACE_POWER,&buf[0],&desc_size,&ctx1, &pkt);
+    /* when emulating get_descriptor() call, input buffer is always filled will 0x0 values, as
+     * nominal call is made with caller setting memset buffer onstack for each call */
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(9,&buf[0],&desc_size,&ctx1, &pkt);
+    }
+
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(USB_DESC_DEV_QUALIFIER,&buf[0],&desc_size,&ctx1, &pkt);
+    }
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(USB_DESC_OTHER_SPEED_CFG,&buf[0],&desc_size,&ctx1, &pkt);
+    }
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(USB_DESC_IFACE_POWER,&buf[0],&desc_size,&ctx1, &pkt);
+    }
     usbctrl_get_descriptor(1,NULL,&desc_size,&ctx1, &pkt);
-    usbctrl_get_descriptor(1,&buf[0],NULL,&ctx1, &pkt);
-    usbctrl_get_descriptor(1,&buf[0],&desc_size,NULL, &pkt);
-    usbctrl_get_descriptor(1,&buf[0],&desc_size,&ctx1, NULL);
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(1,&buf[0],NULL,&ctx1, &pkt);
+    }
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(1,&buf[0],&desc_size,NULL, &pkt);
+    }
+    {
+        uint8_t buf[MAX_DESCRIPTOR_LEN] = {0} ;
+        usbctrl_get_descriptor(1,&buf[0],&desc_size,&ctx1, NULL);
+    }
 
 
 
@@ -403,12 +454,13 @@ void test_fcn_usbctrl_erreur(){
 */
 
     usbctrl_get_state(NULL) ;
+    framac_state_manipulator(NULL);
+#ifndef FRAMAC_WITH_META
     usbctrl_set_state(&ctx1,10);
-    usbctrl_set_state(NULL,10);
-
+#endif
 
 usbctrl_context_t ctx2 = ctx_list[0] ;
-ctx2.state = Frama_C_interval_8(0,9);
+framac_state_manipulator(&ctx_list[0]);
 
 usbctrl_handle_requests(NULL, dev_id);
 
