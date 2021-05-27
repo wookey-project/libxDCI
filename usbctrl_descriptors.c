@@ -397,6 +397,8 @@ void usbctrl_string_desc_to_buff(__in const usbctrl_string_descriptor_t *cfg, __
 {
     buf[0] = cfg->bLength;
     buf[1] = cfg->bDescriptorType;
+#ifdef __FRAMAC__
+    /* XXX: PTH: the copy is not exalty (functionaly) the same as the memcpy (which is operational) and must be reviewed */
     /*@
       @ loop invariant 0 <= i <= MAX_DESC_STRING_SIZE ;
       @ loop assigns i, buf[2 .. (2 + (2*(MAX_DESC_STRING_SIZE-1)))] ;
@@ -406,6 +408,9 @@ void usbctrl_string_desc_to_buff(__in const usbctrl_string_descriptor_t *cfg, __
         buf[2 + i]   = (uint8_t)(cfg->wString[i] & 0xff);
         buf[2 + i + 1] = (uint8_t)(cfg->wString[i] >> 8) & 0xff;
     }
+#else
+    memcpy(&buf[2], &cfg->wString[0], 2*(MAX_DESC_STRING_SIZE));
+#endif
 
     return;
 }
@@ -1082,7 +1087,7 @@ err:
 //                                    || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_PRODNAME)) || *desc_size == (2 + 2 * sizeof(CONFIG_USB_DEV_SERIAL) ))) ;
 
     @  assigns buf[0 .. MAX_DESCRIPTOR_LEN-1], *desc_size;
-    
+
     @ behavior INVPARAM:
     @   assumes (desc_size == \null || buf == \null || pkt == \null) ;
     @   ensures \result == MBED_ERROR_INVPARAM ;
@@ -1102,7 +1107,7 @@ err:
                 ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_PRODNAME_INDEX) &&
                 ((pkt->wValue & 0xff) != (uint16_t)CONFIG_USB_DEV_SERIAL_INDEX));
     @   ensures \result == MBED_ERROR_NONE;
-    
+
 
     @ complete behaviors;
     @ disjoint behaviors;
@@ -1131,7 +1136,7 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
     const char *USB_DEV_SERIAL = CONFIG_USB_DEV_SERIAL;
     uint8_t string_type = pkt->wValue & 0xff;
 
-    log_printf("[USBCTRL] create string desc of size %d\n", descriptor_size);
+    log_printf("[USBCTRL] create string desc\n");
     //usbctrl_string_descriptor_t *cfg = (usbctrl_string_descriptor_t *)&(buf[0]);
     usbctrl_string_descriptor_t _cfg;
     usbctrl_string_descriptor_t *cfg = &_cfg;
@@ -1172,7 +1177,6 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
                 cfg->wString[i] = USB_DEV_MANUFACTURER[i];
             }
             *desc_size = 2 + 2 * maxlen;
-            goto err;
             break;
 
         case CONFIG_USB_DEV_PRODNAME_INDEX:
@@ -1189,7 +1193,6 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
                 cfg->wString[i] = USB_DEV_PRODNAME[i];
             }
             *desc_size = 2 + 2 * maxlen;
-            goto err;
             break;
 
         case CONFIG_USB_DEV_SERIAL_INDEX:
@@ -1206,7 +1209,6 @@ mbed_error_t usbctrl_handle_string_desc(__out uint8_t    *buf,
                 cfg->wString[i] = USB_DEV_SERIAL[i];
             }
             *desc_size = 2 + 2 * maxlen;
-            goto err;
             break;
 
         default:
